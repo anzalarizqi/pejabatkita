@@ -59,9 +59,36 @@ pejabatkita/
 
 ## Next Session Should Start With
 
-Begin implementation. Start with:
-1. `core/schema.py` — Pydantic models for the PRD JSON schema (foundation everything else builds on)
-2. `pipeline/llm.py` — multi-provider LLM abstraction with fallback
-3. `pipeline/websearch.py` — port DDG/Jina + SearXNG from SEMAR `tools/search.js`
+**Phase 4 is COMPLETE** — all web app files built and build passes clean.
 
-No blockers — PRD is finalized and reference implementations exist in SEMAR.
+Phase 4 summary (what was built):
+- `web/middleware.ts` — admin auth guard (ADMIN_PASSWORD cookie)
+- `web/app/api/auth/route.ts` — POST login / DELETE logout
+- `web/app/admin/login/page.tsx` — newspaper-aesthetic login page
+- `web/app/admin/layout.tsx` — sidebar nav (Pantauan / Impor Data / Ulasan Bendera)
+- `web/app/admin/dashboard/page.tsx` + `DashboardClient.tsx` — coverage monitoring, collapsible provinces
+- `web/app/admin/import/page.tsx` + `DiffPreview.tsx` — upload JSON, 3-step diff preview → confirm
+- `web/app/admin/review/page.tsx` + `ReviewClient.tsx` + `FlagCard.tsx` — flag queue with dismiss/re-scrape
+- `web/app/admin/review/EditModal.tsx` — (not built — descoped, re-scrape covers use case)
+- `web/app/[pejabat-id]/page.tsx` + `ProfileClient.tsx` + `LaporkanModal.tsx` — public profile + flag form
+- `web/app/api/import/preview/route.ts` — diff logic (new/updated/unchanged)
+- `web/app/api/import/confirm/route.ts` — upsert to Supabase + auto-flag needs_review
+- `web/app/api/flags/route.ts` — rate-limited public flagging (POST) + admin resolve (PATCH)
+- `web/app/api/rescrape/route.ts` — shell-out to Python scraper
+- `web/app/page.tsx` — basic public homepage
+- `supabase/migrations/002_flags_reporter_ip.sql` — reporter_ip_hash column
+
+**Phase 5 is COMPLETE** — RLS, service-role fixes, security headers, kab/kota seed script, all built. Build passes.
+
+Phase 5 summary:
+- `supabase/migrations/003_rls_policies.sql` — RLS enabled, anon read on wilayah/pejabat/jabatan/scrape_runs
+- `supabase/seed/002_wilayah_kabkota.py` — seeds ~514 kab/kota via wikipedia.py, run once locally
+- `web/next.config.ts` — security headers (X-Frame-Options, X-Content-Type-Options, etc.)
+- `web/app/admin/dashboard/page.tsx` + `review/page.tsx` — switched to service role
+- `web/app/admin/review/FlagCard.tsx` — rescrape local-only note when NEXT_PUBLIC_IS_VERCEL=true
+
+**Next: Deploy**
+1. Run `003_rls_policies.sql` in Supabase SQL editor
+2. Run `python supabase/seed/002_wilayah_kabkota.py` locally (needs `.env` with service role key)
+3. Push to GitHub → Vercel: root dir = `web/`, add 5 env vars (SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, ADMIN_PASSWORD, NEXT_PUBLIC_IS_VERCEL=true)
+4. Verify: login → dashboard shows provinces with kab/kota → import JSON → public profile

@@ -126,6 +126,14 @@ async def get_province_districts(provinsi_name: str) -> list[str]:
     return districts
 
 
+_FALSE_POSITIVE_WORDS = {
+    "tahun", "ini", "tersebut", "yang", "dan", "atau", "dengan", "pada",
+    "dari", "ke", "di", "untuk", "adalah", "dalam", "oleh", "tidak",
+    "ada", "juga", "sudah", "akan", "baru", "lain", "satu", "dua",
+    "administratif", "otonom", "madya",
+}
+
+
 def _extract_district_names(text: str, provinsi_name: str) -> list[str]:
     """
     Parse district names from Wikipedia list page text.
@@ -134,7 +142,6 @@ def _extract_district_names(text: str, provinsi_name: str) -> list[str]:
     districts: list[str] = []
     seen: set[str] = set()
 
-    # Match Kabupaten/Kota followed by 1–3 title-case words, stopping at punctuation or lowercase
     pattern = re.compile(
         r'\b((?:Kabupaten|Kota)\s+(?:[A-Z][a-z]+)(?:\s+[A-Z][a-z]+){0,2})',
         re.UNICODE,
@@ -143,6 +150,10 @@ def _extract_district_names(text: str, provinsi_name: str) -> list[str]:
     for m in pattern.finditer(text):
         name = m.group(1).strip()
         if provinsi_name.lower() in name.lower():
+            continue
+        # Reject if the first word after Kabupaten/Kota is a common non-name word
+        parts = name.split()
+        if len(parts) >= 2 and parts[1].lower() in _FALSE_POSITIVE_WORDS:
             continue
         key = name.lower()
         if key not in seen:

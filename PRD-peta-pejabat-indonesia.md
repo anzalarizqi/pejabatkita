@@ -480,7 +480,13 @@ Setiap item review menampilkan:
 - [ ] Deteksi perubahan jabatan (misal: Pj. → definitif pasca Pilkada)
 
 ### V2 — Public Frontend
-- [ ] Peta Indonesia interaktif
+- [ ] Peta Indonesia interaktif dengan heatmap metrik publik (switchable):
+  - **Pendidikan** — % pejabat dengan gelar S1 ke atas per provinsi (merah = rendah, hijau = tinggi)
+  - **Representasi gender** — % pejabat perempuan per provinsi
+  - **Dominasi partai** — partai dengan jabatan terbanyak per provinsi (warna per partai: PDI-P merah, Golkar kuning, Gerindra merah tua, dll.)
+  - **Penjabat rate** — % jabatan yang diisi Pj. (appointed) vs definitif terpilih
+  - **Keragaman karier** — rata-rata jumlah jabatan berbeda yang pernah dipegang per pejabat
+- [ ] Toggle metrik di atas peta (satu peta, beberapa perspektif analitik)
 - [ ] Filter: pendidikan, partai, jabatan
 - [ ] Link ke LHKPN KPK, RekamJejak
 
