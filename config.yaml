@@ -1,0 +1,40 @@
+llm_providers:
+  # Providers without their api_key_env set are automatically skipped.
+  # Change priority order or swap models here — no code changes needed.
+  - name: anthropic
+    base_url: https://api.anthropic.com/v1
+    model: claude-sonnet-4-6
+    api_key_env: ANTHROPIC_API_KEY
+    priority: 1
+  - name: openai
+    base_url: https://api.openai.com/v1
+    model: gpt-4o
+    api_key_env: OPENAI_API_KEY
+    priority: 2
+  - name: google
+    base_url: https://generativelanguage.googleapis.com/v1beta
+    model: gemini-2.0-flash
+    api_key_env: GOOGLE_API_KEY
+    priority: 3
+  - name: groq
+    base_url: https://api.groq.com/openai/v1
+    model: llama-3.3-70b-versatile
+    api_key_env: GROQ_API_KEY
+    priority: 4
+  - name: moonshot
+    base_url: https://api.moonshot.ai/v1
+    model: kimi-k2
+    api_key_env: MOONSHOT_API_KEY
+    priority: 5
+
+search:
+  jina_base_url: https://r.jina.ai
+  searxng_url: https://searx.be
+  max_results: 5
+  timeout_ms: 20000
+  read_timeout_ms: 30000
+
+scraper:
+  delay_between_requests: 2
+  max_retries: 3
+  confidence_threshold_review: 0.5
