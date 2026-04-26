@@ -59,36 +59,33 @@ pejabatkita/
 
 ## Next Session Should Start With
 
-**Phase 4 is COMPLETE** — all web app files built and build passes clean.
+**Phase 6 (Data Population) is IN PROGRESS** — scraper pipeline is hardened and DKI Jakarta runs end-to-end cleanly. Ready to run all 38 provinces.
 
-Phase 4 summary (what was built):
-- `web/middleware.ts` — admin auth guard (ADMIN_PASSWORD cookie)
-- `web/app/api/auth/route.ts` — POST login / DELETE logout
-- `web/app/admin/login/page.tsx` — newspaper-aesthetic login page
-- `web/app/admin/layout.tsx` — sidebar nav (Pantauan / Impor Data / Ulasan Bendera)
-- `web/app/admin/dashboard/page.tsx` + `DashboardClient.tsx` — coverage monitoring, collapsible provinces
-- `web/app/admin/import/page.tsx` + `DiffPreview.tsx` — upload JSON, 3-step diff preview → confirm
-- `web/app/admin/review/page.tsx` + `ReviewClient.tsx` + `FlagCard.tsx` — flag queue with dismiss/re-scrape
-- `web/app/admin/review/EditModal.tsx` — (not built — descoped, re-scrape covers use case)
-- `web/app/[pejabat-id]/page.tsx` + `ProfileClient.tsx` + `LaporkanModal.tsx` — public profile + flag form
-- `web/app/api/import/preview/route.ts` — diff logic (new/updated/unchanged)
-- `web/app/api/import/confirm/route.ts` — upsert to Supabase + auto-flag needs_review
-- `web/app/api/flags/route.ts` — rate-limited public flagging (POST) + admin resolve (PATCH)
-- `web/app/api/rescrape/route.ts` — shell-out to Python scraper
-- `web/app/page.tsx` — basic public homepage
-- `supabase/migrations/002_flags_reporter_ip.sql` — reporter_ip_hash column
+Phase 6 summary so far:
+- `scripts/run_scraper.py` — orchestrates scraper + verifier for all provinces, resume support
+- `scripts/import_to_supabase.py` — bulk imports output/ folders into Supabase (built but not yet run)
+- `scraper/core/wilayah.py` — Supabase-backed district validation; `fetch_province_kode()` + `validate_districts()`
+- `scraper/scraper.py` — hardened against LLM null quirks: `_n()` sanitizes string "null", `_date()` fixes bare years and zero month/day
 
-**Phase 5 is COMPLETE** — RLS, service-role fixes, security headers, kab/kota seed script, all built. Build passes.
+**LLM provider:** Moonshot (`moonshot-v1-8k`), priority 6 in config.yaml. ZhipuAI hit weekly limit.
 
-Phase 5 summary:
-- `supabase/migrations/003_rls_policies.sql` — RLS enabled, anon read on wilayah/pejabat/jabatan/scrape_runs
-- `supabase/seed/002_wilayah_kabkota.py` — seeds ~514 kab/kota via wikipedia.py, run once locally
-- `web/next.config.ts` — security headers (X-Frame-Options, X-Content-Type-Options, etc.)
-- `web/app/admin/dashboard/page.tsx` + `review/page.tsx` — switched to service role
-- `web/app/admin/review/FlagCard.tsx` — rescrape local-only note when NEXT_PUBLIC_IS_VERCEL=true
+**Bugs fixed this session (all in scraper/verifier):**
+- LLM returning string `"null"` instead of JSON null — fixed via `_n()` helper on all nullable fields
+- LLM returning bare year `"2008"` for date fields — fixed via `_date()` helper
+- LLM returning `"2025-00-00"` (month 0) — fixed in `_date()` by clamping to min 1
+- PostgREST filter syntax wrong: `level=eq.kabupaten,eq.kota` -> `level=in.(kabupaten,kota)`
+- Province kode was hardcoded `"XX"` — now looked up from Supabase via `fetch_province_kode()`
+- Windows CP1252 UnicodeEncodeError on Unicode chars — replaced all `✓`, `→`, `—`, `⚠` with ASCII in scraper, verifier, run_scraper
+- `run_scraper.py` was passing `--verbose` to subprocess causing httpcore debug flood — removed
 
-**Next: Deploy**
-1. Run `003_rls_policies.sql` in Supabase SQL editor
-2. Run `python supabase/seed/002_wilayah_kabkota.py` locally (needs `.env` with service role key)
-3. Push to GitHub → Vercel: root dir = `web/`, add 5 env vars (SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, ADMIN_PASSWORD, NEXT_PUBLIC_IS_VERCEL=true)
-4. Verify: login → dashboard shows provinces with kab/kota → import JSON → public profile
+**DKI Jakarta verified output:** `output/dki-jakarta/pejabat_verified.json` — 14 pejabat, kode BPS 31, 6/6 districts matched.
+
+**Next: Run all 38 provinces**
+```bash
+python scripts/run_scraper.py --resume
+```
+Then import to Supabase:
+```bash
+python scripts/import_to_supabase.py --dry-run
+python scripts/import_to_supabase.py
+```

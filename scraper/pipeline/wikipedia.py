@@ -130,7 +130,7 @@ _FALSE_POSITIVE_WORDS = {
     "tahun", "ini", "tersebut", "yang", "dan", "atau", "dengan", "pada",
     "dari", "ke", "di", "untuk", "adalah", "dalam", "oleh", "tidak",
     "ada", "juga", "sudah", "akan", "baru", "lain", "satu", "dua",
-    "administratif", "otonom", "madya",
+    "administratif", "otonom", "madya", "tua", "lama", "besar", "kecil",
 }
 
 

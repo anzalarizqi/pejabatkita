@@ -13,7 +13,7 @@ from urllib.parse import urlparse
 import yaml
 from dotenv import load_dotenv
 
-# Reuse scraper's core + pipeline — no duplication
+# Reuse scraper's core + pipeline - no duplication
 sys.path.insert(0, str(Path(__file__).parent.parent / "scraper"))
 
 from core.confidence import calculate as calc_confidence
@@ -148,7 +148,7 @@ _VERIFY_SYSTEM = """
 Kamu adalah sistem verifikasi data pejabat Indonesia.
 Tugasmu: bandingkan data yang diklaim dengan sumber web, laporkan apa yang terkonfirmasi,
 apa yang bertentangan, dan informasi baru yang ditemukan.
-Kembalikan JSON saja — tidak ada teks lain di luar JSON.
+Kembalikan JSON saja - tidak ada teks lain di luar JSON.
 """.strip()
 
 
@@ -196,7 +196,7 @@ Kembalikan JSON dengan struktur ini:
   "sources_confirmed": ["url1", "url2"]
 }}
 
-Hanya kembalikan JSON. Field yang tidak bisa dikonfirmasi maupun tidak bertentangan — abaikan saja.
+Hanya kembalikan JSON. Field yang tidak bisa dikonfirmasi maupun tidak bertentangan - abaikan saja.
 """.strip()
 
     response = chat(
@@ -228,7 +228,7 @@ async def verify_one(
 ) -> Pejabat:
     log = logging.getLogger(__name__)
     jabatan = p.jabatan[0] if p.jabatan else None
-    label = f"{jabatan.posisi if jabatan else '?'} {jabatan.wilayah if jabatan else '?'} — {p.nama_lengkap}"
+    label = f"{jabatan.posisi if jabatan else '?'} {jabatan.wilayah if jabatan else '?'} - {p.nama_lengkap}"
 
     if verbose:
         print(f"  Verifying: {label}")
@@ -266,7 +266,7 @@ async def verify_one(
             score=orig_conf.score,
             completeness=orig_conf.completeness,
             corroboration=orig_conf.corroboration,
-            notes=f"[Tidak terverifikasi — tidak ada sumber ditemukan] {orig_conf.notes or ''}".strip(),
+            notes=f"[Tidak terverifikasi - tidak ada sumber ditemukan] {orig_conf.notes or ''}".strip(),
         )
         return p.model_copy(update={
             "metadata": p.metadata.model_copy(update={"confidence": unverified_conf})
@@ -332,8 +332,8 @@ async def verify_one(
     if verbose:
         delta = new_conf.score - p.metadata.confidence.score
         sign = "+" if delta >= 0 else ""
-        conflict_note = f" ⚠ {len(result.conflicted_fields)} conflict(s)" if result.has_conflict else ""
-        print(f"    conf: {p.metadata.confidence.score:.2f} → {new_conf.score:.2f} ({sign}{delta:.2f}){conflict_note}")
+        conflict_note = f" [!] {len(result.conflicted_fields)} conflict(s)" if result.has_conflict else ""
+        print(f"    conf: {p.metadata.confidence.score:.2f} -> {new_conf.score:.2f} ({sign}{delta:.2f}){conflict_note}")
 
     return verified
 
@@ -424,7 +424,7 @@ async def run(
         skip_list = []
 
     if not to_verify:
-        print("0 entries to verify — nothing to do.")
+        print("0 entries to verify - nothing to do.")
         return
 
     conf_before = (
@@ -442,7 +442,7 @@ async def run(
 
     for i, p in enumerate(to_verify, 1):
         jabatan = p.jabatan[0] if p.jabatan else None
-        label = f"{jabatan.posisi if jabatan else '?'} — {p.nama_lengkap}"
+        label = f"{jabatan.posisi if jabatan else '?'} - {p.nama_lengkap}"
         print(f"[{i}/{len(to_verify)}] {label}")
 
         v = await verify_one(p, config, verbose)
@@ -470,7 +470,7 @@ async def run(
     avg_after = sum(p.metadata.confidence.score for p in final_list) / len(final_list) if final_list else 0.0
     delta = avg_after - conf_before
     sign = "+" if delta >= 0 else ""
-    print(f"\nAvg confidence: {conf_before:.2f} → {avg_after:.2f} ({sign}{delta:.2f})")
+    print(f"\nAvg confidence: {conf_before:.2f} -> {avg_after:.2f} ({sign}{delta:.2f})")
 
 
 def _setup_logging(verbose: bool) -> None:
@@ -484,7 +484,7 @@ def _setup_logging(verbose: bool) -> None:
 def main() -> None:
     import argparse
 
-    parser = argparse.ArgumentParser(description="Peta Pejabat Indonesia — Verifier")
+    parser = argparse.ArgumentParser(description="Peta Pejabat Indonesia - Verifier")
     parser.add_argument("--file", required=True, metavar="PATH", help="Path ke JSON output scraper")
     parser.add_argument(
         "--only-needs-review",

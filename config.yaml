@@ -1,31 +1,36 @@
 llm_providers:
   # Providers without their api_key_env set are automatically skipped.
   # Change priority order or swap models here — no code changes needed.
+  - name: zhipu
+    base_url: https://api.z.ai/api/coding/paas/v4
+    model: glm-4.5-air
+    api_key_env: ZHIPUAI_API_KEY
+    priority: 1
   - name: anthropic
     base_url: https://api.anthropic.com/v1
     model: claude-sonnet-4-6
     api_key_env: ANTHROPIC_API_KEY
-    priority: 1
+    priority: 2
   - name: openai
     base_url: https://api.openai.com/v1
     model: gpt-4o
     api_key_env: OPENAI_API_KEY
-    priority: 2
+    priority: 3
   - name: google
     base_url: https://generativelanguage.googleapis.com/v1beta
     model: gemini-2.0-flash
     api_key_env: GOOGLE_API_KEY
-    priority: 3
+    priority: 4
   - name: groq
     base_url: https://api.groq.com/openai/v1
     model: llama-3.3-70b-versatile
     api_key_env: GROQ_API_KEY
-    priority: 4
+    priority: 5
   - name: moonshot
     base_url: https://api.moonshot.ai/v1
-    model: kimi-k2
+    model: moonshot-v1-8k
     api_key_env: MOONSHOT_API_KEY
-    priority: 5
+    priority: 6
 
 search:
   jina_base_url: https://r.jina.ai

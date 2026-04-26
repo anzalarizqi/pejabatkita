@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 
 from core import confidence as conf_module
 from core.output import write_province_output
+from core.wilayah import validate_districts, fetch_province_kode
 from core.schema import (
     Biodata, ConfidenceScore, JenisKelamin, Jabatan, Jenjang,
     Level, Metadata, Pejabat, Pendidikan, Source, SourceType, StatusJabatan,
@@ -100,7 +101,7 @@ def _calc_completeness(raw: dict) -> float:
     return score / _COMPLETENESS_FIELDS
 
 
-def _build_pejabat(raw: dict, sources_text: dict[str, str], threshold: float) -> Pejabat:
+def _build_pejabat(raw: dict, sources_text: dict[str, str], threshold: float, name_hint: str = "") -> Pejabat:
     """Validate raw LLM dict into a Pejabat model, attach metadata."""
     completeness = _calc_completeness(raw)
     num_sources = len(sources_text)
@@ -126,39 +127,39 @@ def _build_pejabat(raw: dict, sources_text: dict[str, str], threshold: float) ->
     # Coerce enums safely — unknown values fall back to defaults
     def _jabatan(j: dict) -> Jabatan:
         return Jabatan(
-            posisi=j.get("posisi", ""),
+            posisi=j.get("posisi") or "",
             level=_safe_enum(Level, j.get("level"), Level.provinsi),
-            wilayah=j.get("wilayah", ""),
-            kode_wilayah=j.get("kode_wilayah", ""),
-            partai=j.get("partai"),
-            mulai_jabatan=j.get("mulai_jabatan"),
-            selesai_jabatan=j.get("selesai_jabatan"),
-            status=_safe_enum(StatusJabatan, j.get("status"), StatusJabatan.aktif),
+            wilayah=j.get("wilayah") or "",
+            kode_wilayah=j.get("kode_wilayah") or "",
+            partai=_n(j.get("partai")),
+            mulai_jabatan=_date(j.get("mulai_jabatan")),
+            selesai_jabatan=_date(j.get("selesai_jabatan")),
+            status=_safe_enum(StatusJabatan, _n(j.get("status")), StatusJabatan.aktif),
         )
 
     def _pendidikan(p: dict) -> Pendidikan:
         return Pendidikan(
-            jenjang=_safe_enum(Jenjang, p.get("jenjang"), Jenjang.lainnya),
-            institusi=p.get("institusi", ""),
-            jurusan=p.get("jurusan"),
-            tahun_lulus=p.get("tahun_lulus"),
+            jenjang=_safe_enum(Jenjang, _n(p.get("jenjang")), Jenjang.lainnya),
+            institusi=p.get("institusi") or "",
+            jurusan=_n(p.get("jurusan")),
+            tahun_lulus=_n(p.get("tahun_lulus")),
         )
 
     biodata_raw = raw.get("biodata") or {}
     biodata = Biodata(
-        tempat_lahir=biodata_raw.get("tempat_lahir"),
-        tanggal_lahir=biodata_raw.get("tanggal_lahir"),
-        jenis_kelamin=_safe_enum(JenisKelamin, biodata_raw.get("jenis_kelamin"), None),
-        agama=biodata_raw.get("agama"),
+        tempat_lahir=_n(biodata_raw.get("tempat_lahir")),
+        tanggal_lahir=_date(biodata_raw.get("tanggal_lahir")),
+        jenis_kelamin=_safe_enum(JenisKelamin, _n(biodata_raw.get("jenis_kelamin")), None),
+        agama=_n(biodata_raw.get("agama")),
     )
 
     jabatan_raw = raw.get("jabatan") or []
     pendidikan_raw = raw.get("pendidikan") or []
 
     return Pejabat(
-        nama_lengkap=raw.get("nama_lengkap", ""),
-        gelar_depan=raw.get("gelar_depan"),
-        gelar_belakang=raw.get("gelar_belakang"),
+        nama_lengkap=_n(raw.get("nama_lengkap")) or name_hint or "Tidak Diketahui",
+        gelar_depan=_n(raw.get("gelar_depan")),
+        gelar_belakang=_n(raw.get("gelar_belakang")),
         jabatan=[_jabatan(j) for j in jabatan_raw if isinstance(j, dict)],
         biodata=biodata,
         pendidikan=[_pendidikan(p) for p in pendidikan_raw if isinstance(p, dict)],
@@ -173,6 +174,33 @@ def _safe_enum(enum_cls, value, default):
         return enum_cls(value)
     except ValueError:
         return default
+
+
+def _n(value):
+    """Return None if value is None or the literal string 'null'/'NULL'."""
+    if value is None or (isinstance(value, str) and value.strip().lower() in ("null", "none", "")):
+        return None
+    return value
+
+
+def _date(value):
+    """Coerce LLM date strings to valid ISO dates, returning None for anything unparseable."""
+    v = _n(value)
+    if v is None:
+        return None
+    if not isinstance(v, str):
+        return v
+    s = v.strip()
+    if re.fullmatch(r"\d{4}", s):
+        return f"{s}-01-01"
+    # Fix zero month or day components (e.g. "2025-00-00" -> "2025-01-01")
+    m = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", s)
+    if m:
+        y, mo, d = m.group(1), int(m.group(2)), int(m.group(3))
+        mo = max(1, mo)
+        d = max(1, d)
+        return f"{y}-{mo:02d}-{d:02d}"
+    return s
 
 
 # ─── Scraping pipeline for one official ──────────────────────────────────────
@@ -266,7 +294,7 @@ async def scrape_official(
         )
 
     # Step 5: Build validated Pejabat
-    return _build_pejabat(raw, sources_text, config.confidence_threshold)
+    return _build_pejabat(raw, sources_text, config.confidence_threshold, name_hint=query_name)
 
 
 # ─── Province / wilayah / pejabat-id runs ───────────────────────────────────���
@@ -289,32 +317,32 @@ async def run_province(
         p = await scrape_official(posisi, provinsi_name, kode_provinsi, Level.provinsi, config, verbose)
         if p:
             officials.append(p)
-            print(f"  ✓ {posisi} {provinsi_name}: {p.nama_lengkap} (conf: {p.metadata.confidence.score:.2f})")
+            print(f"  [OK] {posisi} {provinsi_name}: {p.nama_lengkap} (conf: {p.metadata.confidence.score:.2f})")
         await asyncio.sleep(config.delay)
 
     # Get kab/kota list
     print(f"\nMengambil daftar kab/kota di {provinsi_name}...")
-    districts = await wikipedia.get_province_districts(provinsi_name)
-    if not districts:
+    wiki_districts = await wikipedia.get_province_districts(provinsi_name)
+    if not wiki_districts:
         log.warning("Could not retrieve district list for %s — skipping kab/kota", provinsi_name)
-    else:
-        print(f"  Ditemukan {len(districts)} kab/kota\n")
 
-    for district in sorted(districts):
+    districts = validate_districts(wiki_districts, kode_provinsi)
+    print(f"  Ditemukan {len(districts)} kab/kota (dari {len(wiki_districts)} Wikipedia)\n")
+
+    for district, kode in sorted(districts):
         level = Level.kota if district.lower().startswith("kota ") else Level.kabupaten
-        kode = f"{kode_provinsi}.XX"  # placeholder — real kode from wilayah table in Phase 4
 
         posisi_list = ["Walikota", "Wakil Walikota"] if level == Level.kota else ["Bupati", "Wakil Bupati"]
         for posisi in posisi_list:
             p = await scrape_official(posisi, district, kode, level, config, verbose)
             if p:
                 officials.append(p)
-                print(f"  ✓ {posisi} {district}: {p.nama_lengkap} (conf: {p.metadata.confidence.score:.2f})")
+                print(f"  [OK] {posisi} {district}: {p.nama_lengkap} (conf: {p.metadata.confidence.score:.2f})")
             await asyncio.sleep(config.delay)
 
     result_path = write_province_output(_slug(provinsi_name), officials, output_dir, dry_run)
     needs = sum(1 for p in officials if p.metadata.needs_review)
-    print(f"\nSelesai. {len(officials)} pejabat | {needs} perlu review → {result_path}")
+    print(f"\nSelesai. {len(officials)} pejabat | {needs} perlu review -> {result_path}")
 
 
 async def run_wilayah(
@@ -332,7 +360,7 @@ async def run_wilayah(
         p = await scrape_official(posisi, wilayah_name, "XX", level, config, verbose)
         if p:
             officials.append(p)
-            print(f"  ✓ {posisi}: {p.nama_lengkap} (conf: {p.metadata.confidence.score:.2f})")
+            print(f"  [OK]{posisi}: {p.nama_lengkap} (conf: {p.metadata.confidence.score:.2f})")
         await asyncio.sleep(config.delay)
 
     write_province_output(_slug(wilayah_name), officials, output_dir, dry_run)
@@ -369,9 +397,10 @@ def main() -> None:
     config = load_scraper_config()
 
     if args.provinsi:
+        kode_provinsi = fetch_province_kode(args.provinsi) or "XX"
         asyncio.run(run_province(
             provinsi_name=args.provinsi,
-            kode_provinsi="XX",  # TODO: lookup from BPS table in Phase 4
+            kode_provinsi=kode_provinsi,
             output_dir=args.output,
             dry_run=args.dry_run,
             verbose=args.verbose,

@@ -71,7 +71,7 @@ def _build_messages(messages: list[dict], system_prompt: str | None) -> list[dic
 
 def _supports_json_mode(provider_name: str) -> bool:
     # Anthropic uses its own API format for JSON; others use response_format
-    return provider_name not in ("anthropic", "moonshot")
+    return provider_name not in ("anthropic", "moonshot", "zhipu")
 
 
 def chat(messages: list[dict], system_prompt: str | None = None) -> str:
@@ -125,7 +125,7 @@ def _call_provider(provider: Provider, messages: list[dict], system_prompt: str 
         "Authorization": f"Bearer {provider.api_key}",
     }
 
-    with httpx.Client(timeout=60.0) as client:
+    with httpx.Client(timeout=90.0) as client:
         resp = client.post(f"{provider.base_url}/chat/completions", json=body, headers=headers)
 
     if resp.status_code != 200:
