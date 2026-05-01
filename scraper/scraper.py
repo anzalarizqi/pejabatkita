@@ -193,6 +193,10 @@ def _date(value):
     s = v.strip()
     if re.fullmatch(r"\d{4}", s):
         return f"{s}-01-01"
+    # Year range like "2021-2025" — take the start year
+    m = re.fullmatch(r"(\d{4})-(\d{4})", s)
+    if m:
+        return f"{m.group(1)}-01-01"
     # Fix zero month or day components (e.g. "2025-00-00" -> "2025-01-01")
     m = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", s)
     if m:
@@ -329,8 +333,8 @@ async def run_province(
     districts = validate_districts(wiki_districts, kode_provinsi)
     print(f"  Ditemukan {len(districts)} kab/kota (dari {len(wiki_districts)} Wikipedia)\n")
 
-    for district, kode in sorted(districts):
-        level = Level.kota if district.lower().startswith("kota ") else Level.kabupaten
+    for district, kode, level_str in sorted(districts):
+        level = Level.kota if level_str == "kota" else Level.kabupaten
 
         posisi_list = ["Walikota", "Wakil Walikota"] if level == Level.kota else ["Bupati", "Wakil Bupati"]
         for posisi in posisi_list:

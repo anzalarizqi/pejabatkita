@@ -1,0 +1,150 @@
+{
+  "DKI Jakarta": {
+    "status": "done",
+    "at": "2026-05-01T07:36:42.329511"
+  },
+  "Aceh": {
+    "status": "done",
+    "at": "2026-05-01T06:42:39.495746"
+  },
+  "Sumatera Utara": {
+    "status": "done",
+    "at": "2026-05-01T07:00:33.292469"
+  },
+  "Sumatera Barat": {
+    "status": "done",
+    "at": "2026-05-01T07:00:33.893795"
+  },
+  "Riau": {
+    "status": "done",
+    "at": "2026-05-01T07:03:34.692536"
+  },
+  "Jambi": {
+    "status": "done",
+    "at": "2026-05-01T07:05:24.226322"
+  },
+  "Bengkulu": {
+    "status": "done",
+    "at": "2026-05-01T07:15:47.539884"
+  },
+  "Sumatera Selatan": {
+    "status": "done",
+    "at": "2026-05-01T07:20:53.918497"
+  },
+  "Kepulauan Bangka Belitung": {
+    "status": "done",
+    "at": "2026-05-01T07:27:56.662675"
+  },
+  "Lampung": {
+    "status": "done",
+    "at": "2026-05-01T07:34:47.373142"
+  },
+  "Jawa Barat": {
+    "status": "done",
+    "at": "2026-05-01T07:55:53.047898"
+  },
+  "Banten": {
+    "status": "done",
+    "at": "2026-05-01T08:03:25.234444"
+  },
+  "Jawa Tengah": {
+    "status": "done",
+    "at": "2026-05-01T08:19:47.386804"
+  },
+  "DI Yogyakarta": {
+    "status": "done",
+    "at": "2026-05-01T08:25:36.834613"
+  },
+  "Jawa Timur": {
+    "status": "done",
+    "at": "2026-05-01T08:44:16.127789"
+  },
+  "Bali": {
+    "status": "done",
+    "at": "2026-05-01T08:45:46.770449"
+  },
+  "Nusa Tenggara Barat": {
+    "status": "done",
+    "at": "2026-05-01T08:50:20.819463"
+  },
+  "Nusa Tenggara Timur": {
+    "status": "done",
+    "at": "2026-05-01T09:01:38.609272"
+  },
+  "Kalimantan Barat": {
+    "status": "done",
+    "at": "2026-05-01T09:13:10.551178"
+  },
+  "Kalimantan Tengah": {
+    "status": "done",
+    "at": "2026-05-01T09:21:28.442170"
+  },
+  "Kalimantan Selatan": {
+    "status": "done",
+    "at": "2026-05-01T09:35:27.564510"
+  },
+  "Kalimantan Timur": {
+    "status": "done",
+    "at": "2026-05-01T09:37:24.057001"
+  },
+  "Kalimantan Utara": {
+    "status": "done",
+    "at": "2026-05-01T09:41:17.017236"
+  },
+  "Sulawesi Utara": {
+    "status": "done",
+    "at": "2026-05-01T09:48:21.109209"
+  },
+  "Gorontalo": {
+    "status": "done",
+    "at": "2026-05-01T09:54:54.048411"
+  },
+  "Sulawesi Tengah": {
+    "status": "done",
+    "at": "2026-05-01T09:59:55.589860"
+  },
+  "Sulawesi Barat": {
+    "status": "done",
+    "at": "2026-05-01T10:03:04.670997"
+  },
+  "Sulawesi Selatan": {
+    "status": "done",
+    "at": "2026-05-01T10:19:51.466930"
+  },
+  "Sulawesi Tenggara": {
+    "status": "done",
+    "at": "2026-05-01T10:32:12.487614"
+  },
+  "Maluku": {
+    "status": "done",
+    "at": "2026-05-01T10:37:30.157553"
+  },
+  "Maluku Utara": {
+    "status": "done",
+    "at": "2026-05-01T10:46:13.685207"
+  },
+  "Papua": {
+    "status": "done",
+    "at": "2026-05-01T10:51:32.221310"
+  },
+  "Papua Barat": {
+    "status": "done",
+    "at": "2026-05-01T10:57:13.540889"
+  },
+  "Papua Selatan": {
+    "status": "done",
+    "at": "2026-05-01T10:57:53.386003"
+  },
+  "Papua Tengah": {
+    "status": "done",
+    "at": "2026-05-01T11:03:09.197198"
+  },
+  "Papua Pegunungan": {
+    "status": "done",
+    "at": "2026-05-01T11:07:03.858385"
+  },
+  "Papua Barat Daya": {
+    "status": "done",
+    "at": "2026-05-01T11:10:30.727587"
+  }
+}

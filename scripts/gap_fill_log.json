@@ -1,0 +1,1242 @@
+{
+  "di-yogyakarta|Kabupaten Bantul|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T21:53:06.869837",
+    "conf": 0.51
+  },
+  "di-yogyakarta|Kabupaten Bantul|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T21:53:31.411669",
+    "conf": 0.51
+  },
+  "di-yogyakarta|Kabupaten Gunung Kidul|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T21:54:47.786635",
+    "conf": 0.51
+  },
+  "di-yogyakarta|Kabupaten Gunung Kidul|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T21:55:22.319768",
+    "conf": 0.46
+  },
+  "di-yogyakarta|Kabupaten Kulon Progo|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T21:55:51.881308",
+    "conf": 0.46
+  },
+  "di-yogyakarta|Kabupaten Kulon Progo|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T21:56:31.267260",
+    "conf": 0.71
+  },
+  "di-yogyakarta|Kabupaten Sleman|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T21:57:13.367619",
+    "conf": 0.46
+  },
+  "di-yogyakarta|Kabupaten Sleman|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T21:57:54.961736",
+    "conf": 0.46
+  },
+  "di-yogyakarta|Kota Yogyakarta|Walikota": {
+    "status": "done",
+    "at": "2026-04-30T21:59:36.838762",
+    "conf": 0.0
+  },
+  "di-yogyakarta|Kota Yogyakarta|Wakil Walikota": {
+    "status": "done",
+    "at": "2026-04-30T22:01:14.849333",
+    "conf": 0.71
+  },
+  "aceh|Kabupaten Aceh Barat|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:16:57.274312",
+    "conf": 0.46
+  },
+  "aceh|Kabupaten Aceh Barat|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:17:32.833322",
+    "conf": 0.46
+  },
+  "aceh|Kabupaten Aceh Barat Daya|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:18:29.151375",
+    "conf": 0.76
+  },
+  "aceh|Kabupaten Aceh Barat Daya|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:19:11.444302",
+    "conf": 0.46
+  },
+  "aceh|Kabupaten Aceh Besar|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:20:18.203901",
+    "conf": 0.51
+  },
+  "aceh|Kabupaten Aceh Besar|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:21:13.497117",
+    "conf": 0.51
+  },
+  "aceh|Kabupaten Aceh Jaya|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:21:47.138094",
+    "conf": 0.46
+  },
+  "aceh|Kabupaten Aceh Jaya|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:22:45.336653",
+    "conf": 0.46
+  },
+  "aceh|Kabupaten Aceh Selatan|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:23:37.595039",
+    "conf": 0.46
+  },
+  "aceh|Kabupaten Aceh Selatan|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:24:46.258594",
+    "conf": 0.46
+  },
+  "aceh|Kabupaten Aceh Singkil|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:25:48.037965",
+    "conf": 0.56
+  },
+  "aceh|Kabupaten Aceh Singkil|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:26:18.410835",
+    "conf": 0.46
+  },
+  "aceh|Kabupaten Aceh Tamiang|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:27:21.900905",
+    "conf": 0.71
+  },
+  "aceh|Kabupaten Aceh Tamiang|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:28:28.430067",
+    "conf": 0.46
+  },
+  "aceh|Kabupaten Aceh Tengah|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:28:57.642324",
+    "conf": 0.46
+  },
+  "aceh|Kabupaten Aceh Tengah|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:29:37.743562",
+    "conf": 0.46
+  },
+  "aceh|Kabupaten Aceh Tenggara|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:32:06.594571",
+    "conf": 0.76
+  },
+  "aceh|Kabupaten Aceh Tenggara|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:32:58.596746",
+    "conf": 0.46
+  },
+  "aceh|Kabupaten Aceh Timur|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:35:14.273329",
+    "conf": 0.71
+  },
+  "aceh|Kabupaten Aceh Timur|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:35:59.948362",
+    "conf": 0.71
+  },
+  "aceh|Kabupaten Aceh Utara|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:36:34.390628",
+    "conf": 0.56
+  },
+  "aceh|Kabupaten Aceh Utara|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:37:12.952938",
+    "conf": 0.46
+  },
+  "aceh|Kota Banda Aceh|Walikota": {
+    "status": "done",
+    "at": "2026-04-30T22:37:40.696142",
+    "conf": 0.51
+  },
+  "aceh|Kota Banda Aceh|Wakil Walikota": {
+    "status": "done",
+    "at": "2026-04-30T22:38:16.591811",
+    "conf": 0.0
+  },
+  "aceh|Kota Lhokseumawe|Wakil Walikota": {
+    "status": "done",
+    "at": "2026-04-30T22:38:43.728138",
+    "conf": 0.76
+  },
+  "sumatera-utara|Kabupaten Labuhan Batu|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:39:04.054508",
+    "conf": 0.46
+  },
+  "sumatera-utara|Kabupaten Labuhan Batu|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:42:13.701553",
+    "conf": 0.71
+  },
+  "sumatera-utara|Kabupaten Labuhan Batu Selatan|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:42:44.210902",
+    "conf": 0.51
+  },
+  "sumatera-utara|Kabupaten Labuhan Batu Selatan|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:43:44.111739",
+    "conf": 0.46
+  },
+  "sumatera-utara|Kabupaten Labuhan Batu Utara|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:44:03.890700",
+    "conf": 0.46
+  },
+  "sumatera-utara|Kabupaten Labuhan Batu Utara|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:44:54.248620",
+    "conf": 0.46
+  },
+  "sumatera-utara|Kabupaten Humbang Hasundutan|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:46:51.331950",
+    "conf": 0.0
+  },
+  "sumatera-utara|Kabupaten Padang Lawas|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:47:27.201428",
+    "conf": 0.71
+  },
+  "sumatera-barat|Kota Sawah Lunto|Walikota": {
+    "status": "done",
+    "at": "2026-04-30T22:48:48.244901",
+    "conf": 0.71
+  },
+  "sumatera-barat|Kota Sawah Lunto|Wakil Walikota": {
+    "status": "done",
+    "at": "2026-04-30T22:50:20.632617",
+    "conf": 0.66
+  },
+  "sumatera-barat|Kabupaten Kepulauan Mentawai|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:52:33.163170",
+    "conf": 0.71
+  },
+  "riau|Kabupaten Indragiri Hilir|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:53:51.769453",
+    "conf": 0.0
+  },
+  "riau|Kabupaten Indragiri Hulu|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:54:17.755775",
+    "conf": 0.71
+  },
+  "riau|Kabupaten Indragiri Hulu|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:54:55.966231",
+    "conf": 0.71
+  },
+  "riau|Kabupaten Kuantan Singingi|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:55:29.134202",
+    "conf": 0.46
+  },
+  "riau|Kota Dumai|Wakil Walikota": {
+    "status": "done",
+    "at": "2026-04-30T22:57:00.350873",
+    "conf": 0.76
+  },
+  "jambi|Kabupaten Muaro Jambi|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:58:54.766921",
+    "conf": 0.0
+  },
+  "jambi|Kabupaten Muaro Jambi|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T22:59:31.763191",
+    "conf": 0.51
+  },
+  "jambi|Kota Jambi|Walikota": {
+    "status": "done",
+    "at": "2026-04-30T23:00:08.592991",
+    "conf": 0.51
+  },
+  "jambi|Kota Jambi|Wakil Walikota": {
+    "status": "done",
+    "at": "2026-04-30T23:01:03.951653",
+    "conf": 0.46
+  },
+  "sumatera-selatan|Kabupaten Banyu Asin|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:02:07.017171",
+    "conf": 0.66
+  },
+  "sumatera-selatan|Kabupaten Banyu Asin|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:03:05.031478",
+    "conf": 0.76
+  },
+  "sumatera-selatan|Kabupaten Ogan Komering Ulu Selatan|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:04:03.957276",
+    "conf": 0.46
+  },
+  "sumatera-selatan|Kabupaten Ogan Komering Ulu Selatan|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:05:04.363065",
+    "conf": 0.71
+  },
+  "sumatera-selatan|Kabupaten Ogan Komering Ulu Timur|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:06:34.937782",
+    "conf": 0.71
+  },
+  "sumatera-selatan|Kabupaten Ogan Komering Ulu Timur|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:07:06.967084",
+    "conf": 0.46
+  },
+  "sumatera-selatan|Kabupaten Penukal Abab Lematang Ilir|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:07:35.419907",
+    "conf": 0.46
+  },
+  "sumatera-selatan|Kabupaten Penukal Abab Lematang Ilir|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:08:05.807895",
+    "conf": 0.46
+  },
+  "sumatera-selatan|Kota Lubuklinggau|Walikota": {
+    "status": "done",
+    "at": "2026-04-30T23:08:57.918915",
+    "conf": 0.38
+  },
+  "sumatera-selatan|Kota Lubuklinggau|Wakil Walikota": {
+    "status": "done",
+    "at": "2026-04-30T23:10:12.076803",
+    "conf": 0.71
+  },
+  "sumatera-selatan|Kabupaten Empat Lawang|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:11:11.746994",
+    "conf": 0.76
+  },
+  "sumatera-selatan|Kabupaten Muara Enim|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:12:11.358942",
+    "conf": 0.71
+  },
+  "sumatera-selatan|Kabupaten Ogan Ilir|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:12:41.675226",
+    "conf": 0.71
+  },
+  "bengkulu|Kabupaten Bengkulu Selatan|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:13:36.215586",
+    "conf": 0.51
+  },
+  "bengkulu|Kabupaten Bengkulu Selatan|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:14:09.737406",
+    "conf": 0.46
+  },
+  "bengkulu|Kabupaten Bengkulu Tengah|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:14:49.450977",
+    "conf": 0.33
+  },
+  "bengkulu|Kabupaten Bengkulu Tengah|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:15:35.506357",
+    "conf": 0.18
+  },
+  "bengkulu|Kabupaten Bengkulu Utara|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:17:00.199393",
+    "conf": 0.28
+  },
+  "bengkulu|Kabupaten Bengkulu Utara|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:17:44.143221",
+    "conf": 0.28
+  },
+  "bengkulu|Kota Bengkulu|Walikota": {
+    "status": "done",
+    "at": "2026-04-30T23:18:46.615042",
+    "conf": 0.71
+  },
+  "bengkulu|Kota Bengkulu|Wakil Walikota": {
+    "status": "done",
+    "at": "2026-04-30T23:20:23.293368",
+    "conf": 0.71
+  },
+  "lampung|Kabupaten Lampung Barat|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:21:19.714733",
+    "conf": 0.46
+  },
+  "lampung|Kabupaten Lampung Barat|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:21:52.679131",
+    "conf": 0.46
+  },
+  "lampung|Kabupaten Lampung Selatan|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:23:22.013268",
+    "conf": 0.71
+  },
+  "lampung|Kabupaten Lampung Selatan|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:24:11.957184",
+    "conf": 0.51
+  },
+  "lampung|Kabupaten Lampung Tengah|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:26:14.893874",
+    "conf": 0.71
+  },
+  "lampung|Kabupaten Lampung Tengah|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:27:08.386789",
+    "conf": 0.46
+  },
+  "lampung|Kabupaten Lampung Timur|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:27:49.000373",
+    "conf": 0.46
+  },
+  "lampung|Kabupaten Lampung Timur|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:28:27.737538",
+    "conf": 0.71
+  },
+  "lampung|Kabupaten Lampung Utara|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:29:02.547826",
+    "conf": 0.71
+  },
+  "lampung|Kabupaten Lampung Utara|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:30:17.801013",
+    "conf": 0.51
+  },
+  "lampung|Kabupaten Tulangbawang|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:32:19.809504",
+    "conf": 0.0
+  },
+  "lampung|Kabupaten Tulangbawang|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:32:46.864494",
+    "conf": 0.46
+  },
+  "lampung|Kota Bandar Lampung|Walikota": {
+    "status": "done",
+    "at": "2026-04-30T23:34:53.375636",
+    "conf": 0.0
+  },
+  "lampung|Kota Bandar Lampung|Wakil Walikota": {
+    "status": "done",
+    "at": "2026-04-30T23:35:14.040964",
+    "conf": 0.71
+  },
+  "lampung|Kabupaten Tulang Bawang Barat|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:35:47.195768",
+    "conf": 0.71
+  },
+  "kepulauan-bangka-belitung|Kabupaten Bangka Barat|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:36:12.198432",
+    "conf": 0.51
+  },
+  "dki-jakarta|Kabupaten Kepulauan Seribu|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:36:41.787221",
+    "conf": 0.46
+  },
+  "dki-jakarta|Kota Jakarta Pusat|Wakil Walikota": {
+    "status": "done",
+    "at": "2026-04-30T23:37:22.203020",
+    "conf": 0.56
+  },
+  "dki-jakarta|Kota Jakarta Selatan|Wakil Walikota": {
+    "status": "done",
+    "at": "2026-04-30T23:38:12.000885",
+    "conf": 0.51
+  },
+  "dki-jakarta|Kota Jakarta Timur|Wakil Walikota": {
+    "status": "done",
+    "at": "2026-04-30T23:38:52.066040",
+    "conf": 0.46
+  },
+  "dki-jakarta|Kota Jakarta Utara|Wakil Walikota": {
+    "status": "done",
+    "at": "2026-04-30T23:39:54.892233",
+    "conf": 0.61
+  },
+  "dki-jakarta|Kota Jakarta Utara|Walikota": {
+    "status": "done",
+    "at": "2026-04-30T23:40:34.288762",
+    "conf": 0.56
+  },
+  "jawa-barat|Kabupaten Indramayu|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:41:39.214548",
+    "conf": 0.46
+  },
+  "jawa-barat|Kabupaten Kuningan|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:42:23.002656",
+    "conf": 0.71
+  },
+  "jawa-barat|Kota Banjar|Walikota": {
+    "status": "done",
+    "at": "2026-04-30T23:43:14.072693",
+    "conf": 0.0
+  },
+  "jawa-barat|Kota Cirebon|Walikota": {
+    "status": "done",
+    "at": "2026-04-30T23:43:55.139767",
+    "conf": 0.56
+  },
+  "jawa-barat|Kota Sukabumi|Walikota": {
+    "status": "done",
+    "at": "2026-04-30T23:44:35.288725",
+    "conf": 0.46
+  },
+  "jawa-tengah|Kabupaten Klaten|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:45:12.391618",
+    "conf": 0.71
+  },
+  "jawa-tengah|Kota Pekalongan|Walikota": {
+    "status": "done",
+    "at": "2026-04-30T23:46:41.560787",
+    "conf": 0.71
+  },
+  "jawa-timur|Kabupaten Jember|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:47:03.285098",
+    "conf": 0.66
+  },
+  "jawa-timur|Kota Batu|Wakil Walikota": {
+    "status": "done",
+    "at": "2026-04-30T23:47:32.494994",
+    "conf": 0.71
+  },
+  "jawa-timur|Kota Mojokerto|Wakil Walikota": {
+    "status": "done",
+    "at": "2026-04-30T23:48:03.406232",
+    "conf": 0.56
+  },
+  "jawa-timur|Kota Mojokerto|Walikota": {
+    "status": "done",
+    "at": "2026-04-30T23:48:23.832769",
+    "conf": 0.61
+  },
+  "banten|Kota Serang|Wakil Walikota": {
+    "status": "done",
+    "at": "2026-04-30T23:49:02.252629",
+    "conf": 0.46
+  },
+  "bali|Kabupaten Karang Asem|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:49:54.492222",
+    "conf": 0.51
+  },
+  "bali|Kabupaten Karang Asem|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:50:25.845121",
+    "conf": 0.51
+  },
+  "bali|Kabupaten Gianyar|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:51:23.632639",
+    "conf": 0.76
+  },
+  "nusa-tenggara-barat|Kota Bima|Wakil Walikota": {
+    "status": "done",
+    "at": "2026-04-30T23:51:52.334511",
+    "conf": 0.46
+  },
+  "nusa-tenggara-timur|Kabupaten Lembata|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:54:28.339613",
+    "conf": 0.71
+  },
+  "kalimantan-barat|Kabupaten Mempawah|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:55:14.408012",
+    "conf": 0.46
+  },
+  "kalimantan-barat|Kabupaten Sintang|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:56:23.357612",
+    "conf": 0.51
+  },
+  "kalimantan-selatan|Kabupaten Kota Baru|Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:57:12.771221",
+    "conf": 0.46
+  },
+  "kalimantan-selatan|Kabupaten Kota Baru|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-04-30T23:58:27.928240",
+    "conf": 0.46
+  },
+  "kalimantan-selatan|Kota Banjar Baru|Walikota": {
+    "status": "done",
+    "at": "2026-04-30T23:59:18.014857",
+    "conf": 0.71
+  },
+  "kalimantan-selatan|Kota Banjar Baru|Wakil Walikota": {
+    "status": "done",
+    "at": "2026-05-01T00:00:20.412315",
+    "conf": 0.46
+  },
+  "kalimantan-selatan|Kabupaten Tanah Bumbu|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:00:58.313406",
+    "conf": 0.46
+  },
+  "kalimantan-selatan|Kabupaten Tanah Laut|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:02:32.953411",
+    "conf": 0.0
+  },
+  "kalimantan-selatan|Kabupaten Tapin|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:02:59.680207",
+    "conf": 0.46
+  },
+  "kalimantan-selatan|Kota Banjarmasin|Walikota": {
+    "status": "done",
+    "at": "2026-05-01T00:03:51.780416",
+    "conf": 0.51
+  },
+  "kalimantan-timur|Kabupaten Mahakam Hulu|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:04:40.254396",
+    "conf": 0.51
+  },
+  "kalimantan-timur|Kabupaten Mahakam Hulu|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:05:09.369143",
+    "conf": 0.56
+  },
+  "kalimantan-timur|Kota Bontang|Wakil Walikota": {
+    "status": "done",
+    "at": "2026-05-01T00:06:58.739117",
+    "conf": 0.61
+  },
+  "sulawesi-utara|Kabupaten Siau Tagulandang Biaro|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:07:38.145836",
+    "conf": 0.56
+  },
+  "sulawesi-utara|Kabupaten Siau Tagulandang Biaro|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:08:03.652391",
+    "conf": 0.46
+  },
+  "sulawesi-utara|Kota Tomohon|Wakil Walikota": {
+    "status": "done",
+    "at": "2026-05-01T00:08:39.440422",
+    "conf": 0.71
+  },
+  "sulawesi-utara|Kota Tomohon|Walikota": {
+    "status": "done",
+    "at": "2026-05-01T00:08:58.406926",
+    "conf": 0.66
+  },
+  "sulawesi-tengah|Kabupaten Toli-toli|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:10:05.898924",
+    "conf": 0.71
+  },
+  "sulawesi-tengah|Kabupaten Toli-toli|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:11:13.886400",
+    "conf": 0.71
+  },
+  "sulawesi-tengah|Kabupaten Tojo Una-una|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:11:52.172050",
+    "conf": 0.46
+  },
+  "sulawesi-selatan|Kabupaten Pangkajene Dan Kepulauan|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:14:17.882878",
+    "conf": 0.71
+  },
+  "sulawesi-selatan|Kabupaten Pangkajene Dan Kepulauan|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:14:36.902322",
+    "conf": 0.46
+  },
+  "sulawesi-tenggara|Kabupaten Kolaka|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:15:51.851652",
+    "conf": 0.61
+  },
+  "sulawesi-tenggara|Kabupaten Kolaka|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:17:43.156300",
+    "conf": 0.0
+  },
+  "sulawesi-tenggara|Kabupaten Kolaka Timur|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:18:14.892144",
+    "conf": 0.56
+  },
+  "sulawesi-tenggara|Kabupaten Kolaka Utara|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:19:46.397135",
+    "conf": 0.56
+  },
+  "gorontalo|Kabupaten Gorontalo|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:20:54.727171",
+    "conf": 0.46
+  },
+  "gorontalo|Kabupaten Gorontalo|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:21:40.687378",
+    "conf": 0.33
+  },
+  "gorontalo|Kabupaten Gorontalo Utara|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:22:10.301827",
+    "conf": 0.51
+  },
+  "gorontalo|Kabupaten Gorontalo Utara|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:22:54.691135",
+    "conf": 0.56
+  },
+  "gorontalo|Kota Gorontalo|Walikota": {
+    "status": "done",
+    "at": "2026-05-01T00:23:42.055485",
+    "conf": 0.0
+  },
+  "gorontalo|Kota Gorontalo|Wakil Walikota": {
+    "status": "done",
+    "at": "2026-05-01T00:24:28.077187",
+    "conf": 0.51
+  },
+  "gorontalo|Kabupaten Pohuwato|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:25:05.453225",
+    "conf": 0.51
+  },
+  "sulawesi-barat|Kabupaten Mamuju Utara|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:25:56.688359",
+    "conf": 0.71
+  },
+  "sulawesi-barat|Kabupaten Mamuju Utara|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:26:31.788572",
+    "conf": 0.46
+  },
+  "maluku|Kabupaten Maluku Barat Daya|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:27:06.450110",
+    "conf": 0.46
+  },
+  "maluku|Kabupaten Maluku Barat Daya|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:27:30.393529",
+    "conf": 0.46
+  },
+  "maluku|Kabupaten Maluku Tengah|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:28:06.441703",
+    "conf": 0.0
+  },
+  "maluku|Kabupaten Maluku Tengah|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:28:54.903446",
+    "conf": 0.0
+  },
+  "maluku|Kabupaten Maluku Tenggara|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:29:28.741161",
+    "conf": 0.76
+  },
+  "maluku|Kabupaten Maluku Tenggara|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:30:09.491467",
+    "conf": 0.71
+  },
+  "maluku|Kabupaten Maluku Tenggara Barat|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:30:37.821791",
+    "conf": 0.71
+  },
+  "maluku|Kabupaten Maluku Tenggara Barat|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:31:13.323920",
+    "conf": 0.51
+  },
+  "maluku-utara|Kabupaten Halmahera Barat|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:31:48.004737",
+    "conf": 0.51
+  },
+  "maluku-utara|Kabupaten Halmahera Barat|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:32:58.939730",
+    "conf": 0.51
+  },
+  "maluku-utara|Kabupaten Halmahera Selatan|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:34:51.955105",
+    "conf": 0.71
+  },
+  "maluku-utara|Kabupaten Halmahera Selatan|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:35:16.492810",
+    "conf": 0.56
+  },
+  "maluku-utara|Kabupaten Halmahera Tengah|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:36:16.474304",
+    "conf": 0.0
+  },
+  "maluku-utara|Kabupaten Halmahera Tengah|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:36:46.434946",
+    "conf": 0.56
+  },
+  "maluku-utara|Kabupaten Halmahera Timur|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:37:22.696587",
+    "conf": 0.46
+  },
+  "maluku-utara|Kabupaten Halmahera Timur|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:38:07.505307",
+    "conf": 0.51
+  },
+  "maluku-utara|Kabupaten Halmahera Utara|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:38:34.098913",
+    "conf": 0.46
+  },
+  "maluku-utara|Kabupaten Halmahera Utara|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:38:56.704896",
+    "conf": 0.46
+  },
+  "maluku-utara|Kabupaten Kepulauan Sula|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:39:20.968231",
+    "conf": 0.66
+  },
+  "maluku-utara|Kabupaten Kepulauan Sula|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:39:57.862507",
+    "conf": 0.71
+  },
+  "maluku-utara|Kabupaten Pulau Morotai|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:40:54.208257",
+    "conf": 0.0
+  },
+  "maluku-utara|Kabupaten Pulau Morotai|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:41:37.385462",
+    "conf": 0.66
+  },
+  "maluku-utara|Kabupaten Pulau Taliabu|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:42:20.144355",
+    "conf": 0.76
+  },
+  "maluku-utara|Kabupaten Pulau Taliabu|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:42:43.383194",
+    "conf": 0.46
+  },
+  "maluku-utara|Kota Ternate|Walikota": {
+    "status": "done",
+    "at": "2026-05-01T00:43:07.433417",
+    "conf": 0.46
+  },
+  "maluku-utara|Kota Ternate|Wakil Walikota": {
+    "status": "done",
+    "at": "2026-05-01T00:43:30.575048",
+    "conf": 0.46
+  },
+  "maluku-utara|Kota Tidore Kepulauan|Walikota": {
+    "status": "done",
+    "at": "2026-05-01T00:45:36.490274",
+    "conf": 0.46
+  },
+  "maluku-utara|Kota Tidore Kepulauan|Wakil Walikota": {
+    "status": "done",
+    "at": "2026-05-01T00:46:14.992996",
+    "conf": 0.61
+  },
+  "papua|Kabupaten Biak Numfor|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:46:52.272291",
+    "conf": 0.51
+  },
+  "papua|Kabupaten Biak Numfor|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:47:43.046639",
+    "conf": 0.46
+  },
+  "papua|Kabupaten Jayapura|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:48:24.593799",
+    "conf": 0.71
+  },
+  "papua|Kabupaten Jayapura|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:48:53.701665",
+    "conf": 0.51
+  },
+  "papua|Kabupaten Keerom|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:49:47.857131",
+    "conf": 0.51
+  },
+  "papua|Kabupaten Keerom|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:50:46.406381",
+    "conf": 0.71
+  },
+  "papua|Kabupaten Kepulauan Yapen|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:51:15.240777",
+    "conf": 0.46
+  },
+  "papua|Kabupaten Kepulauan Yapen|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:51:46.338824",
+    "conf": 0.71
+  },
+  "papua|Kabupaten Mamberamo Raya|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:52:15.246680",
+    "conf": 0.46
+  },
+  "papua|Kabupaten Mamberamo Raya|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:52:44.610777",
+    "conf": 0.46
+  },
+  "papua|Kabupaten Sarmi|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:53:22.307433",
+    "conf": 0.71
+  },
+  "papua|Kabupaten Sarmi|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:53:48.197972",
+    "conf": 0.46
+  },
+  "papua|Kabupaten Supiori|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:54:38.008305",
+    "conf": 0.0
+  },
+  "papua|Kabupaten Supiori|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:55:02.340997",
+    "conf": 0.46
+  },
+  "papua|Kabupaten Waropen|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:55:25.007732",
+    "conf": 0.61
+  },
+  "papua|Kabupaten Waropen|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:55:58.736316",
+    "conf": 0.71
+  },
+  "papua|Kota Jayapura|Walikota": {
+    "status": "done",
+    "at": "2026-05-01T00:56:45.637805",
+    "conf": 0.0
+  },
+  "papua|Kota Jayapura|Wakil Walikota": {
+    "status": "done",
+    "at": "2026-05-01T00:57:11.120181",
+    "conf": 0.51
+  },
+  "papua-selatan|Kabupaten Asmat|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:57:44.481788",
+    "conf": 0.71
+  },
+  "papua-selatan|Kabupaten Asmat|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:58:25.326112",
+    "conf": 0.71
+  },
+  "papua-selatan|Kabupaten Boven Digoel|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T00:59:26.349417",
+    "conf": 0.61
+  },
+  "papua-selatan|Kabupaten Boven Digoel|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:00:25.086228",
+    "conf": 0.71
+  },
+  "papua-selatan|Kabupaten Mappi|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:01:22.331699",
+    "conf": 0.71
+  },
+  "papua-selatan|Kabupaten Mappi|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:02:03.204318",
+    "conf": 0.71
+  },
+  "papua-selatan|Kabupaten Merauke|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:03:01.827811",
+    "conf": 0.61
+  },
+  "papua-selatan|Kabupaten Merauke|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:04:04.044968",
+    "conf": 0.0
+  },
+  "papua-tengah|Kabupaten Deiyai|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:04:50.365182",
+    "conf": 0.71
+  },
+  "papua-tengah|Kabupaten Deiyai|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:05:16.688255",
+    "conf": 0.46
+  },
+  "papua-tengah|Kabupaten Dogiyai|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:06:08.781483",
+    "conf": 0.71
+  },
+  "papua-tengah|Kabupaten Dogiyai|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:06:48.494100",
+    "conf": 0.46
+  },
+  "papua-tengah|Kabupaten Intan Jaya|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:07:21.182268",
+    "conf": 0.76
+  },
+  "papua-tengah|Kabupaten Intan Jaya|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:07:51.801663",
+    "conf": 0.51
+  },
+  "papua-tengah|Kabupaten Mimika|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:08:28.590183",
+    "conf": 0.0
+  },
+  "papua-tengah|Kabupaten Mimika|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:08:55.753531",
+    "conf": 0.51
+  },
+  "papua-tengah|Kabupaten Nabire|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:09:29.513497",
+    "conf": 0.46
+  },
+  "papua-tengah|Kabupaten Nabire|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:09:56.342135",
+    "conf": 0.46
+  },
+  "papua-tengah|Kabupaten Paniai|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:10:44.929242",
+    "conf": 0.71
+  },
+  "papua-tengah|Kabupaten Paniai|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:11:09.624289",
+    "conf": 0.51
+  },
+  "papua-tengah|Kabupaten Puncak|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:11:50.648039",
+    "conf": 0.71
+  },
+  "papua-tengah|Kabupaten Puncak|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:12:29.648196",
+    "conf": 0.51
+  },
+  "papua-tengah|Kabupaten Puncak Jaya|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:13:44.142431",
+    "conf": 0.0
+  },
+  "papua-tengah|Kabupaten Puncak Jaya|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:14:21.363788",
+    "conf": 0.0
+  },
+  "papua-pegunungan|Kabupaten Jayawijaya|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:15:05.738279",
+    "conf": 0.71
+  },
+  "papua-pegunungan|Kabupaten Jayawijaya|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:15:29.212840",
+    "conf": 0.51
+  },
+  "papua-pegunungan|Kabupaten Lanny Jaya|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:16:08.780850",
+    "conf": 0.71
+  },
+  "papua-pegunungan|Kabupaten Lanny Jaya|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:16:46.693648",
+    "conf": 0.76
+  },
+  "papua-pegunungan|Kabupaten Mamberamo Tengah|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:17:32.752570",
+    "conf": 0.66
+  },
+  "papua-pegunungan|Kabupaten Mamberamo Tengah|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:18:12.529592",
+    "conf": 0.46
+  },
+  "papua-pegunungan|Kabupaten Nduga|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:19:18.173485",
+    "conf": 0.46
+  },
+  "papua-pegunungan|Kabupaten Nduga|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:19:54.685704",
+    "conf": 0.76
+  },
+  "papua-pegunungan|Kabupaten Pegunungan Bintang|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:21:33.798349",
+    "conf": 0.76
+  },
+  "papua-pegunungan|Kabupaten Pegunungan Bintang|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:22:15.580697",
+    "conf": 0.76
+  },
+  "papua-pegunungan|Kabupaten Tolikara|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:22:54.095624",
+    "conf": 0.76
+  },
+  "papua-pegunungan|Kabupaten Tolikara|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:23:53.077554",
+    "conf": 0.71
+  },
+  "papua-pegunungan|Kabupaten Yahukimo|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:24:36.179216",
+    "conf": 0.76
+  },
+  "papua-pegunungan|Kabupaten Yahukimo|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:25:02.443666",
+    "conf": 0.71
+  },
+  "papua-pegunungan|Kabupaten Yalimo|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:25:26.247254",
+    "conf": 0.46
+  },
+  "papua-pegunungan|Kabupaten Yalimo|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:26:03.027329",
+    "conf": 0.71
+  },
+  "papua-barat-daya|Kabupaten Maybrat|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:26:44.162329",
+    "conf": 0.71
+  },
+  "papua-barat-daya|Kabupaten Maybrat|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:27:33.135692",
+    "conf": 0.46
+  },
+  "papua-barat-daya|Kabupaten Raja Ampat|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:28:41.421991",
+    "conf": 0.46
+  },
+  "papua-barat-daya|Kabupaten Raja Ampat|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:29:20.932026",
+    "conf": 0.46
+  },
+  "papua-barat-daya|Kabupaten Sorong|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:30:06.530766",
+    "conf": 0.71
+  },
+  "papua-barat-daya|Kabupaten Sorong|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:30:42.061690",
+    "conf": 0.71
+  },
+  "papua-barat-daya|Kabupaten Sorong Selatan|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:31:17.699772",
+    "conf": 0.71
+  },
+  "papua-barat-daya|Kabupaten Sorong Selatan|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:32:51.905510",
+    "conf": 0.71
+  },
+  "papua-barat-daya|Kabupaten Tambrauw|Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:34:25.290827",
+    "conf": 0.0
+  },
+  "papua-barat-daya|Kabupaten Tambrauw|Wakil Bupati": {
+    "status": "done",
+    "at": "2026-05-01T01:34:57.606782",
+    "conf": 0.71
+  },
+  "papua-barat-daya|Kota Sorong|Walikota": {
+    "status": "done",
+    "at": "2026-05-01T01:35:42.257581",
+    "conf": 0.56
+  },
+  "papua-barat-daya|Kota Sorong|Wakil Walikota": {
+    "status": "done",
+    "at": "2026-05-01T01:36:13.158389",
+    "conf": 0.71
+  }
+}

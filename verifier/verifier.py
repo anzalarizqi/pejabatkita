@@ -21,6 +21,7 @@ from core.schema import (
     Biodata, ConfidenceScore, Jabatan, Metadata, Pejabat,
     Pendidikan, Source, SourceType,
 )
+from core.wilayah import lookup_wilayah_level
 from pipeline.llm import chat
 from pipeline.websearch import read_url, search
 
@@ -272,6 +273,20 @@ async def verify_one(
             "metadata": p.metadata.model_copy(update={"confidence": unverified_conf})
         })
 
+    # Cross-check jabatan.level against Supabase wilayah table
+    level_conflicts: list[dict] = []
+    if jabatan and jabatan.kode_wilayah:
+        db_level = lookup_wilayah_level(jabatan.kode_wilayah)
+        if db_level and db_level != jabatan.level.value:
+            level_conflicts.append({
+                "field": "jabatan.level",
+                "claimed": jabatan.level.value,
+                "found": db_level,
+                "note": f"kode_wilayah {jabatan.kode_wilayah} is level='{db_level}' in DB, not '{jabatan.level.value}'",
+            })
+            if verbose:
+                print(f"    [level mismatch] {jabatan.wilayah}: claimed={jabatan.level.value}, db={db_level}")
+
     # LLM fact-check
     try:
         result = _call_llm_verify(p, sources_text)
@@ -288,6 +303,10 @@ async def verify_one(
                 "needs_review": True,
             })
         })
+
+    # Merge DB-detected level conflicts into LLM result
+    if level_conflicts:
+        result.conflicted_fields.extend(level_conflicts)
 
     # Apply new fields (fill gaps only)
     merged = _apply_new_fields(p, result.new_fields)

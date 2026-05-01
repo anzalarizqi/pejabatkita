@@ -131,7 +131,10 @@ def import_province(
                 updated += 1
 
             # Upsert jabatan rows
-            for j in p.get("jabatan", []):
+            jabatan_list = p.get("jabatan", [])
+            if not jabatan_list:
+                errors.append(f"No jabatan entries for {nama} — pejabat written with no jabatan")
+            for j in jabatan_list:
                 wilayah_id = (
                     by_kode.get(j.get("kode_wilayah", ""))
                     or by_name.get(normalize(j.get("wilayah", "")))
@@ -139,18 +142,21 @@ def import_province(
                 if not wilayah_id:
                     errors.append(f"Wilayah not found: {j.get('wilayah')} ({j.get('kode_wilayah')}) for {nama}")
                     continue
-                supabase.table("jabatan").upsert(
-                    {
-                        "pejabat_id": pejabat_id,
-                        "wilayah_id": wilayah_id,
-                        "posisi": j.get("posisi"),
-                        "partai": j.get("partai"),
-                        "mulai_jabatan": j.get("mulai_jabatan"),
-                        "selesai_jabatan": j.get("selesai_jabatan"),
-                        "status": j.get("status", "aktif"),
-                    },
-                    on_conflict="pejabat_id,wilayah_id,posisi",
-                ).execute()
+                try:
+                    supabase.table("jabatan").upsert(
+                        {
+                            "pejabat_id": pejabat_id,
+                            "wilayah_id": wilayah_id,
+                            "posisi": j.get("posisi"),
+                            "partai": j.get("partai"),
+                            "mulai_jabatan": j.get("mulai_jabatan"),
+                            "selesai_jabatan": j.get("selesai_jabatan"),
+                            "status": j.get("status", "aktif"),
+                        },
+                        on_conflict="pejabat_id,wilayah_id,posisi",
+                    ).execute()
+                except Exception as je:
+                    errors.append(f"Jabatan upsert failed for {nama} / {j.get('posisi')}: {je}")
 
             # Auto-flag needs_review
             if p.get("metadata", {}).get("needs_review"):
@@ -188,8 +194,26 @@ def import_province(
     return {"inserted": inserted, "updated": updated, "flagged": flagged, "errors": errors}
 
 
+PROVINCES = [
+    "Aceh", "Sumatera Utara", "Sumatera Barat", "Riau", "Kepulauan Riau",
+    "Jambi", "Bengkulu", "Sumatera Selatan", "Kepulauan Bangka Belitung",
+    "Lampung", "DKI Jakarta", "Jawa Barat", "Banten", "Jawa Tengah",
+    "DI Yogyakarta", "Jawa Timur", "Bali", "Nusa Tenggara Barat",
+    "Nusa Tenggara Timur", "Kalimantan Barat", "Kalimantan Tengah",
+    "Kalimantan Selatan", "Kalimantan Timur", "Kalimantan Utara",
+    "Sulawesi Utara", "Gorontalo", "Sulawesi Tengah", "Sulawesi Barat",
+    "Sulawesi Selatan", "Sulawesi Tenggara", "Maluku", "Maluku Utara",
+    "Papua", "Papua Barat", "Papua Selatan", "Papua Tengah",
+    "Papua Pegunungan", "Papua Barat Daya",
+]
+
+
 def _slug(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+
+
+# slug → canonical province name (e.g. "dki-jakarta" → "DKI Jakarta")
+SLUG_TO_PROVINCE = {_slug(p): p for p in PROVINCES}
 
 
 def main() -> None:
@@ -220,8 +244,8 @@ def main() -> None:
             if d.is_dir() and (
                 (d / "pejabat_verified.json").exists() or (d / "pejabat.json").exists()
             ):
-                # Derive a display name from the slug
-                display = d.name.replace("-", " ").title()
+                # Use canonical name from PROVINCES list; fall back to title-cased slug
+                display = SLUG_TO_PROVINCE.get(d.name) or d.name.replace("-", " ").title()
                 folders.append((d.name, display))
 
     total_inserted = total_updated = total_flagged = 0

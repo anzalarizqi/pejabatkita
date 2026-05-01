@@ -1,137 +1,153 @@
 """
-Seed kabupaten/kota into the wilayah table.
+Seed kabupaten/kota into the wilayah table from the canonical snapshot.
 
-Uses the existing scraper's wikipedia.py to fetch district lists per province,
-then inserts into Supabase via the service role key.
+Reads supabase/seed/wilayah_kabkota.json (built by build_wilayah_snapshot.py).
+Replaces existing kabupaten+kota rows. Province rows are untouched.
 
 Usage:
-    cd pejabatkita
-    python supabase/seed/002_wilayah_kabkota.py [--dry-run] [--provinsi "Jawa Barat"]
+    python supabase/seed/002_wilayah_kabkota.py --dry-run
+    python supabase/seed/002_wilayah_kabkota.py            # actually writes
+    python supabase/seed/002_wilayah_kabkota.py --provinsi "Kepulauan Riau"
 
 Requirements:
-    pip install supabase python-dotenv httpx
+    pip install supabase python-dotenv
 """
-
 from __future__ import annotations
 
 import argparse
-import asyncio
+import json
 import logging
+import os
 import sys
 import uuid
 from pathlib import Path
 
-# Reuse scraper's wikipedia module
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "scraper"))
-from pipeline.wikipedia import get_province_districts  # noqa: E402
-
 from dotenv import load_dotenv
-import os
 
-load_dotenv(Path(__file__).parent.parent.parent / ".env")
+ROOT = Path(__file__).parent.parent.parent
+SNAPSHOT = Path(__file__).parent / "wilayah_kabkota.json"
 
+load_dotenv(ROOT / ".env")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
 
 def get_supabase_client():
     from supabase import create_client
-    url = os.environ["NEXT_PUBLIC_SUPABASE_URL"]
-    key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-    return create_client(url, key)
+    return create_client(
+        os.environ["NEXT_PUBLIC_SUPABASE_URL"],
+        os.environ["SUPABASE_SERVICE_ROLE_KEY"],
+    )
 
 
-def level_from_name(name: str) -> str:
-    return "kota" if name.lower().startswith("kota") else "kabupaten"
+def load_snapshot() -> list[dict]:
+    if not SNAPSHOT.exists():
+        logger.error("Snapshot not found: %s", SNAPSHOT)
+        logger.error("Run: python supabase/seed/build_wilayah_snapshot.py")
+        sys.exit(1)
+    return json.loads(SNAPSHOT.read_text(encoding="utf-8"))
 
 
-def make_kode_placeholder(parent_kode: str, index: int) -> str:
-    """Generate a placeholder BPS code. Real codes can be updated later from BPS API."""
-    return f"{parent_kode}.{index:02d}"
+def fetch_provinces(supabase) -> dict[str, dict]:
+    """Return {kode_bps: {id, nama}} for every provinsi row."""
+    res = (
+        supabase.table("wilayah")
+        .select("id, kode_bps, nama")
+        .eq("level", "provinsi")
+        .execute()
+    )
+    return {r["kode_bps"]: r for r in (res.data or [])}
 
 
-async def seed_province(
-    supabase,
-    prov: dict,
-    dry_run: bool,
-) -> int:
-    """Fetch districts for one province and upsert into wilayah. Returns count inserted."""
-    prov_nama: str = prov["nama"]
-    prov_id: str = prov["id"]
-    prov_kode: str = prov["kode_bps"]
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Seed kab/kota from canonical snapshot")
+    parser.add_argument("--dry-run", action="store_true", help="Print what would change without writing")
+    parser.add_argument("--provinsi", help="Only re-seed this province (matches by kode_bps or name substring)")
+    args = parser.parse_args()
 
-    logger.info("Fetching districts for %s ...", prov_nama)
-    districts = await get_province_districts(prov_nama)
-
-    if not districts:
-        logger.warning("  No districts found for %s", prov_nama)
-        return 0
-
-    logger.info("  Found %d districts", len(districts))
-
-    if dry_run:
-        for d in districts:
-            logger.info("  [dry-run] %s (%s)", d, level_from_name(d))
-        return len(districts)
-
-    inserted = 0
-    for i, name in enumerate(districts, start=1):
-        level = level_from_name(name)
-        kode = make_kode_placeholder(prov_kode, i)
-        row = {
-            "id": str(uuid.uuid4()),
-            "kode_bps": kode,
-            "nama": name,
-            "level": level,
-            "parent_id": prov_id,
-        }
-        result = (
-            supabase.table("wilayah")
-            .insert(row)
-            .execute()
-        )
-        if result.data:
-            inserted += 1
-        else:
-            logger.warning("  Insert failed for %s: %s", name, result)
-
-    return inserted
-
-
-async def main(args: argparse.Namespace) -> None:
+    snapshot = load_snapshot()
     supabase = get_supabase_client()
-
-    # Fetch all provinces
-    res = supabase.table("wilayah").select("id, kode_bps, nama").eq("level", "provinsi").order("nama").execute()
-    provinces: list[dict] = res.data or []
+    provinces = fetch_provinces(supabase)
 
     if not provinces:
-        logger.error("No provinces found in wilayah table. Run 001_wilayah_provinsi.sql first.")
+        logger.error("No provinces in wilayah table. Run 001_wilayah_provinsi.sql first.")
         sys.exit(1)
 
-    # Filter to specific province if requested
+    # Filter snapshot if --provinsi given
+    target_kodes: set[str] | None = None
     if args.provinsi:
-        provinces = [p for p in provinces if args.provinsi.lower() in p["nama"].lower()]
-        if not provinces:
-            logger.error("Province %r not found.", args.provinsi)
+        q = args.provinsi.lower()
+        matched = {k: v for k, v in provinces.items() if q in v["nama"].lower() or q == k.lower()}
+        if not matched:
+            logger.error("No province matched %r", args.provinsi)
             sys.exit(1)
+        target_kodes = set(matched.keys())
+        logger.info("Filtering to province(s): %s", ", ".join(f"{k}={v['nama']}" for k, v in matched.items()))
 
-    logger.info("Seeding kabupaten/kota for %d province(s)...", len(provinces))
-    total = 0
+    # Group snapshot rows by province kode
+    by_prov: dict[str, list[dict]] = {}
+    for row in snapshot:
+        kode = row["provinsi_kode"]
+        if target_kodes and kode not in target_kodes:
+            continue
+        by_prov.setdefault(kode, []).append(row)
 
-    for prov in provinces:
-        count = await seed_province(supabase, prov, dry_run=args.dry_run)
-        total += count
-        # Small delay to be polite to Wikipedia
-        await asyncio.sleep(1)
+    total_deleted = 0
+    total_inserted = 0
+    skipped_provinces: list[str] = []
 
-    logger.info("Done. Total districts processed: %d", total)
+    for prov_kode in sorted(by_prov):
+        prov = provinces.get(prov_kode)
+        if not prov:
+            logger.warning("Province kode %s in snapshot but not in supabase — skipping", prov_kode)
+            skipped_provinces.append(prov_kode)
+            continue
+
+        rows = by_prov[prov_kode]
+        logger.info("=== %s (%s) ===", prov["nama"], prov_kode)
+        logger.info("  Snapshot: %d rows", len(rows))
+
+        if args.dry_run:
+            for i, r in enumerate(rows, start=1):
+                kode = f"{prov_kode}.{i:02d}"
+                logger.info("    [dry] %s  %-40s  (%s)", kode, r["nama"], r["level"])
+            continue
+
+        # Delete existing kab/kota under this province prefix
+        del_res = (
+            supabase.table("wilayah")
+            .delete()
+            .like("kode_bps", f"{prov_kode}.%")
+            .in_("level", ["kabupaten", "kota"])
+            .execute()
+        )
+        deleted = len(del_res.data or [])
+        total_deleted += deleted
+        logger.info("  Deleted: %d existing rows", deleted)
+
+        # Insert fresh
+        new_rows = [
+            {
+                "id": str(uuid.uuid4()),
+                "kode_bps": f"{prov_kode}.{i:02d}",
+                "nama": r["nama"],
+                "level": r["level"],
+                "parent_id": prov["id"],
+            }
+            for i, r in enumerate(rows, start=1)
+        ]
+        ins_res = supabase.table("wilayah").insert(new_rows).execute()
+        inserted = len(ins_res.data or [])
+        total_inserted += inserted
+        logger.info("  Inserted: %d rows", inserted)
+
+    logger.info("")
+    logger.info("Summary: deleted=%d, inserted=%d", total_deleted, total_inserted)
+    if skipped_provinces:
+        logger.warning("Skipped (no provinsi row): %s", ", ".join(skipped_provinces))
     if args.dry_run:
-        logger.info("[dry-run] No rows were written.")
+        logger.info("[dry-run] No changes written.")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Seed kabupaten/kota into wilayah table")
-    parser.add_argument("--dry-run", action="store_true", help="Print without inserting")
-    parser.add_argument("--provinsi", help="Only seed this province (partial match)")
-    asyncio.run(main(parser.parse_args()))
+    main()

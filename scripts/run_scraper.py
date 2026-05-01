@@ -6,6 +6,7 @@ Usage:
     python scripts/run_scraper.py --provinsi "Aceh"    # single province
     python scripts/run_scraper.py --resume             # skip already-completed provinces
     python scripts/run_scraper.py --skip-verify        # scrape only, no verifier pass
+    python scripts/run_scraper.py --verify-only        # verify all scraped provinces, skip scraping
 
 Progress is saved to scripts/run_log.json so interrupted runs can be resumed with --resume.
 """
@@ -59,7 +60,7 @@ def is_done(provinsi: str, log: dict) -> bool:
     return log.get(provinsi, {}).get("status") == "done"
 
 
-def run_province(provinsi: str, skip_verify: bool, log: dict) -> bool:
+def run_province(provinsi: str, skip_verify: bool, verify_only: bool, log: dict) -> bool:
     slug = _slug(provinsi)
     output_dir = ROOT / "output"
     pejabat_json = output_dir / slug / "pejabat.json"
@@ -68,7 +69,12 @@ def run_province(provinsi: str, skip_verify: bool, log: dict) -> bool:
     logger.info("═══ %s ═══", provinsi)
 
     # Step 1: Scrape
-    if pejabat_json.exists():
+    if verify_only:
+        if not pejabat_json.exists():
+            logger.info("  No scraper output found — skipping (--verify-only)")
+            return True
+        logger.info("  Skipping scrape (--verify-only)")
+    elif pejabat_json.exists():
         logger.info("  Scraper output exists — skipping scrape")
     else:
         logger.info("  Running scraper...")
@@ -86,7 +92,7 @@ def run_province(provinsi: str, skip_verify: bool, log: dict) -> bool:
     # Step 2: Verify
     if skip_verify:
         logger.info("  Skipping verifier (--skip-verify)")
-    elif verified_json.exists():
+    elif verified_json.exists() and not verify_only:
         logger.info("  Verified output exists — skipping verify")
     else:
         logger.info("  Running verifier...")
@@ -114,6 +120,7 @@ def main() -> None:
     parser.add_argument("--provinsi", help="Run only this province")
     parser.add_argument("--resume", action="store_true", help="Skip already-completed provinces")
     parser.add_argument("--skip-verify", action="store_true", help="Skip verifier pass")
+    parser.add_argument("--verify-only", action="store_true", help="Run verifier only on already-scraped provinces, skip scraping")
     args = parser.parse_args()
 
     log = load_log()
@@ -127,7 +134,7 @@ def main() -> None:
             skipped += 1
             continue
 
-        success = run_province(provinsi, args.skip_verify, log)
+        success = run_province(provinsi, args.skip_verify, args.verify_only, log)
         if success:
             done += 1
         else:
