@@ -223,10 +223,6 @@ Once names are reliable, add the data that actually matters for the public-inter
 - Schema additions: `pejabat.kekayaan_total`, `pejabat.kekayaan_breakdown` (assets/debts/etc), `pejabat.pendidikan_terakhir`
 - Public UI: wealth bar chart per pejabat, education badge, link to original LHKPN PDF
 
-### Phase 9C — Corruption history (later)
-
-Search KPK case archive + ICW database + news filtered to "tersangka/vonis/tipikor" terms. Same agent pattern as 9A but with stricter verification (only insert if source is KPK/court/major-news). Defer until 9A+9B are stable.
-
 ### Phase 9B — LHKPN integration (serves the origin thesis)
 
 Once names are reliable, add the data that actually matters for the public-interest goal: **wealth + education from KPK's LHKPN database** (`elhkpn.kpk.go.id`). Every kepala daerah is legally required to file. This is structured, authoritative, and directly answers "how rich + how educated" without LLM hallucination risk.
@@ -238,6 +234,20 @@ Once names are reliable, add the data that actually matters for the public-inter
 ### Phase 9C — Corruption history (later)
 
 Search KPK case archive + ICW database + news filtered to "tersangka/vonis/tipikor" terms. Same agent pattern as 9A but with stricter verification (only insert if source is KPK/court/major-news). Defer until 9A+9B are stable.
+
+### Phase 10 — Frontend UX overhaul (after 9B + 9C)
+
+Current site feels slow to navigate page-to-page and the flow doesn't push users toward the wow-moment (the map). Reference for the desired feel: **nemesis.assai.id** — disclaimer modal on first visit, then straight to a full-bleed map with key stats overlaid. Goal: make the homepage screenshot-worthy so people share it organically.
+
+Concrete items in scope:
+- Disclaimer modal on first visit (localStorage to remember dismissal). Should explain data sources + limitations.
+- Map-first landing — `/` becomes the map with stats overlay (real pejabat count, placeholder count, last updated, % covered) instead of the current editorial hero.
+- Reduce navigation latency: prefetch province/kab data on hover, route transitions, or single-page-style drill-down (no full page reload between country → province → kab/kota).
+- Improve mobile: maps are not currently optimized for touch; consider pinch-to-zoom and tap-to-select.
+- "Cool" polish: hover tooltips with mini-stats per province, animated transitions on province click, color palette refresh, card design refresh.
+- Each pejabat profile page should have a shareable OG card so screenshots on social media look editorial (ties back to deferred SEO + OG cards from Phase 8).
+
+**Order decision (Session 5):** Phase 10 ships after 9B + 9C. Reasoning: a UX overhaul on incomplete data peaks lower than the same overhaul on wealth + corruption history. The screenshots are more compelling when the data behind them is.
 
 ---
 
