@@ -7,6 +7,8 @@ interface Props {
   params: Promise<{ 'pejabat-id': string }>
 }
 
+export const dynamic = 'force-dynamic'
+
 export default async function PejabatProfilePage({ params }: Props) {
   const { 'pejabat-id': id } = await params
   const supabase = await createServerSupabase()

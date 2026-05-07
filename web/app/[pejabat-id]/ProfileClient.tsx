@@ -10,6 +10,30 @@ interface Props {
   jabatan: (JabatanRow & { wilayah?: Pick<Wilayah, 'nama' | 'kode_bps'> })[]
 }
 
+const BULAN_ID = [
+  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+]
+
+function formatTanggal(raw: string | null | undefined): string {
+  if (!raw) return '—'
+  const s = raw.trim()
+  if (!s) return '—'
+  // ISO YYYY-MM-DD or YYYY-MM-DDTHH:...
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (iso) {
+    const [, y, m, d] = iso
+    const monthIdx = parseInt(m, 10) - 1
+    if (monthIdx >= 0 && monthIdx < 12) {
+      return `${parseInt(d, 10)} ${BULAN_ID[monthIdx]} ${y}`
+    }
+  }
+  // Bare year (e.g. "2025"): show as-is
+  if (/^\d{4}$/.test(s)) return s
+  // Already formatted (e.g. "20 Februari 2025") — pass through
+  return s
+}
+
 export default function ProfileClient({ pejabat, jabatan }: Props) {
   const [showModal, setShowModal] = useState(false)
 
@@ -22,6 +46,8 @@ export default function ProfileClient({ pejabat, jabatan }: Props) {
     pejabat.nama_lengkap,
     pejabat.gelar_belakang,
   ].filter(Boolean).join(' ')
+
+  const tanggalLahir = formatTanggal(pejabat.biodata?.tanggal_lahir)
 
   return (
     <>
@@ -298,7 +324,7 @@ export default function ProfileClient({ pejabat, jabatan }: Props) {
         <div className="profile-nav">
           <Link href="/">Beranda</Link>
           <span>›</span>
-          <span>{pejabat.nama_lengkap}</span>
+          <span>{namaLengkap}</span>
         </div>
 
         <div className="profile-header">
@@ -333,7 +359,7 @@ export default function ProfileClient({ pejabat, jabatan }: Props) {
             </div>
             <div className="bio-item">
               <div className="bio-label">Tanggal Lahir</div>
-              <div className="bio-value">{pejabat.biodata?.tanggal_lahir ?? '—'}</div>
+              <div className="bio-value">{tanggalLahir}</div>
             </div>
             <div className="bio-item">
               <div className="bio-label">Jenis Kelamin</div>
