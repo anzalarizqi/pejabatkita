@@ -50,22 +50,46 @@ export default function PreviewShell({ provinces, stats, leaders }: Props) {
     window.dispatchEvent(new Event('pv:open-disclaimer'))
   }
 
+  const provinceMaps = useMemo(() => {
+    const expected = new Map<string, number>()
+    const count = new Map<string, number>()
+    for (const p of provinces) {
+      expected.set(p.nama, p.expected)
+      count.set(p.nama, p.count)
+    }
+    return { expected, count }
+  }, [provinces])
+
   // Each mock mode computes a "safety %" (high = good). Colour intensity is
   // INVERTED so that red = danger / low % across all preview modes, matching
-  // the editorial convention (red = alarm). Tercatat stays neutral
-  // (red = more coverage) because it's not a danger metric.
+  // the editorial convention (red = alarm). Tercatat shows completion %
+  // (count / expected) so the gradient lands on a meaningful 0–100 scale.
   const mapColorBy = useMemo(() => {
-    if (mode === 'tercatat') return undefined
+    if (mode === 'tercatat') {
+      return (name: string) => {
+        const e = provinceMaps.expected.get(name)
+        const c = provinceMaps.count.get(name)
+        if (!e || c === undefined) return null
+        return Math.min(1, c / e)
+      }
+    }
     return (name: string) => {
       const u = hash01(name, mode === 'pendidikan' ? 17 : mode === 'lhkpn' ? 31 : 53)
       const centre = mode === 'pendidikan' ? 0.62 : mode === 'lhkpn' ? 0.48 : 0.74
       const safety = biased(u, centre, 0.7)
       return 1 - safety // redder = lower safety
     }
-  }, [mode])
+  }, [mode, provinceMaps])
 
   const mapTooltip = useMemo(() => {
-    if (mode === 'tercatat') return undefined
+    if (mode === 'tercatat') {
+      return (name: string) => {
+        const e = provinceMaps.expected.get(name) ?? 0
+        const c = provinceMaps.count.get(name) ?? 0
+        const pct = e > 0 ? Math.round((c / e) * 100) : 0
+        return `${c} / ${e} kursi · ${pct}% terisi`
+      }
+    }
     return (name: string) => {
       const u = hash01(name, mode === 'pendidikan' ? 17 : mode === 'lhkpn' ? 31 : 53)
       const centre = mode === 'pendidikan' ? 0.62 : mode === 'lhkpn' ? 0.48 : 0.74
@@ -78,7 +102,7 @@ export default function PreviewShell({ provinces, stats, leaders }: Props) {
       } as Record<Exclude<ColorMode, 'tercatat'>, string>
       return labels[mode as Exclude<ColorMode, 'tercatat'>]
     }
-  }, [mode])
+  }, [mode, provinceMaps])
 
   return (
     <>
@@ -323,16 +347,15 @@ function StatStrip({
 
 // ─── Map legend (per-mode gradient meaning) ─────────────────────────────────
 
-function MapLegend({ mode, provinces }: { mode: ColorMode; provinces: ProvinceCount[] }) {
+function MapLegend({ mode }: { mode: ColorMode; provinces?: ProvinceCount[] }) {
   if (mode === 'tercatat') {
-    const max = Math.max(1, ...provinces.map((p) => p.count))
     return (
       <div className="pv-legend">
-        <span className="pv-legend-label">Jumlah pejabat tercatat</span>
+        <span className="pv-legend-label">% Kursi terisi · per provinsi</span>
         <div className="pv-legend-scale" aria-hidden>
-          <span className="pv-legend-end">0</span>
+          <span className="pv-legend-end">0%</span>
           <span className="pv-legend-bar pv-legend-bar-neutral" />
-          <span className="pv-legend-end">{max}</span>
+          <span className="pv-legend-end">100%</span>
         </div>
       </div>
     )

@@ -39,6 +39,7 @@ export interface ProvinceCount {
   nama: string
   kode_bps: string
   count: number
+  expected: number
 }
 
 async function fetchAll<T>(
@@ -113,8 +114,20 @@ export async function listProvinceCounts(): Promise<ProvinceCount[]> {
     counts.set(provName, (counts.get(provName) ?? 0) + 1)
   }
 
+  const kabKotaByProvId = new Map<string, number>()
+  for (const w of wilayah) {
+    if (w.level !== 'provinsi' && w.parent_id) {
+      kabKotaByProvId.set(w.parent_id, (kabKotaByProvId.get(w.parent_id) ?? 0) + 1)
+    }
+  }
+
   return provinces
-    .map((p) => ({ nama: p.nama, kode_bps: p.kode_bps, count: counts.get(p.nama) ?? 0 }))
+    .map((p) => ({
+      nama: p.nama,
+      kode_bps: p.kode_bps,
+      count: counts.get(p.nama) ?? 0,
+      expected: 2 + 2 * (kabKotaByProvId.get(p.id) ?? 0),
+    }))
     .sort((a, b) => a.nama.localeCompare(b.nama))
 }
 
