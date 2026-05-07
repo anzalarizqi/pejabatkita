@@ -84,6 +84,11 @@ export default function FlagCard({ flag, onResolved }: Props) {
           color: #880e4f;
         }
 
+        .flag-type-agent_unresolved {
+          background: #fff3e0;
+          color: #b25a00;
+        }
+
         .flag-pejabat {
           flex: 1;
         }

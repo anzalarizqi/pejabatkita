@@ -118,6 +118,86 @@ export async function listProvinceCounts(): Promise<ProvinceCount[]> {
     .sort((a, b) => a.nama.localeCompare(b.nama))
 }
 
+// ─── Site-wide stats (for /preview landing page) ─────────────────────────────
+
+export interface SiteStats {
+  realPejabat: number
+  expectedTotal: number
+  coveragePct: number
+  provincesCovered: number
+  provincesTotal: number
+  lastUpdated: string | null
+  kabKotaTotal: number
+}
+
+export async function getSiteStats(): Promise<SiteStats> {
+  const supabase = await createServerSupabase()
+
+  const [wilayah, pejabat, jabatan] = await Promise.all([
+    fetchAll<Pick<Wilayah, 'id' | 'level' | 'parent_id' | 'nama'>>(
+      supabase,
+      'wilayah',
+      'id, level, parent_id, nama',
+    ),
+    fetchAll<Pick<PejabatRow, 'id' | 'nama_lengkap' | 'metadata' | 'last_updated'>>(
+      supabase,
+      'pejabat',
+      'id, nama_lengkap, metadata, last_updated',
+    ),
+    fetchAll<Pick<JabatanRow, 'pejabat_id' | 'wilayah_id'>>(
+      supabase,
+      'jabatan',
+      'pejabat_id, wilayah_id',
+    ),
+  ])
+
+  const provinces = wilayah.filter((w) => w.level === 'provinsi')
+  const kabkota = wilayah.filter((w) => w.level !== 'provinsi')
+  const provincesTotal = provinces.length
+  const kabKotaTotal = kabkota.length
+  // Each province seat = 2 (gubernur + wakil), each kab/kota = 2 (bupati/walikota + wakil)
+  const expectedTotal = provincesTotal * 2 + kabKotaTotal * 2
+
+  const realPejabatIds = new Set<string>()
+  for (const p of pejabat) {
+    if (!isPlaceholderName(p.nama_lengkap)) realPejabatIds.add(p.id)
+  }
+  const realPejabat = realPejabatIds.size
+
+  // Provinces covered = provinces where at least one real pejabat holds a jabatan
+  const wilayahById = new Map<string, Pick<Wilayah, 'id' | 'level' | 'parent_id' | 'nama'>>()
+  for (const w of wilayah) wilayahById.set(w.id, w)
+  const coveredProvNames = new Set<string>()
+  for (const j of jabatan) {
+    if (!realPejabatIds.has(j.pejabat_id)) continue
+    const w = wilayahById.get(j.wilayah_id)
+    if (!w) continue
+    if (w.level === 'provinsi') coveredProvNames.add(w.nama)
+    else if (w.parent_id) {
+      const parent = wilayahById.get(w.parent_id)
+      if (parent && parent.level === 'provinsi') coveredProvNames.add(parent.nama)
+    }
+  }
+  const provincesCovered = coveredProvNames.size
+
+  // Last updated: max last_updated across pejabat
+  let lastUpdated: string | null = null
+  for (const p of pejabat) {
+    const u = p.last_updated ?? null
+    if (u && (!lastUpdated || u > lastUpdated)) lastUpdated = u
+  }
+
+  return {
+    realPejabat,
+    expectedTotal,
+    coveragePct: expectedTotal > 0 ? (realPejabat / expectedTotal) * 100 : 0,
+    provincesCovered,
+    provincesTotal,
+    lastUpdated,
+    kabKotaTotal,
+  }
+}
+
 // ─── Pejabat listing (for /pejabat page) ──────────────────────────────────────
 
 export interface PejabatCard {

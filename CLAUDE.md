@@ -172,9 +172,9 @@ DB state unchanged this session.
 - `_gather_sources` now expands to 20 candidate URLs (was 5–7), keeps fetching until either 7 *clean* pages or all 20 candidates exhausted. Diagnostics (`candidates_tried`, `fetch_failures`) plumbed through `ResearchResult` for downstream use.
 - For `.go.id` URLs that come back as captcha pages, retry once via existing Playwright `browser.navigate()`. **Caveat:** Cloudflare often blocks headless Playwright too. Hit rate observed in pilot ~0% — the gov sites with strict bot fight win every time. Worth keeping for when a site has a soft challenge, but don't expect miracles.
 - **Stale-loop bug in `scraper/pipeline/browser.py`:** the lazy-singleton browser was created on a previous `asyncio.run()`'s loop. By the next `asyncio.run()` the underlying transport is dead, but `_browser.is_connected()` still returned True → `Browser.new_page` exploded with `'NoneType' object has no attribute 'send'`. Fixed by tracking the loop the browser was created on and discarding when it changes.
-- New script flow: when verification can't be satisfied, insert into the `flags` table (type=`system`, reason prefixed `[agent_unresolved]` plus the URL list and per-URL failure reasons) so it lands on `/admin/review` for human triage. Idempotent — duplicate flags are skipped.
+- New script flow: when verification can't be satisfied, insert into the `flags` table (type=`agent_unresolved`, reason includes the URL list and per-URL failure reasons) so it lands on `/admin/review` for human triage. Idempotent — duplicate flags are skipped.
 - `--resume` now also skips `flagged_unresolved` log entries (don't re-burn LLM tokens on hopeless cases without intent). Old "rejected_*" entries from earlier runs are retried — they pre-date the new failure modes.
-- **Migration `006_flag_type_agent.sql` written but NOT applied** — Supabase doesn't expose an `exec_sql` RPC and the user's env has no direct Postgres URL. The script currently uses `flag_type='system'` with an `[agent_unresolved]` reason prefix. Apply the migration via Supabase dashboard SQL editor when convenient and the prefix can become a proper enum value.
+- **Migration `006_flag_type_agent.sql` applied (Session 6, 2026-05-08)** — `agent_unresolved` is now a real `flag_type` enum value. `run_agent_backfill.py` inserts flags with `type='agent_unresolved'` directly; dedup checks the type column instead of a reason-prefix scan. `FlagCard.tsx` has a styled badge for the new type.
 - **v2 result on previously-rejected 6: 1 verified (Herman Susilo / Wakil Bupati Barito Kuala) + 4 flagged-for-manual + 0 silent placeholders.**
 
 **Final pilot scoreboard (cumulative across v0 + v1 + v2):**
@@ -211,7 +211,6 @@ python scripts/report_province_coverage.py
 After scale-out: review `/admin/review` for the agent_unresolved flags, decide which to research manually (.go.id sites that even Playwright can't bypass might have the answer in a press-release PDF you can grab by hand).
 
 ### Optional v3 polish (defer unless yield drops on scale-out)
-- Apply migration `006_flag_type_agent.sql` and switch flags to proper `flag_type='agent_unresolved'` so `/admin/review` can filter them.
 - Add a `--retry-flagged` arg to `run_agent_backfill.py` to revisit `flagged_unresolved` log entries (e.g. after improving sourcing further).
 - Consider a paid CAPTCHA-solver fallback (2captcha / capsolver) for high-value `.go.id` pages — only worth it if a non-trivial number of governorships sit behind hard challenges.
 
