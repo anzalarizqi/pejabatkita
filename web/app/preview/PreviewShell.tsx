@@ -71,19 +71,19 @@ export default function PreviewShell({ provinces, stats, leaders }: Props) {
           </aside>
 
           <section className="pv-stage">
+            <StatStrip
+              stats={stats}
+              lastUpdatedLabel={lastUpdatedLabel}
+              topProvince={[...provinces].sort((a, b) => b.count - a.count)[0]}
+            />
             <div className="pv-stage-meta">
               <span className="pv-stage-eyebrow">Peta · 38 Provinsi</span>
               <span className="pv-stage-hint">klik untuk membuka direktori</span>
             </div>
             <div className="pv-stage-map">
               <IndonesiaMap provinces={provinces} height={520} />
-              <MapOverlay
-                stats={stats}
-                lastUpdatedLabel={lastUpdatedLabel}
-                topProvince={[...provinces].sort((a, b) => b.count - a.count)[0]}
-              />
             </div>
-            <FeaturePreviewCard />
+            <FeatureStrip />
           </section>
         </main>
 
@@ -213,9 +213,9 @@ const LEADER_RANK_LABEL: Record<string, string> = {
   'Wali Kota': 'WAL',
 }
 
-// ─── Map overlay (stats anchored to the map area) ───────────────────────────
+// ─── Stat strip (above the map) ──────────────────────────────────────────────
 
-function MapOverlay({
+function StatStrip({
   stats,
   lastUpdatedLabel,
   topProvince,
@@ -226,92 +226,72 @@ function MapOverlay({
 }) {
   const animatedReal = useCountUp(stats.realPejabat, 1400)
   const animatedPct = useCountUp(Math.round(stats.coveragePct * 10), 1600) / 10
-
   return (
-    <>
-      <div className="pv-overlay pv-overlay-tl">
-        <div className="pv-overlay-eyebrow">
+    <div className="pv-strip">
+      <div className="pv-strip-cell">
+        <div className="pv-strip-label">
           <span className="pv-eyebrow-dot" /> Database
         </div>
-        <div className="pv-overlay-bignum">
-          {animatedReal.toLocaleString('id-ID')}
-        </div>
-        <div className="pv-overlay-caption">
-          orang dari{' '}
-          <span className="pv-overlay-expected">
-            {stats.expectedTotal.toLocaleString('id-ID')} kursi
+        <div className="pv-strip-value">
+          <span className="pv-strip-num">{animatedReal.toLocaleString('id-ID')}</span>
+          <span className="pv-strip-sub">
+            / {stats.expectedTotal.toLocaleString('id-ID')} kursi
           </span>
-          <br />
-          di {stats.provincesTotal} provinsi & {stats.kabKotaTotal} kab/kota.
+        </div>
+        <div className="pv-strip-foot">
+          {stats.provincesTotal} provinsi · {stats.kabKotaTotal} kab/kota
         </div>
       </div>
 
-      <div className="pv-overlay pv-overlay-tr">
-        <div className="pv-overlay-eyebrow pv-overlay-eyebrow-end">
-          Cakupan · {stats.provincesCovered} provinsi
+      <div className="pv-strip-cell">
+        <div className="pv-strip-label">Cakupan · {stats.provincesCovered} provinsi</div>
+        <div className="pv-strip-value">
+          <span className="pv-strip-num">{animatedPct.toFixed(1)}</span>
+          <span className="pv-strip-pct">%</span>
         </div>
-        <div className="pv-overlay-pct">
-          {animatedPct.toFixed(1)}<span className="pv-overlay-pct-sym">%</span>
+        <div className="pv-strip-bar" aria-hidden>
+          <div className="pv-strip-bar-fill" style={{ width: `${Math.min(100, stats.coveragePct)}%` }} />
         </div>
-        <div className="pv-overlay-bar" aria-hidden>
-          <div className="pv-overlay-bar-fill" style={{ width: `${Math.min(100, stats.coveragePct)}%` }} />
-        </div>
-        <div className="pv-overlay-foot">
-          diperbarui {lastUpdatedLabel}
-        </div>
+        <div className="pv-strip-foot">diperbarui {lastUpdatedLabel}</div>
       </div>
 
       {topProvince && (
-        <div className="pv-overlay pv-overlay-br">
-          <div className="pv-overlay-eyebrow">Provinsi terlengkap</div>
-          <div className="pv-overlay-province">{topProvince.nama}</div>
-          <div className="pv-overlay-province-count">{topProvince.count} pejabat</div>
+        <div className="pv-strip-cell">
+          <div className="pv-strip-label">Provinsi terlengkap</div>
+          <div className="pv-strip-province">{topProvince.nama}</div>
+          <div className="pv-strip-foot pv-strip-foot-accent">{topProvince.count} pejabat tercatat</div>
         </div>
       )}
-
-    </>
+    </div>
   )
 }
 
-// ─── Feature preview card (bottom of stage) ─────────────────────────────────
+// ─── Feature preview strip (compact horizontal banner) ──────────────────────
 
-function FeaturePreviewCard() {
+function FeatureStrip() {
   return (
-    <div className="pv-feature">
-      <div className="pv-feature-stamp">PRATINJAU FITUR · Q2 2026</div>
-      <div className="pv-feature-grid">
-        <div className="pv-feature-cell">
-          <div className="pv-feature-label">Kekayaan (LHKPN)</div>
-          <div className="pv-feature-value">
-            Rp <span className="pv-feature-num">12,4</span> <span className="pv-feature-unit">miliar</span>
-          </div>
-          <div className="pv-feature-bar" aria-hidden>
-            <div className="pv-feature-bar-fill" style={{ width: '54%' }} />
-          </div>
-          <div className="pv-feature-foot">elhkpn.kpk.go.id</div>
-        </div>
-
-        <div className="pv-feature-cell">
-          <div className="pv-feature-label">Pendidikan</div>
-          <div className="pv-feature-edu">S2 · Magister Hukum</div>
-          <div className="pv-feature-edu-sub">Universitas Contoh, 2014</div>
-        </div>
-
-        <div className="pv-feature-cell">
-          <div className="pv-feature-label">Rekam Jejak</div>
-          <div className="pv-feature-track">
-            <span className="pv-track-dot pv-dot-ok" />
-            <span className="pv-track-line" />
-            <span className="pv-track-dot pv-dot-ok" />
-            <span className="pv-track-line" />
-            <span className="pv-track-dot pv-dot-ok" />
-          </div>
-          <div className="pv-feature-foot pv-feature-foot-clean">Tidak ada catatan tipikor publik.</div>
-        </div>
+    <div className="pv-fstrip">
+      <div className="pv-fstrip-stamp">PRATINJAU · Q2 2026</div>
+      <div className="pv-fstrip-cell">
+        <span className="pv-fstrip-label">LHKPN</span>
+        <span className="pv-fstrip-val">Rp <em>12,4</em> M</span>
       </div>
-      <div className="pv-feature-disclaimer">
-        Tampilan ilustrasi — fase 9B (LHKPN) & 9C (rekam jejak) sedang dikerjakan.
+      <div className="pv-fstrip-divider" />
+      <div className="pv-fstrip-cell">
+        <span className="pv-fstrip-label">Pendidikan</span>
+        <span className="pv-fstrip-val pv-fstrip-val-text">S2 Magister Hukum</span>
       </div>
+      <div className="pv-fstrip-divider" />
+      <div className="pv-fstrip-cell">
+        <span className="pv-fstrip-label">Rekam Jejak</span>
+        <span className="pv-fstrip-track">
+          <span className="pv-track-dot pv-dot-ok" />
+          <span className="pv-track-dot pv-dot-ok" />
+          <span className="pv-track-dot pv-dot-ok" />
+          <em>tidak ada catatan</em>
+        </span>
+      </div>
+      <div className="pv-fstrip-note">fase 9B & 9C sedang dikerjakan</div>
     </div>
   )
 }
@@ -713,165 +693,143 @@ const styles = `
   }
   .pv-stage-map .map-legend { display: none; }
 
-  /* ── Overlays on the map ─────────────────────────────────────── */
-  .pv-overlay {
-    position: absolute;
-    background: var(--paper);
+  /* ── Stat strip (above the map) ──────────────────────────────── */
+  .pv-strip {
+    display: grid; grid-template-columns: 1.2fr 1fr 1fr;
+    gap: 0;
     border: 1px solid var(--ink);
-    box-shadow: 4px 4px 0 var(--ink);
-    padding: 16px 20px;
-    z-index: 4;
-    animation: pv-rise 0.7s 0.4s cubic-bezier(0.2,0.7,0.3,1) both;
+    background: var(--paper);
+    margin: 0 8px;
+    flex-shrink: 0;
+    animation: pv-rise 0.7s 0.2s cubic-bezier(0.2,0.7,0.3,1) both;
   }
-  .pv-overlay-tl { top: 12px; left: 24px; min-width: 200px; }
-  .pv-overlay-tr { top: 12px; right: 24px; min-width: 180px; text-align: right; animation-delay: 0.5s; }
-  .pv-overlay-br { bottom: 24px; right: 24px; min-width: 180px; animation-delay: 0.6s; }
+  .pv-strip-cell {
+    padding: 14px 22px;
+    display: flex; flex-direction: column; gap: 4px;
+    border-right: 1px dashed var(--rule);
+    min-width: 0;
+  }
+  .pv-strip-cell:last-child { border-right: none; }
 
-  .pv-overlay-eyebrow {
+  .pv-strip-label {
     font-family: 'DM Mono', monospace; font-size: 9px;
     letter-spacing: 0.2em; text-transform: uppercase;
     color: var(--accent);
     display: inline-flex; align-items: center; gap: 8px;
   }
-  .pv-overlay-eyebrow-end { width: 100%; justify-content: flex-end; }
 
-  .pv-overlay-bignum {
+  .pv-strip-value {
+    display: flex; align-items: baseline; gap: 8px;
+    margin-top: 2px;
+  }
+  .pv-strip-num {
     font-family: 'Fraunces', serif; font-style: italic; font-weight: 200;
-    font-size: 52px; line-height: 0.9; color: var(--accent);
-    letter-spacing: -0.04em; margin-top: 4px;
+    font-size: 38px; line-height: 1; color: var(--accent);
+    letter-spacing: -0.03em;
     font-variant-numeric: oldstyle-nums;
   }
-  .pv-overlay-caption {
-    margin-top: 10px;
-    font-family: 'Fraunces', serif; font-weight: 300;
-    font-size: 12px; line-height: 1.5; color: var(--muted-2);
-    max-width: 32ch;
+  .pv-strip-pct {
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 300;
+    font-size: 22px; color: var(--accent); margin-left: -4px;
   }
-  .pv-overlay-expected {
-    color: var(--ink); font-weight: 400;
+  .pv-strip-sub {
+    font-family: 'Fraunces', serif; font-weight: 300;
+    font-size: 12px; color: var(--muted-2);
     border-bottom: 1px dashed var(--accent); padding-bottom: 1px;
   }
 
-  .pv-overlay-pct {
-    font-family: 'Fraunces', serif; font-weight: 300;
-    font-size: 42px; line-height: 1; color: var(--ink);
-    letter-spacing: -0.02em; margin-top: 4px;
+  .pv-strip-foot {
+    font-family: 'DM Mono', monospace; font-size: 9px;
+    letter-spacing: 0.1em; color: var(--muted);
+    margin-top: 2px;
   }
-  .pv-overlay-pct-sym { color: var(--accent); font-style: italic; font-size: 26px; margin-left: 2px; }
+  .pv-strip-foot-accent { color: var(--accent); }
 
-  .pv-overlay-bar {
-    position: relative; height: 6px; margin-top: 10px;
-    background: var(--paper-2); border: 1px solid var(--rule); overflow: hidden;
+  .pv-strip-bar {
+    position: relative; height: 4px;
+    background: var(--paper-2); border: 1px solid var(--rule);
+    overflow: hidden; margin-top: 4px;
   }
-  .pv-overlay-bar-fill {
+  .pv-strip-bar-fill {
     position: absolute; inset: 0 auto 0 0; background: var(--accent);
     background-image: repeating-linear-gradient(45deg, transparent 0, transparent 3px, rgba(0,0,0,0.1) 3px, rgba(0,0,0,0.1) 4px);
-    animation: pv-grow 1.6s 0.6s cubic-bezier(0.2,0.7,0.3,1) both;
+    animation: pv-grow 1.6s 0.4s cubic-bezier(0.2,0.7,0.3,1) both;
     transform-origin: left center;
   }
   @keyframes pv-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
-  .pv-overlay-foot {
-    margin-top: 10px;
-    font-family: 'DM Mono', monospace; font-size: 9px;
-    color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase;
-  }
-
-  .pv-overlay-province {
+  .pv-strip-province {
     font-family: 'Fraunces', serif; font-weight: 400;
-    font-size: 22px; line-height: 1.2; margin-top: 8px;
-    letter-spacing: -0.01em; color: var(--ink);
-  }
-  .pv-overlay-province-count {
-    font-family: 'DM Mono', monospace; font-size: 10px;
-    color: var(--accent); margin-top: 4px; letter-spacing: 0.1em;
+    font-size: 22px; line-height: 1.1; color: var(--ink);
+    letter-spacing: -0.01em; margin-top: 2px;
   }
 
-  /* ── Feature preview card ────────────────────────────────────── */
-  .pv-feature {
+  /* ── Feature strip (compact, below map) ──────────────────────── */
+  .pv-fstrip {
     position: relative;
-    margin: 0 28px;
+    display: flex; align-items: center; gap: 18px;
+    padding: 10px 18px;
+    margin: 0 8px;
     border: 1px solid var(--ink);
-    background:
-      linear-gradient(135deg, var(--paper-2), var(--paper) 50%, var(--paper-3));
-    padding: 14px 22px 12px;
-    z-index: 3;
-    animation: pv-rise 0.8s 0.7s cubic-bezier(0.2,0.7,0.3,1) both;
-    box-shadow: 4px 4px 0 var(--ink);
+    background: var(--paper-2);
     flex-shrink: 0;
-  }
-  .pv-feature::before {
-    content: ''; position: absolute; inset: 4px;
-    border: 1px dashed rgba(15,17,23,0.18); pointer-events: none;
+    animation: pv-rise 0.8s 0.6s cubic-bezier(0.2,0.7,0.3,1) both;
   }
 
-  .pv-feature-stamp {
-    position: absolute; top: -10px; left: 22px;
+  .pv-fstrip-stamp {
     background: var(--accent); color: var(--paper);
     font-family: 'DM Mono', monospace;
-    font-size: 9.5px; letter-spacing: 0.22em; text-transform: uppercase;
+    font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase;
     padding: 4px 10px;
     transform: rotate(-1deg);
+    flex-shrink: 0;
   }
 
-  .pv-feature-grid {
-    display: grid; grid-template-columns: 1.2fr 1fr 1.3fr;
-    gap: 18px;
+  .pv-fstrip-cell {
+    display: flex; flex-direction: column; gap: 2px;
+    min-width: 0;
   }
-  .pv-feature-cell { padding: 2px 0; }
-  .pv-feature-cell + .pv-feature-cell { border-left: 1px dashed var(--rule); padding-left: 18px; }
-
-  .pv-feature-label {
+  .pv-fstrip-label {
     font-family: 'DM Mono', monospace; font-size: 9px;
-    letter-spacing: 0.22em; text-transform: uppercase;
-    color: var(--muted); margin-bottom: 8px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--muted);
   }
-
-  .pv-feature-value {
+  .pv-fstrip-val {
     font-family: 'Fraunces', serif; font-weight: 300;
-    font-size: 22px; color: var(--ink); line-height: 1;
+    font-size: 16px; color: var(--ink); line-height: 1.1;
+    white-space: nowrap;
   }
-  .pv-feature-num { font-style: italic; color: var(--accent); font-weight: 400; font-size: 32px; }
-  .pv-feature-unit { font-size: 14px; color: var(--muted-2); }
+  .pv-fstrip-val em {
+    font-style: italic; color: var(--accent); font-weight: 400; font-size: 22px;
+  }
+  .pv-fstrip-val-text { font-size: 14px; }
 
-  .pv-feature-bar {
-    position: relative; height: 4px; margin-top: 8px;
-    background: var(--paper-2); border: 1px solid var(--rule); overflow: hidden;
-  }
-  .pv-feature-bar-fill {
-    position: absolute; inset: 0 auto 0 0; background: var(--accent);
-  }
-
-  .pv-feature-foot {
-    margin-top: 8px;
-    font-family: 'DM Mono', monospace; font-size: 9px;
-    letter-spacing: 0.1em; color: var(--muted);
-  }
-  .pv-feature-foot-clean { color: var(--muted-2); }
-
-  .pv-feature-edu {
-    font-family: 'Fraunces', serif; font-weight: 400;
-    font-size: 17px; color: var(--ink); line-height: 1.2;
-  }
-  .pv-feature-edu-sub {
-    font-family: 'Fraunces', serif; font-weight: 300; font-style: italic;
-    font-size: 12px; color: var(--muted-2); margin-top: 4px;
-  }
-
-  .pv-feature-track { display: flex; align-items: center; gap: 6px; padding: 6px 0; }
-  .pv-track-dot { width: 11px; height: 11px; border-radius: 50%; border: 1px solid var(--rule); }
-  .pv-track-dot.pv-dot-ok { background: var(--accent); border-color: var(--accent); }
-  .pv-track-line { flex: 1; height: 1px; background: var(--rule); }
-
-  .pv-feature-disclaimer {
-    margin-top: 10px; padding-top: 8px;
-    border-top: 1px dashed var(--rule);
+  .pv-fstrip-track {
+    display: flex; align-items: center; gap: 5px;
     font-family: 'Fraunces', serif; font-style: italic; font-weight: 300;
-    font-size: 11px; color: var(--muted-2);
+    font-size: 13px; color: var(--muted-2);
+    white-space: nowrap;
   }
-  .pv-feature-value { font-size: 18px; }
-  .pv-feature-num { font-size: 26px; }
-  .pv-feature-edu { font-size: 15px; }
+  .pv-fstrip-track em { margin-left: 6px; font-size: 12px; }
+
+  .pv-fstrip-divider {
+    width: 1px; align-self: stretch; background: var(--rule);
+    margin: 4px 0;
+  }
+
+  .pv-fstrip-note {
+    margin-left: auto;
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 300;
+    font-size: 11px; color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .pv-track-dot {
+    display: inline-block;
+    width: 9px; height: 9px; border-radius: 50%;
+    border: 1px solid var(--rule); background: transparent;
+  }
+  .pv-track-dot.pv-dot-ok { background: var(--accent); border-color: var(--accent); }
 
   /* ── Bottom ticker ───────────────────────────────────────────── */
   .pv-ticker {
