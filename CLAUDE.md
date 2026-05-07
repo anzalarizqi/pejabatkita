@@ -249,6 +249,8 @@ Concrete items in scope:
 
 **Order decision (Session 5):** Phase 10 ships after 9B + 9C. Reasoning: a UX overhaul on incomplete data peaks lower than the same overhaul on wealth + corruption history. The screenshots are more compelling when the data behind them is.
 
+**Tooling preference (Session 5):** when Phase 10 begins, switch the active model to **Claude Opus 4.7** and use the **`frontend-design` skill** (built into Claude Code: "Create distinctive, production-grade frontend interfaces with high design quality. Generates creative, polished code that avoids generic AI aesthetics."). The skill runs in-terminal via `Skill frontend-design <args>` — no separate canvas tool needed. Opus 4.7 + frontend-design is the right pairing for taste-driven work where "doesn't look AI-generated" is the bar.
+
 ---
 
 **Why not just keep rescraping with the old pipeline?** Session 4 confirmed: same Wikipedia, same DDG/Jina queries, same LLM extraction prompt → same blind spots. Session 5 proved the agent path works (43% yield, zero fake data) on DIY + Kalsel.
