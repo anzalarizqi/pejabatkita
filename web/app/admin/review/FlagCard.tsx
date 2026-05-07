@@ -13,7 +13,8 @@ export default function FlagCard({ flag, onResolved }: Props) {
   const [rescrapeLog, setRescrapeLog] = useState('')
 
   const pejabat = flag.pejabat
-  const jabatanAktif = flag.jabatan?.find((j) => j.status === 'aktif') ?? flag.jabatan?.[0]
+  const jabatanList = pejabat?.jabatan ?? []
+  const jabatanAktif = jabatanList.find((j) => j.status === 'aktif') ?? jabatanList[0]
 
   async function handleDismiss() {
     setBusy('dismiss')

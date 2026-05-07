@@ -10,11 +10,8 @@ export default async function ReviewPage() {
     .select(`
       *,
       pejabat:pejabat_id (
-        id, nama_lengkap, biodata, metadata
-      ),
-      jabatan:pejabat_id (
-        posisi, status,
-        wilayah:wilayah_id ( nama )
+        id, nama_lengkap, biodata, metadata,
+        jabatan ( posisi, status, wilayah ( nama ) )
       )
     `)
     .eq('status', 'pending')

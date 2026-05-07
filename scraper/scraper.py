@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 
 from core import confidence as conf_module
 from core.output import write_province_output
-from core.wilayah import validate_districts, fetch_province_kode
+from core.wilayah import validate_districts, fetch_province_kode, fetch_canonical_districts
 from core.schema import (
     Biodata, ConfidenceScore, JenisKelamin, Jabatan, Jenjang,
     Level, Metadata, Pejabat, Pendidikan, Source, SourceType, StatusJabatan,
@@ -327,11 +327,12 @@ async def run_province(
     # Get kab/kota list
     print(f"\nMengambil daftar kab/kota di {provinsi_name}...")
     wiki_districts = await wikipedia.get_province_districts(provinsi_name)
-    if not wiki_districts:
-        log.warning("Could not retrieve district list for %s — skipping kab/kota", provinsi_name)
-
-    districts = validate_districts(wiki_districts, kode_provinsi)
-    print(f"  Ditemukan {len(districts)} kab/kota (dari {len(wiki_districts)} Wikipedia)\n")
+    if wiki_districts:
+        districts = validate_districts(wiki_districts, kode_provinsi)
+    else:
+        log.warning("Wikipedia list empty for %s — falling back to Supabase canonical wilayah", provinsi_name)
+        districts = fetch_canonical_districts(kode_provinsi)
+    print(f"  Ditemukan {len(districts)} kab/kota (Wikipedia: {len(wiki_districts)})\n")
 
     for district, kode, level_str in sorted(districts):
         level = Level.kota if level_str == "kota" else Level.kabupaten

@@ -60,7 +60,7 @@ def is_done(provinsi: str, log: dict) -> bool:
     return log.get(provinsi, {}).get("status") == "done"
 
 
-def run_province(provinsi: str, skip_verify: bool, verify_only: bool, log: dict) -> bool:
+def run_province(provinsi: str, skip_verify: bool, verify_only: bool, force: bool, log: dict) -> bool:
     slug = _slug(provinsi)
     output_dir = ROOT / "output"
     pejabat_json = output_dir / slug / "pejabat.json"
@@ -74,6 +74,23 @@ def run_province(provinsi: str, skip_verify: bool, verify_only: bool, log: dict)
             logger.info("  No scraper output found — skipping (--verify-only)")
             return True
         logger.info("  Skipping scrape (--verify-only)")
+    elif force and pejabat_json.exists():
+        backup = pejabat_json.with_suffix(".json.bak")
+        pejabat_json.replace(backup)
+        if verified_json.exists():
+            verified_json.replace(verified_json.with_suffix(".json.bak"))
+        logger.info("  --force: backed up existing output to %s", backup.name)
+        logger.info("  Running scraper...")
+        result = subprocess.run(
+            [sys.executable, "scraper/scraper.py", "--provinsi", provinsi],
+            cwd=ROOT,
+        )
+        if result.returncode != 0:
+            logger.error("  Scraper failed for %s (exit %d)", provinsi, result.returncode)
+            log[provinsi] = {"status": "scrape_failed", "at": datetime.now().isoformat()}
+            save_log(log)
+            return False
+        logger.info("  Scraper done")
     elif pejabat_json.exists():
         logger.info("  Scraper output exists — skipping scrape")
     else:
@@ -121,6 +138,7 @@ def main() -> None:
     parser.add_argument("--resume", action="store_true", help="Skip already-completed provinces")
     parser.add_argument("--skip-verify", action="store_true", help="Skip verifier pass")
     parser.add_argument("--verify-only", action="store_true", help="Run verifier only on already-scraped provinces, skip scraping")
+    parser.add_argument("--force", action="store_true", help="Re-scrape even if output exists (existing files backed up to .bak)")
     args = parser.parse_args()
 
     log = load_log()
@@ -134,7 +152,7 @@ def main() -> None:
             skipped += 1
             continue
 
-        success = run_province(provinsi, args.skip_verify, args.verify_only, log)
+        success = run_province(provinsi, args.skip_verify, args.verify_only, args.force, log)
         if success:
             done += 1
         else:

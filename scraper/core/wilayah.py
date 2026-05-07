@@ -140,6 +140,34 @@ def validate_districts(
     return validated
 
 
+def fetch_canonical_districts(kode_provinsi: str) -> list[tuple[str, str, str]]:
+    """
+    Fallback: get (district_name, kode_bps, level) directly from Supabase wilayah.
+    Used when Wikipedia's "Daftar kabupaten dan kota di X" page is missing or unparseable.
+    """
+    url = os.getenv("NEXT_PUBLIC_SUPABASE_URL", "").rstrip("/")
+    key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    if not url or not key:
+        return []
+    try:
+        resp = httpx.get(
+            f"{url}/rest/v1/wilayah",
+            params={
+                "select": "nama,kode_bps,level",
+                "level": "in.(kabupaten,kota)",
+                "kode_bps": f"like.{kode_provinsi}.%",
+            },
+            headers={"apikey": key, "Authorization": f"Bearer {key}"},
+            timeout=10.0,
+        )
+        if resp.status_code != 200:
+            return []
+        return [(r["nama"], r["kode_bps"], r["level"]) for r in resp.json()]
+    except Exception as e:
+        logger.warning("Canonical districts fetch error: %s", e)
+        return []
+
+
 def lookup_wilayah_level(kode_bps: str) -> str | None:
     """
     Look up the level ('kabupaten' or 'kota') for a given kode_bps from Supabase.

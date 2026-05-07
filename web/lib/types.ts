@@ -109,8 +109,11 @@ export interface PejabatWithJabatan extends PejabatRow {
 }
 
 export interface FlagWithPejabat extends Flag {
-  pejabat: Pick<PejabatRow, 'id' | 'nama_lengkap' | 'biodata' | 'metadata'> | null
-  jabatan: (Pick<JabatanRow, 'posisi' | 'status'> & { wilayah?: Pick<Wilayah, 'nama'> })[]
+  pejabat:
+    | (Pick<PejabatRow, 'id' | 'nama_lengkap' | 'biodata' | 'metadata'> & {
+        jabatan: (Pick<JabatanRow, 'posisi' | 'status'> & { wilayah?: Pick<Wilayah, 'nama'> })[]
+      })
+    | null
 }
 
 // ─── JSON import types (scraper/verifier output) ──────────────────────────────
