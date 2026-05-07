@@ -50,13 +50,17 @@ export default function PreviewShell({ provinces, stats, leaders }: Props) {
     window.dispatchEvent(new Event('pv:open-disclaimer'))
   }
 
-  // Per-mode colour & tooltip
+  // Each mock mode computes a "safety %" (high = good). Colour intensity is
+  // INVERTED so that red = danger / low % across all preview modes, matching
+  // the editorial convention (red = alarm). Tercatat stays neutral
+  // (red = more coverage) because it's not a danger metric.
   const mapColorBy = useMemo(() => {
     if (mode === 'tercatat') return undefined
     return (name: string) => {
       const u = hash01(name, mode === 'pendidikan' ? 17 : mode === 'lhkpn' ? 31 : 53)
       const centre = mode === 'pendidikan' ? 0.62 : mode === 'lhkpn' ? 0.48 : 0.74
-      return biased(u, centre, 0.7)
+      const safety = biased(u, centre, 0.7)
+      return 1 - safety // redder = lower safety
     }
   }, [mode])
 
@@ -65,8 +69,8 @@ export default function PreviewShell({ provinces, stats, leaders }: Props) {
     return (name: string) => {
       const u = hash01(name, mode === 'pendidikan' ? 17 : mode === 'lhkpn' ? 31 : 53)
       const centre = mode === 'pendidikan' ? 0.62 : mode === 'lhkpn' ? 0.48 : 0.74
-      const v = biased(u, centre, 0.7)
-      const pct = Math.round(v * 100)
+      const safety = biased(u, centre, 0.7)
+      const pct = Math.round(safety * 100)
       const labels = {
         pendidikan: `${pct}% pendidikan ≥ S2 (ilustrasi)`,
         lhkpn:      `${pct}% LHKPN lengkap (ilustrasi)`,
@@ -100,7 +104,12 @@ export default function PreviewShell({ provinces, stats, leaders }: Props) {
           <nav className="pv-nav" aria-label="Navigasi utama">
             <Link href="/preview" className="pv-nav-link pv-nav-active">Beranda</Link>
             <Link href="/pejabat" className="pv-nav-link">Direktori</Link>
-            <button type="button" className="pv-nav-link pv-nav-btn" onClick={reopenDisclaimer}>
+            <button
+              type="button"
+              className="pv-nav-link pv-nav-btn"
+              onClick={reopenDisclaimer}
+              suppressHydrationWarning
+            >
               Misi Kami
             </button>
             <Link href="/admin/login" className="pv-nav-link">Lapor</Link>
@@ -126,11 +135,12 @@ export default function PreviewShell({ provinces, stats, leaders }: Props) {
               )}
               <IndonesiaMap
                 provinces={provinces}
-                height={420}
+                height={400}
                 colorBy={mapColorBy}
                 tooltip={mapTooltip}
               />
             </div>
+            <MapLegend mode={mode} provinces={provinces} />
             <FeatureStrip />
           </section>
         </main>
@@ -197,14 +207,21 @@ function LeadersRail({ leaders }: { leaders: LeaderRow[] }) {
             placeholder="Cari nama atau wilayah…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            suppressHydrationWarning
           />
           {query && (
-            <button type="button" className="pv-search-clear" onClick={() => setQuery('')} aria-label="Hapus">×</button>
+            <button
+              type="button"
+              className="pv-search-clear"
+              onClick={() => setQuery('')}
+              aria-label="Hapus"
+              suppressHydrationWarning
+            >×</button>
           )}
         </label>
         <div className="pv-sort">
           <span className="pv-sort-label">Urut</span>
-          <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
+          <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)} suppressHydrationWarning>
             <option value="posisi">Jenjang</option>
             <option value="nama">A — Z</option>
             <option value="provinsi">Provinsi</option>
@@ -304,6 +321,41 @@ function StatStrip({
   )
 }
 
+// ─── Map legend (per-mode gradient meaning) ─────────────────────────────────
+
+function MapLegend({ mode, provinces }: { mode: ColorMode; provinces: ProvinceCount[] }) {
+  if (mode === 'tercatat') {
+    const max = Math.max(1, ...provinces.map((p) => p.count))
+    return (
+      <div className="pv-legend">
+        <span className="pv-legend-label">Jumlah pejabat tercatat</span>
+        <div className="pv-legend-scale" aria-hidden>
+          <span className="pv-legend-end">0</span>
+          <span className="pv-legend-bar pv-legend-bar-neutral" />
+          <span className="pv-legend-end">{max}</span>
+        </div>
+      </div>
+    )
+  }
+
+  const config = {
+    pendidikan: { label: '% pendidikan ≥ S2 · ilustrasi', danger: 'rendah', safe: 'tinggi' },
+    lhkpn:      { label: '% LHKPN lengkap · ilustrasi',   danger: 'belum lengkap', safe: 'lengkap' },
+    bersih:     { label: '% rekam bersih · ilustrasi',    danger: 'ada catatan', safe: 'bersih' },
+  }[mode]
+
+  return (
+    <div className="pv-legend">
+      <span className="pv-legend-label">{config.label}</span>
+      <div className="pv-legend-scale" aria-hidden>
+        <span className="pv-legend-end pv-legend-end-danger">▲ {config.danger}</span>
+        <span className="pv-legend-bar pv-legend-bar-danger" />
+        <span className="pv-legend-end pv-legend-end-safe">{config.safe} ◯</span>
+      </div>
+    </div>
+  )
+}
+
 // ─── Map colour-mode toggle ──────────────────────────────────────────────────
 
 function ModeToggle({
@@ -325,6 +377,7 @@ function ModeToggle({
             className={`pv-mode-tab ${mode === m.key ? 'pv-mode-tab-active' : ''} ${m.live ? 'pv-mode-tab-live' : 'pv-mode-tab-mock'}`}
             onClick={() => setMode(m.key)}
             title={m.hint}
+            suppressHydrationWarning
           >
             {m.label}
             {!m.live && <span className="pv-mode-flag">PRATINJAU</span>}
@@ -870,6 +923,48 @@ const styles = `
     font-size: 12px; color: var(--muted);
     white-space: nowrap;
     flex-shrink: 0;
+  }
+
+  /* ── Map legend ──────────────────────────────────────────────── */
+  .pv-legend {
+    display: flex; align-items: center; gap: 16px;
+    padding: 0 12px;
+    flex-shrink: 0;
+    animation: pv-fadein 0.4s both;
+  }
+  .pv-legend-label {
+    font-family: 'DM Mono', monospace; font-size: 9.5px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+  .pv-legend-scale {
+    display: flex; align-items: center; gap: 8px;
+    flex: 1;
+  }
+  .pv-legend-end {
+    font-family: 'DM Mono', monospace; font-size: 9px;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted-2);
+    white-space: nowrap;
+  }
+  .pv-legend-end-danger { color: var(--accent); font-weight: 500; }
+  .pv-legend-end-safe { color: var(--muted-2); }
+
+  .pv-legend-bar {
+    flex: 1; height: 6px;
+    border: 1px solid var(--rule);
+  }
+  .pv-legend-bar-neutral {
+    background: linear-gradient(to right, #ece7dc, var(--accent));
+  }
+  /* Danger gradient: red on the LEFT (low % = bad), paper on the RIGHT */
+  .pv-legend-bar-danger {
+    background: linear-gradient(to right, var(--accent), #ece7dc);
+    background-image:
+      linear-gradient(to right, var(--accent), #ece7dc),
+      repeating-linear-gradient(45deg, transparent 0, transparent 3px, rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.06) 4px);
+    background-blend-mode: multiply;
   }
 
   /* ── Mock stamp on map ───────────────────────────────────────── */
