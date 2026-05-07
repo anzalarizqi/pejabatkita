@@ -120,14 +120,39 @@ Final DB state at end of session:
 - `pejabat`: 1096 (0 orphans, was 113)
 - `jabatan`: 1246 (was 1128, +118 from orphan recovery)
 
+### Session 4 — 2026-05-07 (rescraping investigation, admin/review fix, Phase 8 drill-down map)
+- **Rescraping investigation (DI Yogyakarta as test case):** added `--force` flag to `scripts/run_scraper.py` that backs up existing `pejabat.json` to `.bak` before re-running. Surfaced two scraper bugs: (1) Wikipedia's "Daftar kabupaten dan kota di X" page can be missing/unparseable (DIY), in which case the scraper skipped *all* kab/kota; (2) the Supabase wilayah list was never used as a fallback. Fixed by adding `fetch_canonical_districts(kode_provinsi)` to `scraper/core/wilayah.py` and wiring it as the fallback in `scraper/scraper.py`. With the fix, DIY rescrape produced 12 entries (was 0 → 5 originally with placeholder fill). **Net real-name yield: +1 over the backup**, with one corrupted entry (Wakil Bupati Bantul incorrectly inheriting Bupati's name). Restored backup and stopped chasing rescrapes — confirmed the LLM/sources are the bottleneck, not orchestration.
+- **Admin review query fix:** smoke-tested the public flag flow end-to-end. Submission and rate-limiting (1/IP/pejabat/24h) work. Found `/admin/review` rendering "0 pending" despite hundreds of flags — `web/app/admin/review/page.tsx` had `jabatan:pejabat_id (...)` as a sibling of `pejabat`, but flags has no FK to jabatan. Postgrest 400'd silently. Nested `jabatan` under `pejabat` and updated `FlagWithPejabat` type + `FlagCard` access path (`flag.jabatan` → `flag.pejabat?.jabatan`). Page now shows 391 pending flags correctly.
+- **Phase 8 — kab/kota drill-down map (commit `6030bee`):**
+  - `scripts/build_kabkota_geojson.py` pulls per-province kab/kota geometries from `assai-id/nemesis` (`with-districts/*.geojson`) and writes 38 simplified files to `web/public/kabkota/<slug>.json`. Total ~14 MB across 38 files. Result: **514/514 features written**, 6 unmatched canonical entries — all are renamed-since-source cases (Mamuju Utara→Pasangkayu, Toba Samosir→Toba, Maluku Tenggara Barat→Tanimbar, Padangsidimpuan spelling, Mahakam Hulu newly created, Siau Tagulandang Biaro→Sitaro). Fixable later with a per-province alias map; not blocking.
+  - Three name-normalization bugs surfaced during the build and got fixed:
+    1. Stripping both "Kota " from raw and "Kabupaten " from canonical collapsed kota/kabupaten homonyms in Jawa Tengah (Kota Magelang ≡ Kabupaten Magelang). Fixed by tracking `(level, stem)` pairs and only matching same-level pairs first.
+    2. `dict.get("WADMKK", "")` doesn't substitute the default when the key exists with `None` value — crashed Sumatera Utara onward in the original all-rebuild. Switched to `props.get("WADMKK") or ""`.
+    3. The prefix-strip regex used `+` quantifier, collapsing "Kabupaten Kota Baru" to "Baru". Switched to single-strip.
+  - `web/lib/queries.ts`: added `listWilayahCounts(provinsi)`. `listPejabat` accepts `opts.wilayah` for single-kab/kota narrowing.
+  - `web/app/_components/KabKotaMap.tsx`: mirror of `IndonesiaMap`, lazy-fetches `/kabkota/<slug>.json`. Click-same-wilayah-twice deselects.
+  - `/pejabat`: when `?provinsi=X` is set, swaps in `KabKotaMap`. Added Kab/Kota dropdown next to the Provinsi dropdown. URL contract: `?provinsi=X&wilayah=Y`.
+  - **Smoke-tested via Playwright:** DI Yogyakarta loads 5/5 with correct counts (Bantul 2, GK 1, KP 1, Kota Yogyakarta 1, Sleman 0). Click on Bantul → URL updates → 2/2 cards. Jawa Tengah loads 35/35 with no duplicate-key warnings.
+
+DB state unchanged this session.
+
 ## Next Session Should Start With
 
-**Phase 7 (Public Web App) is DONE** — `/` (homepage with map) and `/pejabat` (browse + filter + map) both work end-to-end against live Supabase data.
+**Phase 7 + Phase 8 #2 (kab/kota drill-down) DONE.** Phase 8 #3 (public flag flow) was already wired in Phase 4 — smoke-tested end-to-end this session, found and fixed a stale postgrest query in `/admin/review` that was hiding all flags.
 
 Live URLs (when `npm run dev` in `web/`):
-- `http://localhost:3001/` — editorial hero + interactive Indonesia map (555 real pejabat across 38 provinces, choropleth coloring)
-- `http://localhost:3001/pejabat` — full browse with map filter, search by name, province dropdown, paginated cards
-- `http://localhost:3001/pejabat?provinsi=Jawa%20Tengah` — pre-filtered URL (deep-linkable)
+- `http://localhost:3001/` — editorial hero + interactive Indonesia map
+- `http://localhost:3001/pejabat` — full browse with country map, search, province dropdown, paginated cards
+- `http://localhost:3001/pejabat?provinsi=Jawa%20Tengah` — country map → province kab/kota map drill-down (35 entries, choropleth)
+- `http://localhost:3001/pejabat?provinsi=Jawa%20Tengah&wilayah=Kabupaten%20Klaten` — narrow to a single kab/kota
+- `http://localhost:3001/admin/review` — admin flag triage (works correctly now; was returning 0 due to broken query before)
+
+**Phase 8 progress:**
+- ✅ #2 Drill-down kab/kota map (commit `6030bee`)
+- ✅ #3 Flag flow (already shipped in Phase 4; smoke-tested + admin/review query bug fixed in commit `3648a71`)
+- ⏳ #1 Pejabat profile page polish — verify `/[pejabat-id]/page.tsx` still renders well; not yet revisited
+- ⏳ #4 SEO + sitemap + OG cards — not started
+- ⏳ #5 `--older-than 30d` rescrape flag — not started; rescraping ROI is bad anyway (see Session 4 note above)
 
 **Late-session bug fix (after browser test):** `listProvinceCounts` was hitting postgrest's default 1000-row cap on the `jabatan` query (we have 1246 rows), silently truncating ~250 entries. Provinces inserted later in the table appeared empty (Sumatera Utara = 1, Sumatera Barat = 0, Sulawesi Utara = 0). Fixed by adding a `fetchAll()` helper that paginates via `.range()`. Real counts now: Sumatera Utara 44, Sumatera Barat 25, Sulawesi Utara 20.
 
@@ -135,8 +160,10 @@ Live URLs (when `npm run dev` in `web/`):
 
 **Open polish items (not blocking):**
 - `web/public/indonesia-provinces.json` is ~2 MB. Acceptable for SSR-once load but a TopoJSON conversion would roughly halve it. Worth doing if homepage Lighthouse score matters.
+- `web/public/kabkota/*.json` totals ~14 MB across 38 files (largest is Sulawesi Tenggara at ~592KB; Papua Barat Daya 592KB). Each is lazy-loaded so per-page payload is small. TopoJSON would help here too if needed.
+- **6 kab/kota polygons render uncoloured** because nemesis uses old/different names: Toba Samosir (now Toba), Padangsidimpuan (canonical: Padang Sidempuan), Mamuju Utara (now Pasangkayu), Maluku Tenggara Barat (now Tanimbar), Siau Tagulandang Biaro (Sitaro abbrev), Mahakam Hulu (newly created, not in nemesis snapshot). Fix: add a `RAW_TO_CANONICAL` per-province alias map in `scripts/build_kabkota_geojson.py`.
 - 381 placeholder-name pejabat are filtered from public view but still in DB. Filtered out by `isPlaceholderName()` in `web/lib/queries.ts`. Could hard-delete after the rescrape priority list (below) is acted on.
-- Mobile: the map shrinks responsively but isn't optimized for touch on small screens. Province dropdown is the practical fallback. Could add a touch-friendly hover-tooltip handler later.
+- Mobile: the maps shrink responsively but aren't optimized for touch on small screens. Dropdowns are the practical fallback. Could add a touch-friendly hover-tooltip handler later.
 - `react-simple-maps` was rejected for React 19 peer-dep issues. If we ever need pan/zoom or markers, evaluate `react-leaflet` (heavier but battle-tested) or just bolt minimal pan/zoom onto the existing d3-geo SVG.
 
 **Rescrape priority list (`scripts/report_province_coverage.py` → `output/_province_coverage.json`):**
@@ -184,12 +211,11 @@ python scripts/report_province_coverage.py
 
 Or batch all 22 below 65% — leave overnight and run `report_province_coverage.py` next morning to confirm coverage rose.
 
-**Possible Phase 8 directions (pick later):**
+**Remaining Phase 8 directions (pick next):**
 1. **Pejabat profile page polish** — `/[pejabat-id]/page.tsx` already exists from Phase 4; verify it renders well with the new data and links from cards.
-2. **Drill-down to kab/kota map** — nemesis repo has `seed/geo/02-provinces/with-districts/*.geojson`. Clicking a province on the map could open a province view with kab/kota choropleth (would need `/pejabat?provinsi=X&wilayah=Y` filter support in queries.ts).
-3. **Public flag-this-pejabat flow** — `flags` table + `LaporkanModal.tsx` already exist; wire end-to-end with reCAPTCHA-equivalent rate limiting on the `/api/flags` route.
-4. **SEO + sharing** — sitemap.xml of all 1096 pejabat pages, OpenGraph cards per pejabat, structured data.
-5. **Re-scrape stale provinces** — `scrape_runs` shows when each province was last touched. Add `--older-than 30d` flag to `run_scraper.py` for periodic refresh.
+2. **SEO + sharing** — sitemap.xml of all 1096 pejabat pages, OpenGraph cards per pejabat, structured data.
+3. **Per-province alias map** for the 6 unmatched kab/kota polygons (see Open polish items).
+4. **`--older-than 30d` rescrape flag** — low priority since Session 4 confirmed rescraping yields ~+1 real name per province at the cost of corrupting some existing entries. Better lever: focus on improving the LLM extraction prompts in `scraper/`.
 
 Stack notes (still valid):
 - Check `web/AGENTS.md` — this Next.js (16.2.4 + React 19.2) has breaking changes vs training data. Read relevant docs from `web/node_modules/next/dist/docs/` before writing route/layout code.
