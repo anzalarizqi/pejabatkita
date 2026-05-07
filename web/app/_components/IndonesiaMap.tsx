@@ -9,6 +9,8 @@ interface Props {
   provinces: ProvinceCount[]
   selected?: string | null
   height?: number
+  colorBy?: (name: string) => number | null
+  tooltip?: (name: string, count: number) => string | null
 }
 
 interface FeatureProps {
@@ -27,7 +29,7 @@ interface FC {
   features: Feature[]
 }
 
-export default function IndonesiaMap({ provinces, selected = null, height = 460 }: Props) {
+export default function IndonesiaMap({ provinces, selected = null, height = 460, colorBy, tooltip }: Props) {
   const router = useRouter()
   const [data, setData] = useState<FC | null>(null)
   const [size, setSize] = useState({ w: 1000, h: height })
@@ -82,10 +84,18 @@ export default function IndonesiaMap({ provinces, selected = null, height = 460 
   }, [data, size.w, size.h])
 
   function colorFor(name: string): string {
+    if (colorBy) {
+      const v = colorBy(name)
+      if (v === null) return '#ece7dc'
+      const t = Math.max(0, Math.min(1, v))
+      const r = lerp(245, 192, t)
+      const g = lerp(241, 57, t)
+      const b = lerp(234, 43, t)
+      return `rgb(${r|0}, ${g|0}, ${b|0})`
+    }
     const c = countByName.get(name) ?? 0
     if (c === 0) return '#ece7dc'
     const t = Math.sqrt(c / maxCount)
-    // Interpolate from paper to accent
     const r = lerp(245, 192, t)
     const g = lerp(241, 57, t)
     const b = lerp(234, 43, t)
@@ -148,7 +158,7 @@ export default function IndonesiaMap({ provinces, selected = null, height = 460 
         >
           <div className="tip-name">{hover.name}</div>
           <div className="tip-count">
-            {hover.count.toLocaleString('id-ID')} pejabat
+            {tooltip ? tooltip(hover.name, hover.count) : `${hover.count.toLocaleString('id-ID')} pejabat`}
           </div>
         </div>
       )}

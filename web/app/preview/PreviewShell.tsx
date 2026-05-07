@@ -13,8 +13,29 @@ interface Props {
 }
 
 type SortKey = 'posisi' | 'nama' | 'provinsi'
+type ColorMode = 'tercatat' | 'pendidikan' | 'lhkpn' | 'bersih'
+
+const COLOR_MODES: { key: ColorMode; label: string; live: boolean; hint: string }[] = [
+  { key: 'tercatat',   label: 'Tercatat',   live: true,  hint: 'pejabat tercatat' },
+  { key: 'pendidikan', label: 'Pendidikan', live: false, hint: '% S2/S3 · ilustrasi' },
+  { key: 'lhkpn',      label: 'LHKPN',      live: false, hint: '% LHKPN lengkap · ilustrasi' },
+  { key: 'bersih',     label: 'Rekam Bersih', live: false, hint: '% tanpa catatan · ilustrasi' },
+]
+
+function hash01(s: string, salt: number): number {
+  let h = salt | 0
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0
+  return ((h >>> 0) % 10000) / 10000
+}
+
+// Smooth a uniform 0..1 toward a centre, so mock distributions look plausible
+function biased(u: number, centre: number, spread: number): number {
+  return Math.max(0, Math.min(1, centre + (u - 0.5) * spread))
+}
 
 export default function PreviewShell({ provinces, stats, leaders }: Props) {
+  const [mode, setMode] = useState<ColorMode>('tercatat')
+
   const dateLabel = new Date().toLocaleDateString('id-ID', {
     day: '2-digit', month: 'long', year: 'numeric',
   })
@@ -28,6 +49,32 @@ export default function PreviewShell({ provinces, stats, leaders }: Props) {
     try { window.localStorage.removeItem('pejabatkita_disclaimer_v1') } catch {}
     window.dispatchEvent(new Event('pv:open-disclaimer'))
   }
+
+  // Per-mode colour & tooltip
+  const mapColorBy = useMemo(() => {
+    if (mode === 'tercatat') return undefined
+    return (name: string) => {
+      const u = hash01(name, mode === 'pendidikan' ? 17 : mode === 'lhkpn' ? 31 : 53)
+      const centre = mode === 'pendidikan' ? 0.62 : mode === 'lhkpn' ? 0.48 : 0.74
+      return biased(u, centre, 0.7)
+    }
+  }, [mode])
+
+  const mapTooltip = useMemo(() => {
+    if (mode === 'tercatat') return undefined
+    return (name: string) => {
+      const u = hash01(name, mode === 'pendidikan' ? 17 : mode === 'lhkpn' ? 31 : 53)
+      const centre = mode === 'pendidikan' ? 0.62 : mode === 'lhkpn' ? 0.48 : 0.74
+      const v = biased(u, centre, 0.7)
+      const pct = Math.round(v * 100)
+      const labels = {
+        pendidikan: `${pct}% pendidikan ≥ S2 (ilustrasi)`,
+        lhkpn:      `${pct}% LHKPN lengkap (ilustrasi)`,
+        bersih:     `${pct}% tanpa catatan publik (ilustrasi)`,
+      } as Record<Exclude<ColorMode, 'tercatat'>, string>
+      return labels[mode as Exclude<ColorMode, 'tercatat'>]
+    }
+  }, [mode])
 
   return (
     <>
@@ -71,17 +118,18 @@ export default function PreviewShell({ provinces, stats, leaders }: Props) {
           </aside>
 
           <section className="pv-stage">
-            <StatStrip
-              stats={stats}
-              lastUpdatedLabel={lastUpdatedLabel}
-              topProvince={[...provinces].sort((a, b) => b.count - a.count)[0]}
-            />
-            <div className="pv-stage-meta">
-              <span className="pv-stage-eyebrow">Peta · 38 Provinsi</span>
-              <span className="pv-stage-hint">klik untuk membuka direktori</span>
-            </div>
+            <StatStrip stats={stats} lastUpdatedLabel={lastUpdatedLabel} />
+            <ModeToggle mode={mode} setMode={setMode} />
             <div className="pv-stage-map">
-              <IndonesiaMap provinces={provinces} height={520} />
+              {mode !== 'tercatat' && (
+                <div className="pv-mock-stamp">DATA ILUSTRASI · Q2 2026</div>
+              )}
+              <IndonesiaMap
+                provinces={provinces}
+                height={420}
+                colorBy={mapColorBy}
+                tooltip={mapTooltip}
+              />
             </div>
             <FeatureStrip />
           </section>
@@ -218,11 +266,9 @@ const LEADER_RANK_LABEL: Record<string, string> = {
 function StatStrip({
   stats,
   lastUpdatedLabel,
-  topProvince,
 }: {
   stats: SiteStats
   lastUpdatedLabel: string
-  topProvince: ProvinceCount | undefined
 }) {
   const animatedReal = useCountUp(stats.realPejabat, 1400)
   const animatedPct = useCountUp(Math.round(stats.coveragePct * 10), 1600) / 10
@@ -254,14 +300,37 @@ function StatStrip({
         </div>
         <div className="pv-strip-foot">diperbarui {lastUpdatedLabel}</div>
       </div>
+    </div>
+  )
+}
 
-      {topProvince && (
-        <div className="pv-strip-cell">
-          <div className="pv-strip-label">Provinsi terlengkap</div>
-          <div className="pv-strip-province">{topProvince.nama}</div>
-          <div className="pv-strip-foot pv-strip-foot-accent">{topProvince.count} pejabat tercatat</div>
-        </div>
-      )}
+// ─── Map colour-mode toggle ──────────────────────────────────────────────────
+
+function ModeToggle({
+  mode,
+  setMode,
+}: {
+  mode: ColorMode
+  setMode: (m: ColorMode) => void
+}) {
+  return (
+    <div className="pv-mode-row">
+      <span className="pv-mode-prefix">Warnai peta:</span>
+      <div className="pv-mode-tabs" role="tablist">
+        {COLOR_MODES.map((m) => (
+          <button
+            key={m.key}
+            role="tab"
+            aria-selected={mode === m.key}
+            className={`pv-mode-tab ${mode === m.key ? 'pv-mode-tab-active' : ''} ${m.live ? 'pv-mode-tab-live' : 'pv-mode-tab-mock'}`}
+            onClick={() => setMode(m.key)}
+            title={m.hint}
+          >
+            {m.label}
+            {!m.live && <span className="pv-mode-flag">PRATINJAU</span>}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -654,9 +723,9 @@ const styles = `
   /* ── Stage ───────────────────────────────────────────────────── */
   .pv-stage {
     position: relative;
-    padding: 32px 48px 24px;
+    padding: 24px 40px 18px;
     display: flex; flex-direction: column;
-    gap: 12px;
+    gap: 8px;
     min-width: 0;
     min-height: 0;
     height: 100%;
@@ -695,7 +764,7 @@ const styles = `
 
   /* ── Stat strip (above the map) ──────────────────────────────── */
   .pv-strip {
-    display: grid; grid-template-columns: 1.2fr 1fr 1fr;
+    display: grid; grid-template-columns: 1.4fr 1fr;
     gap: 0;
     border: 1px solid var(--ink);
     background: var(--paper);
@@ -704,8 +773,8 @@ const styles = `
     animation: pv-rise 0.7s 0.2s cubic-bezier(0.2,0.7,0.3,1) both;
   }
   .pv-strip-cell {
-    padding: 14px 22px;
-    display: flex; flex-direction: column; gap: 4px;
+    padding: 10px 22px;
+    display: flex; flex-direction: column; gap: 2px;
     border-right: 1px dashed var(--rule);
     min-width: 0;
   }
@@ -720,17 +789,17 @@ const styles = `
 
   .pv-strip-value {
     display: flex; align-items: baseline; gap: 8px;
-    margin-top: 2px;
+    margin-top: 0;
   }
   .pv-strip-num {
     font-family: 'Fraunces', serif; font-style: italic; font-weight: 200;
-    font-size: 38px; line-height: 1; color: var(--accent);
-    letter-spacing: -0.03em;
+    font-size: 28px; line-height: 1.05; color: var(--accent);
+    letter-spacing: -0.025em;
     font-variant-numeric: oldstyle-nums;
   }
   .pv-strip-pct {
     font-family: 'Fraunces', serif; font-style: italic; font-weight: 300;
-    font-size: 22px; color: var(--accent); margin-left: -4px;
+    font-size: 18px; color: var(--accent); margin-left: -2px;
   }
   .pv-strip-sub {
     font-family: 'Fraunces', serif; font-weight: 300;
@@ -741,14 +810,12 @@ const styles = `
   .pv-strip-foot {
     font-family: 'DM Mono', monospace; font-size: 9px;
     letter-spacing: 0.1em; color: var(--muted);
-    margin-top: 2px;
   }
-  .pv-strip-foot-accent { color: var(--accent); }
 
   .pv-strip-bar {
-    position: relative; height: 4px;
+    position: relative; height: 3px;
     background: var(--paper-2); border: 1px solid var(--rule);
-    overflow: hidden; margin-top: 4px;
+    overflow: hidden; margin-top: 3px;
   }
   .pv-strip-bar-fill {
     position: absolute; inset: 0 auto 0 0; background: var(--accent);
@@ -758,10 +825,64 @@ const styles = `
   }
   @keyframes pv-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
-  .pv-strip-province {
-    font-family: 'Fraunces', serif; font-weight: 400;
-    font-size: 22px; line-height: 1.1; color: var(--ink);
-    letter-spacing: -0.01em; margin-top: 2px;
+  /* ── Mode toggle row ─────────────────────────────────────────── */
+  .pv-mode-row {
+    display: flex; align-items: center; gap: 14px;
+    padding: 6px 12px 0;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+  .pv-mode-prefix {
+    font-family: 'DM Mono', monospace; font-size: 9.5px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .pv-mode-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+  .pv-mode-tab {
+    font-family: 'DM Mono', monospace; font-size: 10px;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--muted-2);
+    background: transparent;
+    border: 1px solid var(--rule);
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex; align-items: center; gap: 8px;
+    position: relative;
+  }
+  .pv-mode-tab:hover { color: var(--ink); border-color: var(--ink); }
+  .pv-mode-tab-active {
+    background: var(--ink); color: var(--paper); border-color: var(--ink);
+  }
+  .pv-mode-tab-active.pv-mode-tab-mock {
+    background: var(--accent); border-color: var(--accent);
+  }
+  .pv-mode-flag {
+    font-size: 7.5px; letter-spacing: 0.18em;
+    padding: 1px 4px; border: 1px solid currentColor;
+    opacity: 0.7;
+  }
+  .pv-mode-tab-active .pv-mode-flag { opacity: 0.85; }
+
+  .pv-mode-hint {
+    margin-left: auto;
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 300;
+    font-size: 12px; color: var(--muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* ── Mock stamp on map ───────────────────────────────────────── */
+  .pv-mock-stamp {
+    position: absolute; top: 8px; left: 32px;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px; letter-spacing: 0.22em;
+    background: var(--accent); color: var(--paper);
+    padding: 4px 10px;
+    transform: rotate(-1deg);
+    z-index: 5;
+    animation: pv-rise 0.5s both;
+    box-shadow: 2px 2px 0 var(--ink);
   }
 
   /* ── Feature strip (compact, below map) ──────────────────────── */
