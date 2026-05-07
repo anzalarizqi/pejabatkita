@@ -71,13 +71,17 @@ export default function PreviewShell({ provinces, stats, leaders }: Props) {
           </aside>
 
           <section className="pv-stage">
-            <MapOverlay
-              stats={stats}
-              lastUpdatedLabel={lastUpdatedLabel}
-              topProvince={[...provinces].sort((a, b) => b.count - a.count)[0]}
-            />
+            <div className="pv-stage-meta">
+              <span className="pv-stage-eyebrow">Peta · 38 Provinsi</span>
+              <span className="pv-stage-hint">klik untuk membuka direktori</span>
+            </div>
             <div className="pv-stage-map">
-              <IndonesiaMap provinces={provinces} height={640} />
+              <IndonesiaMap provinces={provinces} height={520} />
+              <MapOverlay
+                stats={stats}
+                lastUpdatedLabel={lastUpdatedLabel}
+                topProvince={[...provinces].sort((a, b) => b.count - a.count)[0]}
+              />
             </div>
             <FeaturePreviewCard />
           </section>
@@ -142,7 +146,7 @@ function LeadersRail({ leaders }: { leaders: LeaderRow[] }) {
           </svg>
           <input
             type="text"
-            placeholder="Cari nama, wilayah, provinsi…"
+            placeholder="Cari nama atau wilayah…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -244,7 +248,7 @@ function MapOverlay({
 
       <div className="pv-overlay pv-overlay-tr">
         <div className="pv-overlay-eyebrow pv-overlay-eyebrow-end">
-          Cakupan / {stats.provincesCovered} prov
+          Cakupan · {stats.provincesCovered} provinsi
         </div>
         <div className="pv-overlay-pct">
           {animatedPct.toFixed(1)}<span className="pv-overlay-pct-sym">%</span>
@@ -265,10 +269,6 @@ function MapOverlay({
         </div>
       )}
 
-      <div className="pv-stage-meta">
-        <span className="pv-stage-eyebrow">Peta · 38 Provinsi</span>
-        <span className="pv-stage-hint">klik untuk membuka direktori</span>
-      </div>
     </>
   )
 }
@@ -395,10 +395,12 @@ const styles = `
 
   .pv-root {
     position: relative;
-    min-height: 100vh;
+    height: 100vh;
+    min-height: 760px;
     display: grid;
-    grid-template-rows: auto 1fr auto;
+    grid-template-rows: auto minmax(0, 1fr) auto;
     background: var(--paper);
+    overflow: hidden;
     background-image:
       radial-gradient(circle at 20% 10%, rgba(192,57,43,0.025), transparent 40%),
       radial-gradient(circle at 90% 80%, rgba(15,17,23,0.03), transparent 50%),
@@ -472,9 +474,11 @@ const styles = `
   /* ── Main grid ───────────────────────────────────────────────── */
   .pv-main {
     display: grid;
-    grid-template-columns: minmax(340px, 30%) 1fr;
+    grid-template-columns: minmax(340px, 30%) minmax(0, 1fr);
     align-items: stretch;
     min-height: 0;
+    height: 100%;
+    overflow: hidden;
   }
 
   /* ── Rail ────────────────────────────────────────────────────── */
@@ -486,6 +490,8 @@ const styles = `
     background: linear-gradient(180deg, transparent, rgba(192,57,43,0.018));
     position: relative;
     min-height: 0;
+    height: 100%;
+    overflow: hidden;
   }
 
   .pv-rail-inner {
@@ -668,10 +674,13 @@ const styles = `
   /* ── Stage ───────────────────────────────────────────────────── */
   .pv-stage {
     position: relative;
-    padding: 32px 56px 28px;
+    padding: 32px 48px 24px;
     display: flex; flex-direction: column;
-    gap: 14px;
+    gap: 12px;
     min-width: 0;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
   }
   .pv-stage::before {
     content: ''; position: absolute;
@@ -680,9 +689,9 @@ const styles = `
   }
 
   .pv-stage-meta {
-    position: absolute; top: 38px; left: 56px; right: 56px;
     display: flex; justify-content: space-between; align-items: baseline;
-    z-index: 3; pointer-events: none;
+    z-index: 3; padding: 0 8px;
+    flex-shrink: 0;
   }
   .pv-stage-eyebrow {
     font-family: 'DM Mono', monospace;
@@ -696,10 +705,13 @@ const styles = `
 
   .pv-stage-map {
     position: relative; flex: 1;
-    padding: 14px 28px 0;
+    min-height: 0;
+    padding: 0 24px;
     z-index: 1;
     animation: pv-fadein 1.1s 0.3s both;
+    overflow: hidden;
   }
+  .pv-stage-map .map-legend { display: none; }
 
   /* ── Overlays on the map ─────────────────────────────────────── */
   .pv-overlay {
@@ -711,9 +723,9 @@ const styles = `
     z-index: 4;
     animation: pv-rise 0.7s 0.4s cubic-bezier(0.2,0.7,0.3,1) both;
   }
-  .pv-overlay-tl { top: 78px; left: 70px; min-width: 220px; }
-  .pv-overlay-tr { top: 78px; right: 70px; min-width: 200px; text-align: right; animation-delay: 0.5s; }
-  .pv-overlay-br { bottom: 250px; right: 70px; min-width: 200px; animation-delay: 0.6s; }
+  .pv-overlay-tl { top: 12px; left: 24px; min-width: 200px; }
+  .pv-overlay-tr { top: 12px; right: 24px; min-width: 180px; text-align: right; animation-delay: 0.5s; }
+  .pv-overlay-br { bottom: 24px; right: 24px; min-width: 180px; animation-delay: 0.6s; }
 
   .pv-overlay-eyebrow {
     font-family: 'DM Mono', monospace; font-size: 9px;
@@ -725,8 +737,8 @@ const styles = `
 
   .pv-overlay-bignum {
     font-family: 'Fraunces', serif; font-style: italic; font-weight: 200;
-    font-size: 64px; line-height: 0.9; color: var(--accent);
-    letter-spacing: -0.04em; margin-top: 6px;
+    font-size: 52px; line-height: 0.9; color: var(--accent);
+    letter-spacing: -0.04em; margin-top: 4px;
     font-variant-numeric: oldstyle-nums;
   }
   .pv-overlay-caption {
@@ -742,10 +754,10 @@ const styles = `
 
   .pv-overlay-pct {
     font-family: 'Fraunces', serif; font-weight: 300;
-    font-size: 52px; line-height: 1; color: var(--ink);
-    letter-spacing: -0.02em; margin-top: 6px;
+    font-size: 42px; line-height: 1; color: var(--ink);
+    letter-spacing: -0.02em; margin-top: 4px;
   }
-  .pv-overlay-pct-sym { color: var(--accent); font-style: italic; font-size: 32px; margin-left: 2px; }
+  .pv-overlay-pct-sym { color: var(--accent); font-style: italic; font-size: 26px; margin-left: 2px; }
 
   .pv-overlay-bar {
     position: relative; height: 6px; margin-top: 10px;
@@ -782,10 +794,11 @@ const styles = `
     border: 1px solid var(--ink);
     background:
       linear-gradient(135deg, var(--paper-2), var(--paper) 50%, var(--paper-3));
-    padding: 22px 26px 18px;
+    padding: 14px 22px 12px;
     z-index: 3;
     animation: pv-rise 0.8s 0.7s cubic-bezier(0.2,0.7,0.3,1) both;
-    box-shadow: 6px 6px 0 var(--ink);
+    box-shadow: 4px 4px 0 var(--ink);
+    flex-shrink: 0;
   }
   .pv-feature::before {
     content: ''; position: absolute; inset: 4px;
@@ -803,10 +816,10 @@ const styles = `
 
   .pv-feature-grid {
     display: grid; grid-template-columns: 1.2fr 1fr 1.3fr;
-    gap: 24px;
+    gap: 18px;
   }
-  .pv-feature-cell { padding: 4px 0; }
-  .pv-feature-cell + .pv-feature-cell { border-left: 1px dashed var(--rule); padding-left: 24px; }
+  .pv-feature-cell { padding: 2px 0; }
+  .pv-feature-cell + .pv-feature-cell { border-left: 1px dashed var(--rule); padding-left: 18px; }
 
   .pv-feature-label {
     font-family: 'DM Mono', monospace; font-size: 9px;
@@ -851,11 +864,14 @@ const styles = `
   .pv-track-line { flex: 1; height: 1px; background: var(--rule); }
 
   .pv-feature-disclaimer {
-    margin-top: 16px; padding-top: 12px;
+    margin-top: 10px; padding-top: 8px;
     border-top: 1px dashed var(--rule);
     font-family: 'Fraunces', serif; font-style: italic; font-weight: 300;
-    font-size: 11.5px; color: var(--muted-2);
+    font-size: 11px; color: var(--muted-2);
   }
+  .pv-feature-value { font-size: 18px; }
+  .pv-feature-num { font-size: 26px; }
+  .pv-feature-edu { font-size: 15px; }
 
   /* ── Bottom ticker ───────────────────────────────────────────── */
   .pv-ticker {
