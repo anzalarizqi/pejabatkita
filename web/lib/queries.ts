@@ -135,10 +135,69 @@ export interface PejabatCard {
 
 export interface ListPejabatOptions {
   provinsi?: string
+  wilayah?: string
   search?: string
   page?: number
   pageSize?: number
   includePlaceholders?: boolean
+}
+
+// ─── Wilayah (kab/kota) counts within a province ──────────────────────────────
+
+export interface WilayahCount {
+  nama: string
+  level: 'kabupaten' | 'kota'
+  count: number
+}
+
+export async function listWilayahCounts(provinsi: string): Promise<WilayahCount[]> {
+  const supabase = await createServerSupabase()
+
+  const { data: prov } = await supabase
+    .from('wilayah')
+    .select('id')
+    .eq('level', 'provinsi')
+    .eq('nama', provinsi)
+    .maybeSingle()
+  if (!prov) return []
+
+  const { data: kids } = await supabase
+    .from('wilayah')
+    .select('id, nama, level')
+    .eq('parent_id', prov.id)
+  const wilayahList = (kids ?? []) as Array<{ id: string; nama: string; level: 'kabupaten' | 'kota' }>
+  if (wilayahList.length === 0) return []
+
+  const wilayahIds = wilayahList.map((w) => w.id)
+
+  const [jabatan, pejabat] = await Promise.all([
+    fetchAll<Pick<JabatanRow, 'pejabat_id' | 'wilayah_id'>>(
+      supabase, 'jabatan', 'pejabat_id, wilayah_id',
+    ).then((rows) => rows.filter((r) => wilayahIds.includes(r.wilayah_id))),
+    fetchAll<Pick<PejabatRow, 'id' | 'nama_lengkap'>>(
+      supabase, 'pejabat', 'id, nama_lengkap',
+    ),
+  ])
+
+  const realPejabatIds = new Set<string>()
+  for (const p of pejabat) {
+    if (!isPlaceholderName(p.nama_lengkap)) realPejabatIds.add(p.id)
+  }
+
+  // Count distinct (pejabat, wilayah) pairs
+  const counted = new Set<string>()
+  const counts = new Map<string, number>()
+  for (const j of jabatan) {
+    if (!realPejabatIds.has(j.pejabat_id)) continue
+    const key = `${j.pejabat_id}::${j.wilayah_id}`
+    if (counted.has(key)) continue
+    counted.add(key)
+    counts.set(j.wilayah_id, (counts.get(j.wilayah_id) ?? 0) + 1)
+  }
+
+  return wilayahList
+    .map((w) => ({ nama: w.nama, level: w.level, count: counts.get(w.id) ?? 0 }))
+    .sort((a, b) => a.nama.localeCompare(b.nama))
 }
 
 export interface ListPejabatResult {
@@ -190,9 +249,18 @@ export async function listPejabat(opts: ListPejabatOptions = {}): Promise<ListPe
     }
     const { data: kids } = await supabase
       .from('wilayah')
-      .select('id')
+      .select('id, nama')
       .eq('parent_id', prov.id)
-    wilayahFilterIds = [prov.id, ...((kids ?? []).map((k) => k.id))]
+    const allKids = (kids ?? []) as Array<{ id: string; nama: string }>
+    if (opts.wilayah) {
+      const match = allKids.find((k) => k.nama === opts.wilayah)
+      if (!match) {
+        return { rows: [], total: 0, page, pageSize, totalPages: 0 }
+      }
+      wilayahFilterIds = [match.id]
+    } else {
+      wilayahFilterIds = [prov.id, ...allKids.map((k) => k.id)]
+    }
 
     const { data: jabPids } = await supabase
       .from('jabatan')

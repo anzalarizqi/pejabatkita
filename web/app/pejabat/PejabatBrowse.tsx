@@ -4,17 +4,37 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import IndonesiaMap from '../_components/IndonesiaMap'
-import type { PejabatCard, ProvinceCount, ListPejabatResult } from '@/lib/queries'
+import KabKotaMap from '../_components/KabKotaMap'
+import type {
+  PejabatCard,
+  ProvinceCount,
+  ListPejabatResult,
+  WilayahCount,
+} from '@/lib/queries'
 
 interface Props {
   provinsi: string | null
+  wilayah: string | null
   search: string
   page: number
   list: ListPejabatResult
   provinces: ProvinceCount[]
+  wilayahCounts: WilayahCount[]
 }
 
-export default function PejabatBrowse({ provinsi, search, page, list, provinces }: Props) {
+function provSlug(name: string): string {
+  return name.toLowerCase().replace(/\s+/g, '-')
+}
+
+export default function PejabatBrowse({
+  provinsi,
+  wilayah,
+  search,
+  page,
+  list,
+  provinces,
+  wilayahCounts,
+}: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [searchInput, setSearchInput] = useState(search)
@@ -59,7 +79,17 @@ export default function PejabatBrowse({ provinsi, search, page, list, provinces 
         </section>
 
         <section className="pj-map">
-          <IndonesiaMap provinces={provinces} selected={provinsi} height={420} />
+          {provinsi ? (
+            <KabKotaMap
+              provinsi={provinsi}
+              provinsiSlug={provSlug(provinsi)}
+              wilayahCounts={wilayahCounts}
+              selected={wilayah}
+              height={420}
+            />
+          ) : (
+            <IndonesiaMap provinces={provinces} selected={provinsi} height={420} />
+          )}
         </section>
 
         <section className="pj-filters">
@@ -85,7 +115,14 @@ export default function PejabatBrowse({ provinsi, search, page, list, provinces 
                 id="prov"
                 className="province-select"
                 value={provinsi ?? ''}
-                onChange={(e) => updateParam('provinsi', e.target.value || null)}
+                onChange={(e) => {
+                  const params = new URLSearchParams(searchParams.toString())
+                  params.delete('wilayah')
+                  params.delete('page')
+                  if (e.target.value) params.set('provinsi', e.target.value)
+                  else params.delete('provinsi')
+                  startTransition(() => router.push(`/pejabat?${params.toString()}`))
+                }}
               >
                 <option value="">Semua provinsi ({totalReal})</option>
                 {provinces.map((p) => (
@@ -96,7 +133,26 @@ export default function PejabatBrowse({ provinsi, search, page, list, provinces 
               </select>
             </div>
 
-            {(provinsi || search) && (
+            {provinsi && wilayahCounts.length > 0 && (
+              <div className="province-filter">
+                <label className="filter-label" htmlFor="wil">Kab/Kota</label>
+                <select
+                  id="wil"
+                  className="province-select"
+                  value={wilayah ?? ''}
+                  onChange={(e) => updateParam('wilayah', e.target.value || null)}
+                >
+                  <option value="">Semua kab/kota</option>
+                  {wilayahCounts.map((w) => (
+                    <option key={w.nama} value={w.nama}>
+                      {w.nama} ({w.count})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {(provinsi || wilayah || search) && (
               <button
                 type="button"
                 className="btn-ghost"
@@ -115,7 +171,7 @@ export default function PejabatBrowse({ provinsi, search, page, list, provinces 
                 Menampilkan <strong>{(list.page - 1) * list.pageSize + 1}</strong>–
                 <strong>{Math.min(list.page * list.pageSize, list.total)}</strong> dari{' '}
                 <strong>{list.total.toLocaleString('id-ID')}</strong>
-                {provinsi ? ` di ${provinsi}` : ''}
+                {wilayah ? ` di ${wilayah}, ${provinsi}` : provinsi ? ` di ${provinsi}` : ''}
                 {search ? ` cocok "${search}"` : ''}
               </span>
             )}
