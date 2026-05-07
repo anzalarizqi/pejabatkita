@@ -1,4 +1,4 @@
-import { getSiteStats, listProvinceCounts } from '@/lib/queries'
+import { getSiteStats, listLeaderRoster, listProvinceCounts } from '@/lib/queries'
 import PreviewShell from './PreviewShell'
 
 export const dynamic = 'force-dynamic'
@@ -10,10 +10,11 @@ export const metadata = {
 }
 
 export default async function PreviewPage() {
-  const [provinces, stats] = await Promise.all([
+  const [provinces, stats, leaders] = await Promise.all([
     listProvinceCounts(),
     getSiteStats(),
+    listLeaderRoster(),
   ])
 
-  return <PreviewShell provinces={provinces} stats={stats} />
+  return <PreviewShell provinces={provinces} stats={stats} leaders={leaders} />
 }

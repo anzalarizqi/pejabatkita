@@ -16,6 +16,9 @@ export default function DisclaimerModal() {
     } catch {
       setOpen(true)
     }
+    function reopen() { setOpen(true) }
+    window.addEventListener('pv:open-disclaimer', reopen)
+    return () => window.removeEventListener('pv:open-disclaimer', reopen)
   }, [])
 
   function dismiss() {

@@ -1,30 +1,33 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import IndonesiaMap from '../_components/IndonesiaMap'
 import DisclaimerModal from './DisclaimerModal'
-import type { ProvinceCount, SiteStats } from '@/lib/queries'
+import type { LeaderRow, ProvinceCount, SiteStats } from '@/lib/queries'
 
 interface Props {
   provinces: ProvinceCount[]
   stats: SiteStats
+  leaders: LeaderRow[]
 }
 
-export default function PreviewShell({ provinces, stats }: Props) {
-  const dateLabel = new Date().toLocaleDateString('id-ID', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  })
+type SortKey = 'posisi' | 'nama' | 'provinsi'
 
+export default function PreviewShell({ provinces, stats, leaders }: Props) {
+  const dateLabel = new Date().toLocaleDateString('id-ID', {
+    day: '2-digit', month: 'long', year: 'numeric',
+  })
   const lastUpdatedLabel = stats.lastUpdated
     ? new Date(stats.lastUpdated).toLocaleDateString('id-ID', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
+        day: '2-digit', month: 'short', year: 'numeric',
       })
     : '—'
+
+  function reopenDisclaimer() {
+    try { window.localStorage.removeItem('pejabatkita_disclaimer_v1') } catch {}
+    window.dispatchEvent(new Event('pv:open-disclaimer'))
+  }
 
   return (
     <>
@@ -32,45 +35,55 @@ export default function PreviewShell({ provinces, stats }: Props) {
       <DisclaimerModal />
 
       <div className="pv-root">
-        {/* Crosshair registration marks at the four corners — pure decoration */}
         <RegistrationMark className="pv-mark pv-mark-tl" />
         <RegistrationMark className="pv-mark pv-mark-tr" />
         <RegistrationMark className="pv-mark pv-mark-bl" />
         <RegistrationMark className="pv-mark pv-mark-br" />
 
-        {/* Top strip */}
-        <header className="pv-topstrip">
+        {/* ── Header ──────────────────────────────────────────────── */}
+        <header className="pv-header">
           <div className="pv-brand">
-            <span className="pv-brand-mark">◐</span>
-            <span className="pv-brand-name">Peta Pejabat Indonesia</span>
+            <span className="pv-brand-mark" aria-hidden>◐</span>
+            <div className="pv-brand-text">
+              <span className="pv-brand-name">Peta Pejabat Indonesia</span>
+              <span className="pv-brand-sub">Dosir publik · {dateLabel}</span>
+            </div>
           </div>
-          <div className="pv-docid">
-            EDISI · {String(new Date().getFullYear())} / N°{' '}
-            {String(new Date().getMonth() + 1).padStart(2, '0')}
+
+          <nav className="pv-nav" aria-label="Navigasi utama">
+            <Link href="/preview" className="pv-nav-link pv-nav-active">Beranda</Link>
+            <Link href="/pejabat" className="pv-nav-link">Direktori</Link>
+            <button type="button" className="pv-nav-link pv-nav-btn" onClick={reopenDisclaimer}>
+              Misi Kami
+            </button>
+            <Link href="/admin/login" className="pv-nav-link">Lapor</Link>
+          </nav>
+
+          <div className="pv-header-meta">
+            <span className="pv-edisi">EDISI · {String(new Date().getFullYear())} / N° {String(new Date().getMonth() + 1).padStart(2, '0')}</span>
           </div>
-          <div className="pv-topdate">{dateLabel}</div>
         </header>
 
-        {/* Main: left stats rail + right map */}
+        {/* ── Main: leaders rail | map stage ──────────────────────── */}
         <main className="pv-main">
           <aside className="pv-rail">
-            <RailContent stats={stats} lastUpdatedLabel={lastUpdatedLabel} />
+            <LeadersRail leaders={leaders} />
           </aside>
 
           <section className="pv-stage">
-            <div className="pv-stage-meta">
-              <span className="pv-stage-eyebrow">Peta · 38 Provinsi</span>
-              <span className="pv-stage-hint">
-                gerakkan kursor · klik untuk membuka direktori
-              </span>
-            </div>
+            <MapOverlay
+              stats={stats}
+              lastUpdatedLabel={lastUpdatedLabel}
+              topProvince={[...provinces].sort((a, b) => b.count - a.count)[0]}
+            />
             <div className="pv-stage-map">
-              <IndonesiaMap provinces={provinces} height={620} />
+              <IndonesiaMap provinces={provinces} height={640} />
             </div>
+            <FeaturePreviewCard />
           </section>
         </main>
 
-        {/* Bottom ticker — rotating data points */}
+        {/* ── Bottom ticker ───────────────────────────────────────── */}
         <footer className="pv-ticker">
           <Ticker stats={stats} provinces={provinces} />
         </footer>
@@ -79,81 +92,225 @@ export default function PreviewShell({ provinces, stats }: Props) {
   )
 }
 
-// ─── Left rail: monumental stats ─────────────────────────────────────────────
+// ─── Leaders rail ────────────────────────────────────────────────────────────
 
-function RailContent({
+function LeadersRail({ leaders }: { leaders: LeaderRow[] }) {
+  const [query, setQuery] = useState('')
+  const [sort, setSort] = useState<SortKey>('posisi')
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    let rows = leaders
+    if (q) {
+      rows = rows.filter(
+        (l) =>
+          l.nama.toLowerCase().includes(q) ||
+          l.wilayah.toLowerCase().includes(q) ||
+          l.provinsi.toLowerCase().includes(q),
+      )
+    }
+    const sorted = [...rows]
+    if (sort === 'nama') sorted.sort((a, b) => a.nama.localeCompare(b.nama))
+    else if (sort === 'provinsi')
+      sorted.sort((a, b) =>
+        a.provinsi === b.provinsi ? a.wilayah.localeCompare(b.wilayah) : a.provinsi.localeCompare(b.provinsi),
+      )
+    // 'posisi' is the default order from the server
+    return sorted
+  }, [leaders, query, sort])
+
+  return (
+    <div className="pv-rail-inner">
+      <div className="pv-rail-head">
+        <div className="pv-eyebrow">
+          <span className="pv-eyebrow-dot" />
+          Direktori · Kepala Daerah
+        </div>
+        <h2 className="pv-rail-title">
+          {leaders.length}<span className="pv-rail-title-sym"> nama</span>
+        </h2>
+        <p className="pv-rail-subtitle">
+          gubernur, bupati, walikota — terverifikasi dari sumber publik.
+        </p>
+      </div>
+
+      <div className="pv-rail-controls">
+        <label className="pv-search">
+          <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden>
+            <circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" strokeWidth="1.4" />
+            <line x1="11" y1="11" x2="14.5" y2="14.5" stroke="currentColor" strokeWidth="1.4" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Cari nama, wilayah, provinsi…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          {query && (
+            <button type="button" className="pv-search-clear" onClick={() => setQuery('')} aria-label="Hapus">×</button>
+          )}
+        </label>
+        <div className="pv-sort">
+          <span className="pv-sort-label">Urut</span>
+          <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
+            <option value="posisi">Jenjang</option>
+            <option value="nama">A — Z</option>
+            <option value="provinsi">Provinsi</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="pv-rail-count">
+        <span>{filtered.length} ditampilkan</span>
+        <span className="pv-rail-legend">
+          <span className="pv-dot pv-dot-empty" /> belum ada · <span className="pv-dot pv-dot-ok" /> tersedia
+        </span>
+      </div>
+
+      <div className="pv-leader-list" role="list">
+        {filtered.map((l, i) => (
+          <Link
+            href={`/pejabat/${l.id}`}
+            className="pv-leader"
+            role="listitem"
+            key={l.id}
+            style={{ animationDelay: `${Math.min(i, 18) * 22}ms` }}
+          >
+            <div className="pv-leader-rank">
+              {LEADER_RANK_LABEL[l.posisi] ?? l.posisi.slice(0, 3).toUpperCase()}
+            </div>
+            <div className="pv-leader-body">
+              <div className="pv-leader-name">{l.nama}</div>
+              <div className="pv-leader-meta">
+                <span>{l.posisi}</span>
+                {l.wilayah_level !== 'provinsi' && <span> · {l.wilayah}</span>}
+                <span className="pv-leader-prov"> · {l.provinsi}</span>
+              </div>
+              <div className="pv-leader-tags">
+                <span className="pv-tag"><span className="pv-dot pv-dot-empty" /> LHKPN</span>
+                <span className="pv-tag"><span className="pv-dot pv-dot-empty" /> Rekam jejak</span>
+              </div>
+            </div>
+            <div className="pv-leader-arrow">→</div>
+          </Link>
+        ))}
+        {filtered.length === 0 && (
+          <div className="pv-empty">Tidak ada hasil untuk «{query}».</div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+const LEADER_RANK_LABEL: Record<string, string> = {
+  Gubernur: 'GUB',
+  Bupati: 'BUP',
+  Walikota: 'WAL',
+  'Wali Kota': 'WAL',
+}
+
+// ─── Map overlay (stats anchored to the map area) ───────────────────────────
+
+function MapOverlay({
   stats,
   lastUpdatedLabel,
+  topProvince,
 }: {
   stats: SiteStats
   lastUpdatedLabel: string
+  topProvince: ProvinceCount | undefined
 }) {
   const animatedReal = useCountUp(stats.realPejabat, 1400)
   const animatedPct = useCountUp(Math.round(stats.coveragePct * 10), 1600) / 10
 
   return (
-    <div className="pv-rail-inner">
-      <div className="pv-eyebrow">
-        <span className="pv-eyebrow-dot" />
-        Dosir Data · Berkas Terbuka
-      </div>
-
-      <h1 className="pv-headline">
-        Pejabat<br />
-        <em>satu peta.</em>
-      </h1>
-
-      {/* Monumental count */}
-      <div className="pv-bignum-block">
-        <div className="pv-bignum">
+    <>
+      <div className="pv-overlay pv-overlay-tl">
+        <div className="pv-overlay-eyebrow">
+          <span className="pv-eyebrow-dot" /> Database
+        </div>
+        <div className="pv-overlay-bignum">
           {animatedReal.toLocaleString('id-ID')}
         </div>
-        <div className="pv-bignum-caption">
-          orang tercatat dari{' '}
-          <span className="pv-bignum-expected">
+        <div className="pv-overlay-caption">
+          orang dari{' '}
+          <span className="pv-overlay-expected">
             {stats.expectedTotal.toLocaleString('id-ID')} kursi
-          </span>{' '}
+          </span>
+          <br />
           di {stats.provincesTotal} provinsi & {stats.kabKotaTotal} kab/kota.
         </div>
       </div>
 
-      {/* Coverage bar */}
-      <div className="pv-coverage">
-        <div className="pv-coverage-head">
-          <span className="pv-coverage-label">Cakupan</span>
-          <span className="pv-coverage-pct">
-            {animatedPct.toFixed(1)}<span className="pv-coverage-pct-sym">%</span>
-          </span>
+      <div className="pv-overlay pv-overlay-tr">
+        <div className="pv-overlay-eyebrow pv-overlay-eyebrow-end">
+          Cakupan / {stats.provincesCovered} prov
         </div>
-        <div className="pv-coverage-track" aria-hidden>
-          <div
-            className="pv-coverage-fill"
-            style={{ width: `${Math.min(100, stats.coveragePct)}%` }}
-          />
-          <div className="pv-coverage-grid" />
+        <div className="pv-overlay-pct">
+          {animatedPct.toFixed(1)}<span className="pv-overlay-pct-sym">%</span>
         </div>
-        <div className="pv-coverage-foot">
-          <span>{stats.provincesCovered} provinsi terisi</span>
-          <span>diperbarui {lastUpdatedLabel}</span>
+        <div className="pv-overlay-bar" aria-hidden>
+          <div className="pv-overlay-bar-fill" style={{ width: `${Math.min(100, stats.coveragePct)}%` }} />
+        </div>
+        <div className="pv-overlay-foot">
+          diperbarui {lastUpdatedLabel}
         </div>
       </div>
 
-      {/* CTAs */}
-      <div className="pv-actions">
-        <Link href="/pejabat" className="pv-cta pv-cta-primary">
-          Buka Direktori
-          <span className="pv-cta-arrow">→</span>
-        </Link>
-        <Link href="/admin/login" className="pv-cta pv-cta-ghost">
-          Panel Admin
-        </Link>
-      </div>
+      {topProvince && (
+        <div className="pv-overlay pv-overlay-br">
+          <div className="pv-overlay-eyebrow">Provinsi terlengkap</div>
+          <div className="pv-overlay-province">{topProvince.nama}</div>
+          <div className="pv-overlay-province-count">{topProvince.count} pejabat</div>
+        </div>
+      )}
 
-      <div className="pv-rail-foot">
-        <span>
-          Sumber: Wikipedia · situs <span className="pv-mono">.go.id</span> ·
-          penelusuran web terverifikasi
-        </span>
+      <div className="pv-stage-meta">
+        <span className="pv-stage-eyebrow">Peta · 38 Provinsi</span>
+        <span className="pv-stage-hint">klik untuk membuka direktori</span>
+      </div>
+    </>
+  )
+}
+
+// ─── Feature preview card (bottom of stage) ─────────────────────────────────
+
+function FeaturePreviewCard() {
+  return (
+    <div className="pv-feature">
+      <div className="pv-feature-stamp">PRATINJAU FITUR · Q2 2026</div>
+      <div className="pv-feature-grid">
+        <div className="pv-feature-cell">
+          <div className="pv-feature-label">Kekayaan (LHKPN)</div>
+          <div className="pv-feature-value">
+            Rp <span className="pv-feature-num">12,4</span> <span className="pv-feature-unit">miliar</span>
+          </div>
+          <div className="pv-feature-bar" aria-hidden>
+            <div className="pv-feature-bar-fill" style={{ width: '54%' }} />
+          </div>
+          <div className="pv-feature-foot">elhkpn.kpk.go.id</div>
+        </div>
+
+        <div className="pv-feature-cell">
+          <div className="pv-feature-label">Pendidikan</div>
+          <div className="pv-feature-edu">S2 · Magister Hukum</div>
+          <div className="pv-feature-edu-sub">Universitas Contoh, 2014</div>
+        </div>
+
+        <div className="pv-feature-cell">
+          <div className="pv-feature-label">Rekam Jejak</div>
+          <div className="pv-feature-track">
+            <span className="pv-track-dot pv-dot-ok" />
+            <span className="pv-track-line" />
+            <span className="pv-track-dot pv-dot-ok" />
+            <span className="pv-track-line" />
+            <span className="pv-track-dot pv-dot-ok" />
+          </div>
+          <div className="pv-feature-foot pv-feature-foot-clean">Tidak ada catatan tipikor publik.</div>
+        </div>
+      </div>
+      <div className="pv-feature-disclaimer">
+        Tampilan ilustrasi — fase 9B (LHKPN) & 9C (rekam jejak) sedang dikerjakan.
       </div>
     </div>
   )
@@ -161,17 +318,8 @@ function RailContent({
 
 // ─── Bottom ticker ───────────────────────────────────────────────────────────
 
-function Ticker({
-  stats,
-  provinces,
-}: {
-  stats: SiteStats
-  provinces: ProvinceCount[]
-}) {
-  const top = [...provinces]
-    .filter((p) => p.count > 0)
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 8)
+function Ticker({ stats, provinces }: { stats: SiteStats; provinces: ProvinceCount[] }) {
+  const top = [...provinces].filter((p) => p.count > 0).sort((a, b) => b.count - a.count).slice(0, 8)
   const items = [
     `${stats.provincesCovered}/${stats.provincesTotal} PROVINSI TERISI`,
     `${stats.realPejabat.toLocaleString('id-ID')} PEJABAT TERCATAT`,
@@ -180,7 +328,6 @@ function Ticker({
     'AGGREGATOR DATA PUBLIK',
     'BUKAN OPINI · BUKAN EDITORIAL',
   ]
-  // Duplicate so the marquee loops seamlessly
   const loop = [...items, ...items]
   return (
     <div className="pv-ticker-track">
@@ -199,36 +346,26 @@ function Ticker({
 
 function useCountUp(target: number, durationMs = 1200): number {
   const [value, setValue] = useState(0)
-
   useEffect(() => {
     let raf = 0
     const start = performance.now()
-    const from = 0
     function tick(now: number) {
       const t = Math.min(1, (now - start) / durationMs)
-      // easeOutCubic
       const eased = 1 - Math.pow(1 - t, 3)
-      setValue(Math.round(from + (target - from) * eased))
+      setValue(Math.round(target * eased))
       if (t < 1) raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
   }, [target, durationMs])
-
   return value
 }
 
-// ─── Registration mark (corner crosshair) ────────────────────────────────────
+// ─── Registration mark ───────────────────────────────────────────────────────
 
 function RegistrationMark({ className }: { className: string }) {
   return (
-    <svg
-      className={className}
-      width="22"
-      height="22"
-      viewBox="0 0 22 22"
-      aria-hidden
-    >
+    <svg className={className} width="22" height="22" viewBox="0 0 22 22" aria-hidden>
       <circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" strokeWidth="0.6" />
       <line x1="11" y1="0" x2="11" y2="22" stroke="currentColor" strokeWidth="0.6" />
       <line x1="0" y1="11" x2="22" y2="11" stroke="currentColor" strokeWidth="0.6" />
@@ -245,6 +382,7 @@ const styles = `
     --ink: #0f1117;
     --paper: #f5f1ea;
     --paper-2: #ede7da;
+    --paper-3: #e4dccb;
     --accent: #c0392b;
     --accent-soft: rgba(192, 57, 43, 0.08);
     --rule: #d4cfc5;
@@ -253,10 +391,7 @@ const styles = `
   }
 
   html, body { background: var(--paper); }
-  body {
-    font-family: 'DM Mono', monospace;
-    color: var(--ink);
-  }
+  body { font-family: 'DM Mono', monospace; color: var(--ink); }
 
   .pv-root {
     position: relative;
@@ -264,477 +399,487 @@ const styles = `
     display: grid;
     grid-template-rows: auto 1fr auto;
     background: var(--paper);
-    /* Subtle paper grain via SVG-encoded noise */
     background-image:
-      radial-gradient(circle at 20% 10%, rgba(192, 57, 43, 0.025), transparent 40%),
-      radial-gradient(circle at 90% 80%, rgba(15, 17, 23, 0.03), transparent 50%),
-      repeating-linear-gradient(
-        92deg,
-        transparent 0,
-        transparent 2px,
-        rgba(15, 17, 23, 0.012) 2px,
-        rgba(15, 17, 23, 0.012) 3px
-      );
+      radial-gradient(circle at 20% 10%, rgba(192,57,43,0.025), transparent 40%),
+      radial-gradient(circle at 90% 80%, rgba(15,17,23,0.03), transparent 50%),
+      repeating-linear-gradient(92deg, transparent 0, transparent 2px, rgba(15,17,23,0.012) 2px, rgba(15,17,23,0.012) 3px);
   }
 
-  /* ── Corner crosshairs ───────────────────────────────────────── */
-  .pv-mark {
-    position: absolute;
-    color: var(--accent);
-    opacity: 0.5;
-    pointer-events: none;
-    z-index: 5;
-  }
-  .pv-mark-tl { top: 14px; left: 14px; }
-  .pv-mark-tr { top: 14px; right: 14px; }
-  .pv-mark-bl { bottom: 14px; left: 14px; }
-  .pv-mark-br { bottom: 14px; right: 14px; }
+  .pv-mark { position: absolute; color: var(--accent); opacity: 0.45; pointer-events: none; z-index: 50; }
+  .pv-mark-tl { top: 12px; left: 12px; }
+  .pv-mark-tr { top: 12px; right: 12px; }
+  .pv-mark-bl { bottom: 12px; left: 12px; }
+  .pv-mark-br { bottom: 12px; right: 12px; }
 
-  /* ── Top strip ───────────────────────────────────────────────── */
-  .pv-topstrip {
+  /* ── Header ───────────────────────────────────────────────────── */
+  .pv-header {
     border-bottom: 1.5px solid var(--ink);
-    padding: 18px 56px 16px;
+    padding: 16px 56px 14px;
     display: grid;
-    grid-template-columns: 1fr auto 1fr;
+    grid-template-columns: minmax(280px, 1fr) auto minmax(280px, 1fr);
     align-items: center;
-    gap: 24px;
+    gap: 32px;
+    background: var(--paper);
+    position: relative;
+    z-index: 10;
   }
 
-  .pv-brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .pv-brand-mark {
-    color: var(--accent);
-    font-size: 18px;
-    line-height: 1;
-    transform: translateY(-1px);
-  }
-  .pv-brand-name {
-    font-family: 'Fraunces', serif;
-    font-size: 16px;
-    font-weight: 400;
-    letter-spacing: -0.005em;
-  }
+  .pv-brand { display: flex; align-items: center; gap: 12px; }
+  .pv-brand-mark { color: var(--accent); font-size: 22px; line-height: 1; transform: translateY(-1px); }
+  .pv-brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+  .pv-brand-name { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 400; letter-spacing: -0.01em; }
+  .pv-brand-sub { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-top: 3px; }
 
-  .pv-docid {
+  .pv-nav { display: flex; gap: 4px; align-items: center; justify-self: center; }
+  .pv-nav-link {
     font-family: 'DM Mono', monospace;
-    font-size: 9.5px;
+    font-size: 10.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted-2);
+    text-decoration: none;
+    padding: 8px 16px;
+    transition: all 0.15s ease;
+    position: relative;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+  .pv-nav-link:hover { color: var(--ink); }
+  .pv-nav-link::after {
+    content: ''; position: absolute; left: 16px; right: 16px; bottom: 4px;
+    height: 1px; background: var(--accent); transform: scaleX(0); transform-origin: left center;
+    transition: transform 0.22s ease;
+  }
+  .pv-nav-link:hover::after { transform: scaleX(1); }
+  .pv-nav-active { color: var(--ink); }
+  .pv-nav-active::after { transform: scaleX(1); background: var(--ink); }
+  .pv-nav-btn { font-family: inherit; }
+
+  .pv-header-meta { justify-self: end; }
+  .pv-edisi {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
     letter-spacing: 0.22em;
     color: var(--muted);
     text-transform: uppercase;
     border: 1px solid var(--rule);
     padding: 5px 12px;
     background: var(--paper-2);
-    text-align: center;
     white-space: nowrap;
-  }
-
-  .pv-topdate {
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--muted);
-    text-align: right;
   }
 
   /* ── Main grid ───────────────────────────────────────────────── */
   .pv-main {
     display: grid;
-    grid-template-columns: minmax(360px, 32%) 1fr;
+    grid-template-columns: minmax(340px, 30%) 1fr;
     align-items: stretch;
     min-height: 0;
   }
 
-  /* ── Left rail ───────────────────────────────────────────────── */
+  /* ── Rail ────────────────────────────────────────────────────── */
   .pv-rail {
     border-right: 1.5px solid var(--ink);
-    padding: 56px 48px 56px 56px;
+    padding: 32px 0 0;
     display: flex;
     flex-direction: column;
-    background:
-      linear-gradient(180deg, transparent 0%, rgba(192, 57, 43, 0.025) 100%);
+    background: linear-gradient(180deg, transparent, rgba(192,57,43,0.018));
     position: relative;
-  }
-
-  /* Decorative side numerals */
-  .pv-rail::before {
-    content: '01 / 38';
-    position: absolute;
-    top: 18px;
-    right: 16px;
-    font-family: 'DM Mono', monospace;
-    font-size: 9px;
-    letter-spacing: 0.18em;
-    color: var(--muted);
-    text-transform: uppercase;
+    min-height: 0;
   }
 
   .pv-rail-inner {
-    display: flex;
-    flex-direction: column;
-    gap: 32px;
+    display: flex; flex-direction: column;
+    height: 100%;
+    min-height: 0;
   }
 
+  .pv-rail-head { padding: 0 32px 20px; border-bottom: 1px solid var(--rule); }
+
   .pv-eyebrow {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
+    display: inline-flex; align-items: center; gap: 10px;
     font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
+    font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase;
     color: var(--accent);
     animation: pv-fadein 0.6s 0.05s both;
   }
-
   .pv-eyebrow-dot {
-    width: 7px;
-    height: 7px;
-    background: var(--accent);
-    display: inline-block;
-    border-radius: 50%;
+    width: 7px; height: 7px; background: var(--accent);
+    display: inline-block; border-radius: 50%;
     animation: pv-pulse 2.4s ease-in-out infinite;
   }
-
   @keyframes pv-pulse {
     0%, 100% { opacity: 1; transform: scale(1); }
     50%      { opacity: 0.4; transform: scale(0.7); }
   }
 
-  .pv-headline {
+  .pv-rail-title {
     font-family: 'Fraunces', serif;
     font-weight: 200;
-    font-size: clamp(48px, 5.4vw, 84px);
+    font-size: 64px;
     line-height: 0.95;
     letter-spacing: -0.025em;
     color: var(--ink);
-    animation: pv-rise 0.7s 0.1s cubic-bezier(0.2, 0.7, 0.3, 1) both;
-  }
-
-  .pv-headline em {
-    font-style: italic;
-    color: var(--accent);
-    font-weight: 300;
-  }
-
-  /* ── The big number ──────────────────────────────────────────── */
-  .pv-bignum-block {
-    border-top: 1px solid var(--rule);
-    border-bottom: 1px solid var(--rule);
-    padding: 24px 0 28px;
-    animation: pv-rise 0.7s 0.2s cubic-bezier(0.2, 0.7, 0.3, 1) both;
-  }
-
-  .pv-bignum {
-    font-family: 'Fraunces', serif;
-    font-style: italic;
-    font-weight: 200;
-    font-size: clamp(72px, 9vw, 132px);
-    line-height: 0.92;
-    color: var(--accent);
-    letter-spacing: -0.04em;
-    font-variant-numeric: oldstyle-nums;
-  }
-
-  .pv-bignum-caption {
     margin-top: 14px;
-    font-family: 'Fraunces', serif;
-    font-weight: 300;
-    font-size: 14px;
-    line-height: 1.55;
-    color: var(--muted-2);
-    max-width: 36ch;
+    animation: pv-rise 0.7s 0.1s cubic-bezier(0.2,0.7,0.3,1) both;
+  }
+  .pv-rail-title-sym {
+    font-style: italic; font-size: 24px; color: var(--muted); font-weight: 300;
+    letter-spacing: 0; margin-left: 4px;
   }
 
-  .pv-bignum-expected {
-    color: var(--ink);
-    font-weight: 400;
-    border-bottom: 1px dashed var(--accent);
-    padding-bottom: 1px;
+  .pv-rail-subtitle {
+    font-family: 'Fraunces', serif; font-weight: 300;
+    font-size: 13.5px; line-height: 1.5; color: var(--muted-2);
+    max-width: 30ch; margin-top: 10px;
+    animation: pv-fadein 0.7s 0.18s both;
   }
 
-  /* ── Coverage bar ────────────────────────────────────────────── */
-  .pv-coverage {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    animation: pv-rise 0.7s 0.3s cubic-bezier(0.2, 0.7, 0.3, 1) both;
-  }
+  /* Controls */
+  .pv-rail-controls { padding: 18px 32px 12px; display: flex; gap: 10px; align-items: stretch; }
 
-  .pv-coverage-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-  }
-
-  .pv-coverage-label {
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
+  .pv-search {
+    flex: 1; display: flex; align-items: center; gap: 8px;
+    border: 1px solid var(--rule); padding: 9px 12px;
+    background: var(--paper); transition: border-color 0.15s;
     color: var(--muted);
   }
-
-  .pv-coverage-pct {
-    font-family: 'Fraunces', serif;
-    font-weight: 300;
-    font-size: 38px;
-    line-height: 1;
-    color: var(--ink);
-    letter-spacing: -0.02em;
-  }
-
-  .pv-coverage-pct-sym {
-    color: var(--accent);
-    font-style: italic;
-    font-size: 26px;
-    margin-left: 2px;
-  }
-
-  .pv-coverage-track {
-    position: relative;
-    height: 12px;
-    background: var(--paper-2);
-    border: 1px solid var(--rule);
-    overflow: hidden;
-  }
-
-  .pv-coverage-fill {
-    position: absolute;
-    inset: 0 auto 0 0;
-    background: var(--accent);
-    background-image:
-      repeating-linear-gradient(
-        45deg,
-        transparent 0,
-        transparent 4px,
-        rgba(0,0,0,0.08) 4px,
-        rgba(0,0,0,0.08) 5px
-      );
-    animation: pv-grow 1.6s 0.4s cubic-bezier(0.2, 0.7, 0.3, 1) both;
-    transform-origin: left center;
-  }
-
-  .pv-coverage-grid {
-    position: absolute;
-    inset: 0;
-    background-image:
-      linear-gradient(to right, var(--rule) 1px, transparent 1px);
-    background-size: 25% 100%;
-    background-repeat: repeat-x;
-    pointer-events: none;
-    opacity: 0.55;
-  }
-
-  @keyframes pv-grow {
-    from { transform: scaleX(0); }
-    to   { transform: scaleX(1); }
-  }
-
-  .pv-coverage-foot {
-    display: flex;
-    justify-content: space-between;
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.06em;
-    color: var(--muted);
-  }
-
-  /* ── CTAs ────────────────────────────────────────────────────── */
-  .pv-actions {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    animation: pv-rise 0.7s 0.42s cubic-bezier(0.2, 0.7, 0.3, 1) both;
-  }
-
-  .pv-cta {
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    text-decoration: none;
-    padding: 14px 20px;
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    transition: all 0.18s ease;
-    position: relative;
-  }
-
-  .pv-cta-primary {
-    background: var(--ink);
-    color: var(--paper);
-    border: 1px solid var(--ink);
-  }
-
-  .pv-cta-primary:hover {
-    background: var(--accent);
-    border-color: var(--accent);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 0 -1px var(--ink);
-  }
-
-  .pv-cta-arrow {
-    transition: transform 0.18s ease;
-  }
-  .pv-cta-primary:hover .pv-cta-arrow {
-    transform: translateX(3px);
-  }
-
-  .pv-cta-ghost {
-    color: var(--muted-2);
-    border: 1px solid var(--rule);
-  }
-
-  .pv-cta-ghost:hover {
-    color: var(--ink);
-    border-color: var(--ink);
-  }
-
-  /* ── Rail footer ─────────────────────────────────────────────── */
-  .pv-rail-foot {
-    margin-top: auto;
-    padding-top: 28px;
-    border-top: 1px dashed var(--rule);
-    font-family: 'DM Mono', monospace;
-    font-size: 9.5px;
-    line-height: 1.7;
-    letter-spacing: 0.06em;
-    color: var(--muted);
-    animation: pv-fadein 0.7s 0.55s both;
-  }
-
-  .pv-mono {
-    font-family: 'DM Mono', monospace;
-    color: var(--accent);
-  }
-
-  /* ── Stage (right side, holds the map) ───────────────────────── */
-  .pv-stage {
-    padding: 38px 56px 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    position: relative;
+  .pv-search:focus-within { border-color: var(--ink); color: var(--ink); }
+  .pv-search input {
+    flex: 1; border: none; outline: none; background: transparent;
+    font-family: 'DM Mono', monospace; font-size: 11.5px;
+    color: var(--ink); letter-spacing: 0.02em;
     min-width: 0;
   }
+  .pv-search input::placeholder { color: var(--muted); letter-spacing: 0.04em; }
+  .pv-search-clear {
+    border: none; background: none; cursor: pointer;
+    color: var(--muted); font-size: 16px; line-height: 1; padding: 0 2px;
+  }
+  .pv-search-clear:hover { color: var(--accent); }
 
+  .pv-sort {
+    display: flex; align-items: center; gap: 8px;
+    border: 1px solid var(--rule); padding: 0 10px 0 12px; background: var(--paper);
+  }
+  .pv-sort-label {
+    font-family: 'DM Mono', monospace; font-size: 9px;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted);
+  }
+  .pv-sort select {
+    border: none; outline: none; background: transparent;
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    color: var(--ink); padding: 9px 4px 9px 0; cursor: pointer;
+    letter-spacing: 0.05em;
+  }
+
+  .pv-rail-count {
+    padding: 6px 32px 12px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: 'DM Mono', monospace; font-size: 9px;
+    color: var(--muted); letter-spacing: 0.14em; text-transform: uppercase;
+  }
+  .pv-rail-legend { display: inline-flex; gap: 4px; align-items: center; }
+
+  .pv-dot {
+    display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    border: 1px solid var(--rule); background: transparent;
+  }
+  .pv-dot-ok { background: var(--accent); border-color: var(--accent); }
+  .pv-dot-empty { background: transparent; }
+
+  /* Leader list */
+  .pv-leader-list {
+    flex: 1; min-height: 0;
+    overflow-y: auto;
+    padding: 0 32px 32px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--rule) transparent;
+  }
+  .pv-leader-list::-webkit-scrollbar { width: 6px; }
+  .pv-leader-list::-webkit-scrollbar-thumb { background: var(--rule); }
+
+  .pv-leader {
+    display: grid;
+    grid-template-columns: 44px 1fr 18px;
+    gap: 14px; align-items: center;
+    padding: 12px 4px;
+    border-bottom: 1px solid var(--rule);
+    text-decoration: none; color: inherit;
+    transition: all 0.15s ease;
+    animation: pv-rise 0.5s both;
+    position: relative;
+  }
+  .pv-leader::before {
+    content: ''; position: absolute; left: -32px; top: 0; bottom: 0; width: 3px;
+    background: var(--accent); transform: scaleY(0); transform-origin: top center;
+    transition: transform 0.18s ease;
+  }
+  .pv-leader:hover { background: var(--paper-2); }
+  .pv-leader:hover::before { transform: scaleY(1); }
+  .pv-leader:hover .pv-leader-arrow { color: var(--accent); transform: translateX(3px); }
+
+  .pv-leader-rank {
+    font-family: 'DM Mono', monospace;
+    font-size: 9.5px; letter-spacing: 0.14em;
+    color: var(--accent); text-align: center;
+    border: 1px solid var(--accent); padding: 6px 0;
+    background: var(--paper);
+  }
+
+  .pv-leader-body { min-width: 0; }
+  .pv-leader-name {
+    font-family: 'Fraunces', serif; font-weight: 400;
+    font-size: 14.5px; line-height: 1.2;
+    color: var(--ink);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .pv-leader-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 9.5px; letter-spacing: 0.04em;
+    color: var(--muted); margin-top: 3px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .pv-leader-prov { color: var(--muted-2); }
+
+  .pv-leader-tags {
+    display: flex; gap: 8px; margin-top: 6px;
+  }
+  .pv-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted);
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 6px; border: 1px solid var(--rule);
+    background: var(--paper);
+  }
+
+  .pv-leader-arrow {
+    font-family: 'DM Mono', monospace; font-size: 13px;
+    color: var(--rule); transition: all 0.18s ease;
+  }
+
+  .pv-empty {
+    padding: 40px 0; text-align: center;
+    font-family: 'Fraunces', serif; font-style: italic; font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* ── Stage ───────────────────────────────────────────────────── */
+  .pv-stage {
+    position: relative;
+    padding: 32px 56px 28px;
+    display: flex; flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+  }
   .pv-stage::before {
-    content: '';
-    position: absolute;
-    top: 28px;
-    bottom: 14px;
-    left: 28px;
-    right: 28px;
-    border: 1px solid var(--rule);
-    pointer-events: none;
+    content: ''; position: absolute;
+    top: 22px; left: 22px; right: 22px; bottom: 12px;
+    border: 1px solid var(--rule); pointer-events: none;
   }
 
   .pv-stage-meta {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    padding: 0 4px;
-    z-index: 2;
+    position: absolute; top: 38px; left: 56px; right: 56px;
+    display: flex; justify-content: space-between; align-items: baseline;
+    z-index: 3; pointer-events: none;
   }
-
   .pv-stage-eyebrow {
     font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--accent);
+    font-size: 10px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--accent);
   }
-
   .pv-stage-hint {
-    font-family: 'Fraunces', serif;
-    font-style: italic;
-    font-weight: 300;
-    font-size: 12px;
-    color: var(--muted);
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 300;
+    font-size: 12px; color: var(--muted);
   }
 
   .pv-stage-map {
-    position: relative;
-    flex: 1;
-    padding: 18px 32px 32px;
-    z-index: 2;
+    position: relative; flex: 1;
+    padding: 14px 28px 0;
+    z-index: 1;
     animation: pv-fadein 1.1s 0.3s both;
+  }
+
+  /* ── Overlays on the map ─────────────────────────────────────── */
+  .pv-overlay {
+    position: absolute;
+    background: var(--paper);
+    border: 1px solid var(--ink);
+    box-shadow: 4px 4px 0 var(--ink);
+    padding: 16px 20px;
+    z-index: 4;
+    animation: pv-rise 0.7s 0.4s cubic-bezier(0.2,0.7,0.3,1) both;
+  }
+  .pv-overlay-tl { top: 78px; left: 70px; min-width: 220px; }
+  .pv-overlay-tr { top: 78px; right: 70px; min-width: 200px; text-align: right; animation-delay: 0.5s; }
+  .pv-overlay-br { bottom: 250px; right: 70px; min-width: 200px; animation-delay: 0.6s; }
+
+  .pv-overlay-eyebrow {
+    font-family: 'DM Mono', monospace; font-size: 9px;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--accent);
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .pv-overlay-eyebrow-end { width: 100%; justify-content: flex-end; }
+
+  .pv-overlay-bignum {
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 200;
+    font-size: 64px; line-height: 0.9; color: var(--accent);
+    letter-spacing: -0.04em; margin-top: 6px;
+    font-variant-numeric: oldstyle-nums;
+  }
+  .pv-overlay-caption {
+    margin-top: 10px;
+    font-family: 'Fraunces', serif; font-weight: 300;
+    font-size: 12px; line-height: 1.5; color: var(--muted-2);
+    max-width: 32ch;
+  }
+  .pv-overlay-expected {
+    color: var(--ink); font-weight: 400;
+    border-bottom: 1px dashed var(--accent); padding-bottom: 1px;
+  }
+
+  .pv-overlay-pct {
+    font-family: 'Fraunces', serif; font-weight: 300;
+    font-size: 52px; line-height: 1; color: var(--ink);
+    letter-spacing: -0.02em; margin-top: 6px;
+  }
+  .pv-overlay-pct-sym { color: var(--accent); font-style: italic; font-size: 32px; margin-left: 2px; }
+
+  .pv-overlay-bar {
+    position: relative; height: 6px; margin-top: 10px;
+    background: var(--paper-2); border: 1px solid var(--rule); overflow: hidden;
+  }
+  .pv-overlay-bar-fill {
+    position: absolute; inset: 0 auto 0 0; background: var(--accent);
+    background-image: repeating-linear-gradient(45deg, transparent 0, transparent 3px, rgba(0,0,0,0.1) 3px, rgba(0,0,0,0.1) 4px);
+    animation: pv-grow 1.6s 0.6s cubic-bezier(0.2,0.7,0.3,1) both;
+    transform-origin: left center;
+  }
+  @keyframes pv-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+  .pv-overlay-foot {
+    margin-top: 10px;
+    font-family: 'DM Mono', monospace; font-size: 9px;
+    color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase;
+  }
+
+  .pv-overlay-province {
+    font-family: 'Fraunces', serif; font-weight: 400;
+    font-size: 22px; line-height: 1.2; margin-top: 8px;
+    letter-spacing: -0.01em; color: var(--ink);
+  }
+  .pv-overlay-province-count {
+    font-family: 'DM Mono', monospace; font-size: 10px;
+    color: var(--accent); margin-top: 4px; letter-spacing: 0.1em;
+  }
+
+  /* ── Feature preview card ────────────────────────────────────── */
+  .pv-feature {
+    position: relative;
+    margin: 0 28px;
+    border: 1px solid var(--ink);
+    background:
+      linear-gradient(135deg, var(--paper-2), var(--paper) 50%, var(--paper-3));
+    padding: 22px 26px 18px;
+    z-index: 3;
+    animation: pv-rise 0.8s 0.7s cubic-bezier(0.2,0.7,0.3,1) both;
+    box-shadow: 6px 6px 0 var(--ink);
+  }
+  .pv-feature::before {
+    content: ''; position: absolute; inset: 4px;
+    border: 1px dashed rgba(15,17,23,0.18); pointer-events: none;
+  }
+
+  .pv-feature-stamp {
+    position: absolute; top: -10px; left: 22px;
+    background: var(--accent); color: var(--paper);
+    font-family: 'DM Mono', monospace;
+    font-size: 9.5px; letter-spacing: 0.22em; text-transform: uppercase;
+    padding: 4px 10px;
+    transform: rotate(-1deg);
+  }
+
+  .pv-feature-grid {
+    display: grid; grid-template-columns: 1.2fr 1fr 1.3fr;
+    gap: 24px;
+  }
+  .pv-feature-cell { padding: 4px 0; }
+  .pv-feature-cell + .pv-feature-cell { border-left: 1px dashed var(--rule); padding-left: 24px; }
+
+  .pv-feature-label {
+    font-family: 'DM Mono', monospace; font-size: 9px;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 8px;
+  }
+
+  .pv-feature-value {
+    font-family: 'Fraunces', serif; font-weight: 300;
+    font-size: 22px; color: var(--ink); line-height: 1;
+  }
+  .pv-feature-num { font-style: italic; color: var(--accent); font-weight: 400; font-size: 32px; }
+  .pv-feature-unit { font-size: 14px; color: var(--muted-2); }
+
+  .pv-feature-bar {
+    position: relative; height: 4px; margin-top: 8px;
+    background: var(--paper-2); border: 1px solid var(--rule); overflow: hidden;
+  }
+  .pv-feature-bar-fill {
+    position: absolute; inset: 0 auto 0 0; background: var(--accent);
+  }
+
+  .pv-feature-foot {
+    margin-top: 8px;
+    font-family: 'DM Mono', monospace; font-size: 9px;
+    letter-spacing: 0.1em; color: var(--muted);
+  }
+  .pv-feature-foot-clean { color: var(--muted-2); }
+
+  .pv-feature-edu {
+    font-family: 'Fraunces', serif; font-weight: 400;
+    font-size: 17px; color: var(--ink); line-height: 1.2;
+  }
+  .pv-feature-edu-sub {
+    font-family: 'Fraunces', serif; font-weight: 300; font-style: italic;
+    font-size: 12px; color: var(--muted-2); margin-top: 4px;
+  }
+
+  .pv-feature-track { display: flex; align-items: center; gap: 6px; padding: 6px 0; }
+  .pv-track-dot { width: 11px; height: 11px; border-radius: 50%; border: 1px solid var(--rule); }
+  .pv-track-dot.pv-dot-ok { background: var(--accent); border-color: var(--accent); }
+  .pv-track-line { flex: 1; height: 1px; background: var(--rule); }
+
+  .pv-feature-disclaimer {
+    margin-top: 16px; padding-top: 12px;
+    border-top: 1px dashed var(--rule);
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 300;
+    font-size: 11.5px; color: var(--muted-2);
   }
 
   /* ── Bottom ticker ───────────────────────────────────────────── */
   .pv-ticker {
-    border-top: 1.5px solid var(--ink);
-    background: var(--ink);
-    color: var(--paper);
-    overflow: hidden;
-    position: relative;
+    border-top: 1.5px solid var(--ink); background: var(--ink);
+    color: var(--paper); overflow: hidden; position: relative;
   }
-
-  .pv-ticker::before,
-  .pv-ticker::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 80px;
-    z-index: 2;
-    pointer-events: none;
+  .pv-ticker::before, .pv-ticker::after {
+    content: ''; position: absolute; top: 0; bottom: 0; width: 80px; z-index: 2; pointer-events: none;
   }
-  .pv-ticker::before {
-    left: 0;
-    background: linear-gradient(90deg, var(--ink), transparent);
-  }
-  .pv-ticker::after {
-    right: 0;
-    background: linear-gradient(270deg, var(--ink), transparent);
-  }
-
-  .pv-ticker-track {
-    padding: 14px 0;
-    overflow: hidden;
-  }
-
+  .pv-ticker::before { left: 0; background: linear-gradient(90deg, var(--ink), transparent); }
+  .pv-ticker::after { right: 0; background: linear-gradient(270deg, var(--ink), transparent); }
+  .pv-ticker-track { padding: 12px 0; overflow: hidden; }
   .pv-ticker-inner {
-    display: inline-flex;
-    gap: 56px;
-    white-space: nowrap;
-    animation: pv-marquee 60s linear infinite;
-    will-change: transform;
+    display: inline-flex; gap: 56px; white-space: nowrap;
+    animation: pv-marquee 60s linear infinite; will-change: transform;
   }
-
   .pv-ticker-item {
-    font-family: 'DM Mono', monospace;
-    font-size: 10.5px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--paper);
-    display: inline-flex;
-    align-items: center;
-    gap: 14px;
+    font-family: 'DM Mono', monospace; font-size: 10.5px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--paper); display: inline-flex; align-items: center; gap: 14px;
   }
+  .pv-ticker-bullet { color: var(--accent); font-size: 8px; }
+  @keyframes pv-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
-  .pv-ticker-bullet {
-    color: var(--accent);
-    font-size: 8px;
-  }
-
-  @keyframes pv-marquee {
-    from { transform: translateX(0); }
-    to   { transform: translateX(-50%); }
-  }
-
-  /* ── Animations ──────────────────────────────────────────────── */
-  @keyframes pv-fadein {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-  }
-  @keyframes pv-rise {
-    from { opacity: 0; transform: translateY(14px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
+  @keyframes pv-fadein { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes pv-rise   { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 `

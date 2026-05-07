@@ -198,6 +198,92 @@ export async function getSiteStats(): Promise<SiteStats> {
   }
 }
 
+// ─── Leader roster (kepala daerah only — for /preview rail) ──────────────────
+
+export interface LeaderRow {
+  id: string
+  nama: string
+  posisi: string
+  wilayah: string
+  wilayah_level: 'provinsi' | 'kabupaten' | 'kota'
+  provinsi: string
+}
+
+const LEADER_RANK: Record<string, number> = {
+  Gubernur: 0,
+  Bupati: 1,
+  Walikota: 1,
+  'Wali Kota': 1,
+}
+
+export async function listLeaderRoster(): Promise<LeaderRow[]> {
+  const supabase = await createServerSupabase()
+
+  const [wilayah, jabatan, pejabat] = await Promise.all([
+    fetchAll<Wilayah>(supabase, 'wilayah', 'id, kode_bps, nama, level, parent_id'),
+    fetchAll<Pick<JabatanRow, 'pejabat_id' | 'wilayah_id' | 'posisi' | 'status' | 'mulai_jabatan'>>(
+      supabase, 'jabatan', 'pejabat_id, wilayah_id, posisi, status, mulai_jabatan',
+    ),
+    fetchAll<Pick<PejabatRow, 'id' | 'nama_lengkap' | 'gelar_depan' | 'gelar_belakang'>>(
+      supabase, 'pejabat', 'id, nama_lengkap, gelar_depan, gelar_belakang',
+    ),
+  ])
+
+  const wilayahById = new Map<string, Wilayah>()
+  for (const w of wilayah) wilayahById.set(w.id, w)
+
+  const pejabatById = new Map<string, Pick<PejabatRow, 'id' | 'nama_lengkap' | 'gelar_depan' | 'gelar_belakang'>>()
+  for (const p of pejabat) {
+    if (!isPlaceholderName(p.nama_lengkap)) pejabatById.set(p.id, p)
+  }
+
+  // Best (top-rank) jabatan per pejabat among kepala-daerah-tier titles
+  const best = new Map<string, typeof jabatan[number]>()
+  for (const j of jabatan) {
+    const rank = LEADER_RANK[j.posisi ?? '']
+    if (rank === undefined) continue
+    if (!pejabatById.has(j.pejabat_id)) continue
+    const cur = best.get(j.pejabat_id)
+    if (!cur) { best.set(j.pejabat_id, j); continue }
+    const curRank = LEADER_RANK[cur.posisi ?? ''] ?? 99
+    if (rank < curRank) best.set(j.pejabat_id, j)
+    else if (rank === curRank && (j.mulai_jabatan ?? '') > (cur.mulai_jabatan ?? '')) {
+      best.set(j.pejabat_id, j)
+    }
+  }
+
+  const rows: LeaderRow[] = []
+  for (const [pid, j] of best) {
+    const w = wilayahById.get(j.wilayah_id)
+    if (!w) continue
+    const p = pejabatById.get(pid)!
+    const provNama =
+      w.level === 'provinsi'
+        ? w.nama
+        : w.parent_id
+          ? wilayahById.get(w.parent_id)?.nama ?? ''
+          : ''
+    rows.push({
+      id: p.id,
+      nama: p.nama_lengkap,
+      posisi: j.posisi ?? '',
+      wilayah: w.nama,
+      wilayah_level: w.level as LeaderRow['wilayah_level'],
+      provinsi: provNama,
+    })
+  }
+
+  rows.sort((a, b) => {
+    const ra = LEADER_RANK[a.posisi] ?? 99
+    const rb = LEADER_RANK[b.posisi] ?? 99
+    if (ra !== rb) return ra - rb
+    if (a.provinsi !== b.provinsi) return a.provinsi.localeCompare(b.provinsi)
+    return a.wilayah.localeCompare(b.wilayah)
+  })
+
+  return rows
+}
+
 // ─── Pejabat listing (for /pejabat page) ──────────────────────────────────────
 
 export interface PejabatCard {
