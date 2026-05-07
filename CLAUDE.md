@@ -136,7 +136,104 @@ Final DB state at end of session:
 
 DB state unchanged this session.
 
+### Session 5 — 2026-05-07 (Phase 9A pilot: LLM-agent backfill on DIY + Kalsel)
+- **Built `scraper/agent.py`** — `research_pejabat(jabatan, wilayah)` runs 4 search queries via existing `websearch.py` (DDG/Jina + SearXNG), fetches up to 5 pages prioritizing `.go.id` and Wikipedia, hands them to the LLM with a strict JSON schema (must include verbatim `kutipan` per source). `verify_citations()` re-fetches each cited URL via Jina and checks both the kutipan substring (first 60 chars) and the claimed name appear in the page. Acceptance rule: ≥2 verified sources OR exactly 1 verified `.go.id`. Reject otherwise → leave placeholder.
+- **Built `scripts/run_agent_backfill.py`** — resumable, queries placeholder pejabat per-province, calls research+verify, updates pejabat row in-place with verified data. Log at `scripts/agent_backfill_log.json`. Args: `--provinsi`, `--dry-run`, `--resume`, `--limit`, `--rate`.
+- **Model trial — GLM 4.7 (thinking) → GLM 4.5-air:**
+  - First tried `glm-4.7`. Worked but **2 of 7 DIY targets burned all 4096 max_tokens on internal reasoning** (`reasoning_len=14036`, etc.) and returned empty `content`. Bumped to `max_tokens=4096`, then `360s` HTTP timeout, then realized the issue is the model itself: thinking models reason verbosely regardless of task complexity. The actual job here (extract structured data from already-fetched text) doesn't benefit from CoT — *we did the work in Python before the LLM saw anything*.
+  - Switched to `glm-4.5-air` for Kalsel. Kalsel target 7 *also* burned ~12.7k tokens on reasoning despite "air" branding — this provider's "air" variant still emits CoT sometimes. Acceptable failure mode (rejection, not bad data).
+- **Added robustness fixes** during the run:
+  - Strip JS-style `// comments` and trailing commas from LLM output before `json.loads`.
+  - `_extract_json()` walks the output with bracket counting to find the outermost balanced `{...}` block — tolerates leading prose and trailing commentary.
+  - Reduced sources fed to LLM from 6 pages × 3500 chars to 5 × 2500 chars to leave more headroom for output tokens.
+  - `_name_in_text()` does a windowed match (first two name tokens within 80 chars) so verification doesn't fail just because the source has gelar inserts between first/last names.
+- **Pilot results (combined DIY + Kalsel):**
+
+| province | placeholders before | verified this run | placeholders after | yield |
+|---|---|---|---|---|
+| DI Yogyakarta | 7 | 4 | 3 | 57% |
+| Kalimantan Selatan | 14 | 5 | 9 | 36% |
+| **total** | **21** | **9** | **12** | **43%** |
+
+  Real-name pejabat: DIY 5→9, Kalsel 13→18. **Zero unverified data inserted** — the citation rule held. Rejection breakdown across 12: ~7 had only 1 non-`.go.id` verified source (would have passed if rule loosened), ~3 had 0 verified (model paraphrased the kutipan or hallucinated the quote), ~2 the model self-rejected ("not enough info as of 2026").
+- **Cost:** ~21 calls × ~3 sources × Jina fetch + ~21 LLM calls (mostly `glm-4.5-air`, 2 `glm-4.7`). Negligible — well under $1 of credits.
+- **Net judgment:** the `verify_citations()` rigor is the key value-add over the original scraper. Loosening to "1 source any domain" would lift yield to ~76% but reintroduces the hallucination-friendly mode the old scraper had. **Keep the strict rule, improve sourcing instead.**
+
 ## Next Session Should Start With
+
+**Top priority — improve Phase 9A yield, then scale to remaining 20 provinces.**
+
+Phase 9A pipeline is built and proven on the DIY + Kalsel pilot (Session 5). Combined yield 9/21 = 43% with **zero unverified data inserted**. Before scaling to the other 20 below-65%-coverage provinces, address the two yield-killers we identified:
+
+### Yield improvement #1 — better sourcing (target: +20% yield)
+
+Of 12 rejections in the pilot, ~7 were "found a name with 1 non-`.go.id` source." This means the model often gets it right but our query mix doesn't surface enough corroborating sources. Fixes to try in `scraper/agent.py:_build_queries()`:
+
+- Add explicit news-site-targeted queries: `"<jabatan> <wilayah>" site:detik.com OR site:kompas.com OR site:antaranews.com`
+- Add KPU-targeted: `"<wilayah>" pelantikan bupati 2025 site:kpu.go.id`
+- Try `"dilantik sebagai <jabatan>"` phrasing — Indonesian news convention
+- Currently `_gather_sources` caps at 5 fetched pages. Try 7 — Jina is cheap.
+
+### Yield improvement #2 — kutipan verification is too strict (target: +10% yield)
+
+`_verify_one()` checks the first 60 chars of the model's `kutipan` appear verbatim in the page text. ~3 rejections had 0 verified sources because models slightly paraphrase even when told not to. Two non-mutually-exclusive options:
+
+- Lower the kutipan probe to first 30 chars (still meaningful but tolerates whitespace/punctuation diffs).
+- Drop the kutipan check entirely and rely solely on "name appears in page text" — but **only if** the page domain is in a trust allowlist (`.go.id`, `wikipedia.org`, top-tier news). For untrusted domains keep the strict kutipan rule.
+
+### Yield improvement #3 — model self-rejection (target: +5% yield)
+
+2 rejections were the model itself saying "I'm not sure if this is the current officeholder as of 2026." Fix the prompt: drop the "asumsikan pejabat aktif per tanggal ini" phrasing — this *invites* the model to second-guess. Replace with: "Berikan nama yang paling baru disebutkan dalam sumber sebagai pejabat saat ini."
+
+### Then: scale to all 20 remaining provinces
+
+Once yield is >55% combined, run agent backfill on the 20 remaining below-65% provinces (see priority list at bottom). Order by placeholder count desc to maximize impact per provider call.
+
+```bash
+# After tuning, scale-out command pattern:
+for prov in "Bengkulu" "DKI Jakarta" "Kalimantan Utara" ...; do
+  python scripts/run_agent_backfill.py --provinsi "$prov" --resume
+done
+python scripts/report_province_coverage.py
+```
+
+`--resume` is safe to use across runs — already-verified targets are skipped.
+
+### Phase 9B — LHKPN integration (after 9A converges)
+
+Once names are reliable, add the data that actually matters for the public-interest goal: **wealth + education from KPK's LHKPN database** (`elhkpn.kpk.go.id`). Every kepala daerah is legally required to file. This is structured, authoritative, and directly answers "how rich + how educated" without LLM hallucination risk.
+
+- Captcha is real on elhkpn → Playwright with manual captcha solve, or check if there's a public API endpoint
+- Schema additions: `pejabat.kekayaan_total`, `pejabat.kekayaan_breakdown` (assets/debts/etc), `pejabat.pendidikan_terakhir`
+- Public UI: wealth bar chart per pejabat, education badge, link to original LHKPN PDF
+
+### Phase 9C — Corruption history (later)
+
+Search KPK case archive + ICW database + news filtered to "tersangka/vonis/tipikor" terms. Same agent pattern as 9A but with stricter verification (only insert if source is KPK/court/major-news). Defer until 9A+9B are stable.
+
+### Phase 9B — LHKPN integration (serves the origin thesis)
+
+Once names are reliable, add the data that actually matters for the public-interest goal: **wealth + education from KPK's LHKPN database** (`elhkpn.kpk.go.id`). Every kepala daerah is legally required to file. This is structured, authoritative, and directly answers "how rich + how educated" without LLM hallucination risk.
+
+- Captcha is real on elhkpn → Playwright with manual captcha solve, or check if there's a public API endpoint
+- Schema additions: `pejabat.kekayaan_total`, `pejabat.kekayaan_breakdown` (assets/debts/etc), `pejabat.pendidikan_terakhir`
+- Public UI: wealth bar chart per pejabat, education badge, link to original LHKPN PDF
+
+### Phase 9C — Corruption history (later)
+
+Search KPK case archive + ICW database + news filtered to "tersangka/vonis/tipikor" terms. Same agent pattern as 9A but with stricter verification (only insert if source is KPK/court/major-news). Defer until 9A+9B are stable.
+
+---
+
+**Why not just keep rescraping with the old pipeline?** Session 4 confirmed: same Wikipedia, same DDG/Jina queries, same LLM extraction prompt → same blind spots. Session 5 proved the agent path works (43% yield, zero fake data) on DIY + Kalsel.
+
+**Note on the model:** The CLAUDE.md previously named "GLM 4.7 with web search ability" as the agent backbone. In practice we don't use Z.AI's native web_search tool — `scraper/agent.py` does the search in Python (existing `websearch.py` → DDG/Jina + SearXNG) and feeds pre-fetched text to the model. Currently using `glm-4.5-air` per `config.yaml:agent_llm.model` after GLM 4.7's verbose CoT exhausted token budgets in the pilot.
+
+**Why not skip 9A and go straight to LHKPN?** LHKPN forms are filed by name. We need the right name list first, otherwise we'll scrape LHKPN for "Bupati Kabupaten X" placeholder strings and get nothing.
+
+---
+
+## Earlier session context (still useful reference)
 
 **Phase 7 + Phase 8 #2 (kab/kota drill-down) DONE.** Phase 8 #3 (public flag flow) was already wired in Phase 4 — smoke-tested end-to-end this session, found and fixed a stale postgrest query in `/admin/review` that was hiding all flags.
 
@@ -211,11 +308,10 @@ python scripts/report_province_coverage.py
 
 Or batch all 22 below 65% — leave overnight and run `report_province_coverage.py` next morning to confirm coverage rose.
 
-**Remaining Phase 8 directions (pick next):**
-1. **Pejabat profile page polish** — `/[pejabat-id]/page.tsx` already exists from Phase 4; verify it renders well with the new data and links from cards.
-2. **SEO + sharing** — sitemap.xml of all 1096 pejabat pages, OpenGraph cards per pejabat, structured data.
-3. **Per-province alias map** for the 6 unmatched kab/kota polygons (see Open polish items).
-4. **`--older-than 30d` rescrape flag** — low priority since Session 4 confirmed rescraping yields ~+1 real name per province at the cost of corrupting some existing entries. Better lever: focus on improving the LLM extraction prompts in `scraper/`.
+**Remaining Phase 8 directions (deferred — Phase 9 takes priority):**
+1. **SEO + sharing** — sitemap.xml of all 1096 pejabat pages, OpenGraph cards per pejabat, structured data. Do this *after* 9A so the sitemap reflects real data.
+2. **Per-province alias map** for the 6 unmatched kab/kota polygons (see Open polish items). 30-min chore, do whenever.
+3. **`--older-than 30d` rescrape flag** — abandoned. Phase 9A replaces this entirely.
 
 Stack notes (still valid):
 - Check `web/AGENTS.md` — this Next.js (16.2.4 + React 19.2) has breaking changes vs training data. Read relevant docs from `web/node_modules/next/dist/docs/` before writing route/layout code.

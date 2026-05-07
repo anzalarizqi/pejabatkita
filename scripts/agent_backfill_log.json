@@ -1,0 +1,562 @@
+{
+  "runs": [
+    {
+      "provinsi": "DI Yogyakarta",
+      "started_at": "2026-05-07T13:57:53.046112+00:00",
+      "dry_run": true,
+      "targets_total": 7,
+      "verified": 0,
+      "rejected": 0,
+      "errors": 1,
+      "finished_at": "2026-05-07T14:01:20.628268+00:00"
+    },
+    {
+      "provinsi": "DI Yogyakarta",
+      "started_at": "2026-05-07T14:02:24.039742+00:00",
+      "dry_run": true,
+      "targets_total": 7,
+      "verified": 1,
+      "rejected": 0,
+      "errors": 0,
+      "finished_at": "2026-05-07T14:07:05.003267+00:00"
+    },
+    {
+      "provinsi": "DI Yogyakarta",
+      "started_at": "2026-05-07T14:25:34.676784+00:00",
+      "dry_run": false,
+      "targets_total": 7,
+      "verified": 4,
+      "rejected": 3,
+      "errors": 0,
+      "finished_at": "2026-05-07T15:03:22.256458+00:00"
+    },
+    {
+      "provinsi": "Kalimantan Selatan",
+      "started_at": "2026-05-07T15:08:37.324582+00:00",
+      "dry_run": false,
+      "targets_total": 14,
+      "verified": 5,
+      "rejected": 9,
+      "errors": 0,
+      "finished_at": "2026-05-07T15:31:24.671511+00:00"
+    }
+  ],
+  "results": {
+    "44736c64-327e-4bc6-9b69-b5c1b6577175::Gubernur": {
+      "wilayah_nama": "DI Yogyakarta",
+      "posisi": "Gubernur",
+      "ran_at": "2026-05-07T14:25:34.677028+00:00",
+      "dry_run": false,
+      "proposed_name": "Hamengku Buwono X",
+      "claimed_sources": [
+        {
+          "url": "https://setneg.go.id/baca/index/presiden_lantik_gubernur_dan_wakil_gubernur_diy_periode_2022_2027",
+          "title": "Presiden Lantik Gubernur dan Wakil Gubernur DIY Periode 2022-2027 | Sekretariat Negara",
+          "kutipan": "Pasangan calon gubernur dan wakil gubernur yang dilantik adalah Sri Sultan Hamengku Buwono X sebagai Gubernur DIY dan Kanjeng Gusti Pangeran Adipati Aryo Paku Alam X sebagai Wakil Gubernur DIY."
+        },
+        {
+          "url": "https://www.dprd-diy.go.id/gubernur-diy-lantik-pejabat-baru-dprd-tekankan-kolaborasi-dalam-pembangunan-diy/",
+          "title": "Gubernur DIY Lantik Pejabat Baru, DPRD Tekankan Kolaborasi dalam Pembangunan DIY",
+          "kutipan": "Gubernur Daerah Istimewa Yogyakarta, Sri Sultan Hamengku Buwono X, secara resmi melantik dan mengambil sumpah jabatan tiga Pegawai Negeri Sipil (PNS) di lingkungan Pemerintah Daerah DIY pada Senin (21/04/2025)."
+        },
+        {
+          "url": "https://warta.jogjakota.go.id/detail/index/33583",
+          "title": "Portal Berita Pemerintah Kota Yogyakarta - Gubernur DIY Lantik Sugeng Purwanto Sebagai Penjabat Wali Kota Yogya",
+          "kutipan": "Danurejan - Gubernur Daerah Istimewa Yogyakarta (DIY), Sri Sultan Hamengku Buwono X melantik Sugeng Purwanto sebagai Penjabat (Pj) Wali Kota Yogyakarta pada Rabu (22/5/2024) di Bangsal Kepatihan, menggantikan Singgih Raharjo yang telah selesai masa jabatan selama satu tahun sejak 22 Mei 2023."
+        }
+      ],
+      "confidence": 1.0,
+      "status": "verified",
+      "verified_sources": [
+        {
+          "url": "https://setneg.go.id/baca/index/presiden_lantik_gubernur_dan_wakil_gubernur_diy_periode_2022_2027",
+          "title": "Presiden Lantik Gubernur dan Wakil Gubernur DIY Periode 2022-2027 | Sekretariat Negara",
+          "kutipan": "Pasangan calon gubernur dan wakil gubernur yang dilantik adalah Sri Sultan Hamengku Buwono X sebagai Gubernur DIY dan Kanjeng Gusti Pangeran Adipati Aryo Paku Alam X sebagai Wakil Gubernur DIY."
+        },
+        {
+          "url": "https://warta.jogjakota.go.id/detail/index/33583",
+          "title": "Portal Berita Pemerintah Kota Yogyakarta - Gubernur DIY Lantik Sugeng Purwanto Sebagai Penjabat Wali Kota Yogya",
+          "kutipan": "Danurejan - Gubernur Daerah Istimewa Yogyakarta (DIY), Sri Sultan Hamengku Buwono X melantik Sugeng Purwanto sebagai Penjabat (Pj) Wali Kota Yogyakarta pada Rabu (22/5/2024) di Bangsal Kepatihan, menggantikan Singgih Raharjo yang telah selesai masa jabatan selama satu tahun sejak 22 Mei 2023."
+        }
+      ]
+    },
+    "44736c64-327e-4bc6-9b69-b5c1b6577175::Wakil Gubernur": {
+      "wilayah_nama": "DI Yogyakarta",
+      "posisi": "Wakil Gubernur",
+      "ran_at": "2026-05-07T14:29:32.241637+00:00",
+      "dry_run": false,
+      "status": "rejected_no_research"
+    },
+    "509f6bfb-e4ed-4653-9654-522473736365::Wakil Bupati": {
+      "wilayah_nama": "Kabupaten Gunung Kidul",
+      "posisi": "Wakil Bupati",
+      "ran_at": "2026-05-07T14:35:22.834767+00:00",
+      "dry_run": false,
+      "status": "rejected_no_research"
+    },
+    "b1fa45dc-b168-4a50-87b6-c72663cc5f21::Bupati": {
+      "wilayah_nama": "Kabupaten Kulon Progo",
+      "posisi": "Bupati",
+      "ran_at": "2026-05-07T14:41:38.332964+00:00",
+      "dry_run": false,
+      "status": "rejected_no_research"
+    },
+    "4918f1db-560f-4b47-b335-f0000889e072::Bupati": {
+      "wilayah_nama": "Kabupaten Sleman",
+      "posisi": "Bupati",
+      "ran_at": "2026-05-07T14:47:18.809502+00:00",
+      "dry_run": false,
+      "proposed_name": "Harda Kiswaya",
+      "claimed_sources": [
+        {
+          "url": "https://slemankab.bps.go.id/id/news/2025/02/20/195/bps-kabupaten-sleman-mengucapkan-selamat-atas-pelantikan-bupati-dan-wakil-bupati-kabupaten-sleman.html",
+          "title": "Keluarga Besar BPS KabupatenSleman mengucapkan Selamat atas pelantikan H.Harda Kiswaya, S.E, M.Si dan Bpk Danang Maharsa, S.E menjabat Bupati dan Wakil BupatiSleman periode 2025-2030.",
+          "kutipan": "Keluarga Besar BPS KabupatenSleman mengucapkan Selamat atas pelantikan H.Harda Kiswaya, S.E, M.Si dan Bpk Danang Maharsa, S.E menjabat Bupati dan Wakil BupatiSleman periode 2025-2030."
+        },
+        {
+          "url": "https://slemankab.go.id/",
+          "title": "Home - Slemankab",
+          "kutipan": "Sleman – Bupati Sleman, Harda Kiswaya, secara resmi melantik Sukarmin sebagai Dewan Pengawas PDAM Tirta Sembada pada Senin (4/5/2026)..."
+        }
+      ],
+      "confidence": 1.0,
+      "status": "verified",
+      "verified_sources": [
+        {
+          "url": "https://slemankab.go.id/",
+          "title": "Home - Slemankab",
+          "kutipan": "Sleman – Bupati Sleman, Harda Kiswaya, secara resmi melantik Sukarmin sebagai Dewan Pengawas PDAM Tirta Sembada pada Senin (4/5/2026)..."
+        }
+      ]
+    },
+    "4918f1db-560f-4b47-b335-f0000889e072::Wakil Bupati": {
+      "wilayah_nama": "Kabupaten Sleman",
+      "posisi": "Wakil Bupati",
+      "ran_at": "2026-05-07T14:53:25.164372+00:00",
+      "dry_run": false,
+      "proposed_name": "Danang Maharsa",
+      "claimed_sources": [
+        {
+          "url": "https://kab-sleman.kpu.go.id/blog/read/pelantikan-bupati-dan-wakil-bupati-terpilih-hasil-pilkada-serentak-tahun-2020-oleh-gubernur-daerah-istimewa-yogyakarta",
+          "title": "KPU KAB-SLEMAN - Pelantikan Bupati dan Wakil Bupati Terpilih Hasil Pilkada Serentak Tahun 2020 oleh Gubernur Daerah Istimewa Yogyakarta",
+          "kutipan": "Adapun kepala daerah dan wakil kepala daerah hasil pemilihan kepala daerah serentak tahun 2020 di kabupaten pada Daerah Istimewa Yogyakarta masa jabatan 2021-2026 yakni pasangan Dra. Hj. Kustini Sri Purnomo dan Danang Maharsa, SE."
+        },
+        {
+          "url": "https://slemankab.bps.go.id/id/news/2026/04/21/418/dukungan-wakil-bupati-sleman--se-2026.html",
+          "title": "Just a moment...",
+          "kutipan": "WakilBupatiSleman, Bapak Danang Maharsa, mengajak kita semua untuk menjadi bagian dari sejarah pembangunan dengan menyukseskan Sensus Ekonomi 2026."
+        },
+        {
+          "url": "https://slemankab.go.id/",
+          "title": "Home - Slemankab",
+          "kutipan": "Sleman – Pekan Olahraga Kabupaten (PORKAB) Sleman tahun 2026 resmi dibuka, Sabtu (2/5/2026). Wakil Bupati Sleman, Danang Maharsa memimpin..."
+        }
+      ],
+      "confidence": 1.0,
+      "status": "verified",
+      "verified_sources": [
+        {
+          "url": "https://slemankab.go.id/",
+          "title": "Home - Slemankab",
+          "kutipan": "Sleman – Pekan Olahraga Kabupaten (PORKAB) Sleman tahun 2026 resmi dibuka, Sabtu (2/5/2026). Wakil Bupati Sleman, Danang Maharsa memimpin..."
+        }
+      ]
+    },
+    "b1d413f5-a4f7-4a67-a473-3494a4fb9bac::Walikota": {
+      "wilayah_nama": "Kota Yogyakarta",
+      "posisi": "Walikota",
+      "ran_at": "2026-05-07T14:57:25.769973+00:00",
+      "dry_run": false,
+      "proposed_name": "Hasto Wardoyo",
+      "claimed_sources": [
+        {
+          "url": "https://dprd.jogjakota.go.id/detail/index/37949",
+          "title": "DEWAN PERWAKILAN RAKYAT DAERAH - Selamat Atas Dilantiknya Walikota dan Wakil Walikota Kota Yogyakarta",
+          "kutipan": "Selamat Bertugas Kepada Walikota dan Wakil Walikota Yogyakarta Masa Jabatan 2025-2030, Dr (HC) dr Hasto Wardoyo, SpOG (K) dan Wawan Harmawan, S.E., M.M., yang telah resmi dilantik oleh Presiden Republik Indonesia Prabowo Subianto di Istana Negara Jakarta pada Kamis (20/02)."
+        },
+        {
+          "url": "https://jogjakota.go.id/page/profil-pejabat",
+          "title": "Profil Pejabat",
+          "kutipan": "Nama Lengkap :Dr. (H.C.) dr. H. Hasto Wardoyo, Sp.OG (K)"
+        },
+        {
+          "url": "https://kota-yogyakarta.kpu.go.id/blog/read/kpu-kota-yogyakarta-serahkan-dokumen-pengusulan-pelantikan-hasto-wawan-sebagai-walikota-dan-wakil-walikota-yogyakarta-hasil-pemilihan-2024",
+          "title": "KPU KOTA-YOGYAKARTA - KPU Kota Yogyakarta Serahkan Dokumen Pengusulan Pelantikan Hasto-Wawan Sebagai Walikota dan Wakil Walikota Yogyakarta Hasil Pemilihan 2024",
+          "kutipan": "KPU KotaYogyakarta, secara resmi menyerahkan Surat Keputusan (SK) penetapan pelantikan Hasto Wardoyo dan Wawan Harmawan sebagai Walikota dan wakil Walikota terpilih dalam pemilihan kepala daerah Serentak Tahun 2024"
+        }
+      ],
+      "confidence": 1.0,
+      "status": "verified",
+      "verified_sources": [
+        {
+          "url": "https://jogjakota.go.id/page/profil-pejabat",
+          "title": "Profil Pejabat",
+          "kutipan": "Nama Lengkap :Dr. (H.C.) dr. H. Hasto Wardoyo, Sp.OG (K)"
+        }
+      ]
+    },
+    "a368603f-c180-4b18-9360-823a7716fcfe::Wakil Gubernur": {
+      "wilayah_nama": "Kalimantan Selatan",
+      "posisi": "Wakil Gubernur",
+      "ran_at": "2026-05-07T15:08:37.324658+00:00",
+      "dry_run": false,
+      "proposed_name": "Hasnuryadi Sulaiman",
+      "claimed_sources": [
+        {
+          "url": "https://dpkp.kalselprov.go.id/selamat-dan-sukses-h-muhidin-dan-h-hasnuryadi-sulaiman-atas-pelantikan-sebagai-gubernur-dan-wakil-gubernur-kalimantan-selatan-periode-20252030",
+          "title": "SELAMAT DAN SUKSES Atas Dilantiknya GUBERNUR DAN WAKIL GUBERNUR KALIMANTAN SELATAN PERIODE 2025-2030 H. MUHIDIN DAN H. HASNURYADI SULAIMAN",
+          "kutipan": "SELAMAT DAN SUKSES Atas Dilantiknya GUBERNUR DAN WAKIL GUBERNUR KALIMANTAN SELATAN PERIODE 2025-2030 H. MUHIDIN DAN H. HASNURYADI SULAIMAN"
+        },
+        {
+          "url": "https://id.wikipedia.org/wiki/Daftar_Wakil_Gubernur_Kalimantan_Selatan",
+          "title": "Daftar Wakil Gubernur Kalimantan Selatan",
+          "kutipan": "**Petahana Hasnuryadi Sulaiman** sejak 20 Februari 2025"
+        },
+        {
+          "url": "https://id.wikipedia.org/wiki/Pemilihan_umum_Gubernur_Kalimantan_Selatan_2024",
+          "title": "Pemilihan umum Gubernur Kalimantan Selatan 2024",
+          "kutipan": "Muhidin dan Hasnuryadi Sulaiman resmi dilantik sebagai Gubernur dan Wakil Gubernur Kalimantan Selatan periode 2025-2030 di Istana Negara pada 20 Februari 2025 oleh Presiden RI, Prabowo Subianto"
+        }
+      ],
+      "confidence": 1.0,
+      "status": "verified",
+      "verified_sources": [
+        {
+          "url": "https://dpkp.kalselprov.go.id/selamat-dan-sukses-h-muhidin-dan-h-hasnuryadi-sulaiman-atas-pelantikan-sebagai-gubernur-dan-wakil-gubernur-kalimantan-selatan-periode-20252030",
+          "title": "SELAMAT DAN SUKSES Atas Dilantiknya GUBERNUR DAN WAKIL GUBERNUR KALIMANTAN SELATAN PERIODE 2025-2030 H. MUHIDIN DAN H. HASNURYADI SULAIMAN",
+          "kutipan": "SELAMAT DAN SUKSES Atas Dilantiknya GUBERNUR DAN WAKIL GUBERNUR KALIMANTAN SELATAN PERIODE 2025-2030 H. MUHIDIN DAN H. HASNURYADI SULAIMAN"
+        }
+      ]
+    },
+    "9bb88956-9e4a-469a-9102-a5a17bc2b519::Wakil Bupati": {
+      "wilayah_nama": "Kabupaten Balangan",
+      "posisi": "Wakil Bupati",
+      "ran_at": "2026-05-07T15:10:27.563682+00:00",
+      "dry_run": false,
+      "proposed_name": "Akhmad Fauzi",
+      "claimed_sources": [
+        {
+          "url": "https://setda.balangankab.go.id/pberita/detail/1",
+          "title": "Abdul Hadi dan Akhmad Fauzi Resmi Dilantik sebagai Bupati dan Wakil Bupati Balangan Periode 2025-2030",
+          "kutipan": "Abdul Hadi dan Akhmad Fauzi resmi dilantik sebagai Bupati dan Wakil Bupati Balangan periode 2025-2030 oleh Presiden Republik Indonesia, Prabowo Subianto."
+        },
+        {
+          "url": "https://setda.balangankab.go.id/",
+          "title": "Sekretariat Daerah Kabupaten Balangan",
+          "kutipan": "Upacara Peringatan Hari Otonomi Daerah ke-30 di lingkup Pemerintah KabupatenBalangan yang dipimpin oleh WakilBupati, H. Akhmad Fauzi, berlangsung dengan khidmat."
+        },
+        {
+          "url": "https://setwan.balangankab.go.id/pberita/detail/21",
+          "title": "DPRD Balangan Tetapkan Pasangan Abdul Hadi dan A Fauzi Sebagai Bupati dan Wakil Bupati",
+          "kutipan": "Dewan Perwakilan Rakyat Daerah (DPRD) Kabupaten Balangan menyampaikan pengumuman penetapan pasangan terpilih Bupati dan Wakil Bupati Balangan masa jabatan 2025-2030."
+        }
+      ],
+      "confidence": 1.0,
+      "status": "verified",
+      "verified_sources": [
+        {
+          "url": "https://setda.balangankab.go.id/pberita/detail/1",
+          "title": "Abdul Hadi dan Akhmad Fauzi Resmi Dilantik sebagai Bupati dan Wakil Bupati Balangan Periode 2025-2030",
+          "kutipan": "Abdul Hadi dan Akhmad Fauzi resmi dilantik sebagai Bupati dan Wakil Bupati Balangan periode 2025-2030 oleh Presiden Republik Indonesia, Prabowo Subianto."
+        },
+        {
+          "url": "https://setda.balangankab.go.id/",
+          "title": "Sekretariat Daerah Kabupaten Balangan",
+          "kutipan": "Upacara Peringatan Hari Otonomi Daerah ke-30 di lingkup Pemerintah KabupatenBalangan yang dipimpin oleh WakilBupati, H. Akhmad Fauzi, berlangsung dengan khidmat."
+        },
+        {
+          "url": "https://setwan.balangankab.go.id/pberita/detail/21",
+          "title": "DPRD Balangan Tetapkan Pasangan Abdul Hadi dan A Fauzi Sebagai Bupati dan Wakil Bupati",
+          "kutipan": "Dewan Perwakilan Rakyat Daerah (DPRD) Kabupaten Balangan menyampaikan pengumuman penetapan pasangan terpilih Bupati dan Wakil Bupati Balangan masa jabatan 2025-2030."
+        }
+      ]
+    },
+    "2cd6f177-9f6a-4f63-850b-b03ddce57e53::Wakil Bupati": {
+      "wilayah_nama": "Kabupaten Banjar",
+      "posisi": "Wakil Bupati",
+      "ran_at": "2026-05-07T15:11:55.487933+00:00",
+      "dry_run": false,
+      "proposed_name": "H. SAID IDRUS",
+      "claimed_sources": [
+        {
+          "url": "https://home.banjarkab.go.id/profil-2/profil-wakil-bupati-banjar/",
+          "title": "PROFIL WAKIL BUPATI BANJAR",
+          "kutipan": "Nama : H. SAID IDRUS"
+        },
+        {
+          "url": "https://layanan.banjarkab.go.id/p/profil-wakil-bupati-banjar",
+          "title": "Profil Wakil Bupati Banjar",
+          "kutipan": "Nama : **H. SAID IDRUS**"
+        },
+        {
+          "url": "https://wartabanjar.com/2025/02/20/resmi-dilantik-jadi-bupati-dan-wakil-bupati-banjar-saidi-mansyur-said-idrus-al-habsyi-berharap-bisa-amanah-dan-berdedikasi-penuh/",
+          "title": "Resmi Dilantik Jadi Bupati dan Wakil Bupati Banjar: Saidi Mansyur-Said Idrus Al Habsyi Berharap Bisa Amanah dan Berdedikasi Penuh",
+          "kutipan": "Pasangan Bupati dan Wakil Bupati Banjar terpilih, Saidi Mansyur-Said Idrus Al Habsyi resmi dilantik menjadi kepala daerah Kabupaten Banjar oleh Presiden Prabowo di Istana Kepresidenan, Jakarta, Kamis (20/2/2025)."
+        }
+      ],
+      "confidence": 0.9,
+      "status": "verified",
+      "verified_sources": [
+        {
+          "url": "https://home.banjarkab.go.id/profil-2/profil-wakil-bupati-banjar/",
+          "title": "PROFIL WAKIL BUPATI BANJAR",
+          "kutipan": "Nama : H. SAID IDRUS"
+        },
+        {
+          "url": "https://layanan.banjarkab.go.id/p/profil-wakil-bupati-banjar",
+          "title": "Profil Wakil Bupati Banjar",
+          "kutipan": "Nama : **H. SAID IDRUS**"
+        },
+        {
+          "url": "https://wartabanjar.com/2025/02/20/resmi-dilantik-jadi-bupati-dan-wakil-bupati-banjar-saidi-mansyur-said-idrus-al-habsyi-berharap-bisa-amanah-dan-berdedikasi-penuh/",
+          "title": "Resmi Dilantik Jadi Bupati dan Wakil Bupati Banjar: Saidi Mansyur-Said Idrus Al Habsyi Berharap Bisa Amanah dan Berdedikasi Penuh",
+          "kutipan": "Pasangan Bupati dan Wakil Bupati Banjar terpilih, Saidi Mansyur-Said Idrus Al Habsyi resmi dilantik menjadi kepala daerah Kabupaten Banjar oleh Presiden Prabowo di Istana Kepresidenan, Jakarta, Kamis (20/2/2025)."
+        }
+      ]
+    },
+    "a53b9914-eb46-4be8-8d4a-aa948fb183f1::Wakil Bupati": {
+      "wilayah_nama": "Kabupaten Barito Kuala",
+      "posisi": "Wakil Bupati",
+      "ran_at": "2026-05-07T15:13:16.295286+00:00",
+      "dry_run": false,
+      "proposed_name": "Herman Susilo",
+      "claimed_sources": [
+        {
+          "url": "https://www.mediapublikk.com/2025/03/bupati-bahrul-ilmi-kalau-bukan-kita.html",
+          "title": "Bupati Bahrul Ilmi : Kalau Bukan Kita, Siapa Lagi Yang Di Harapkan Sejahterakan Masyarakat",
+          "kutipan": "Bupati Barito Kuala Dr. H. Bahrul Ilmi, S.H., M.H. menyampaikan terima kasih kepada seluruh masyarakat Kabupaten Barito Kuala yang telah memberikan kepercayaan kepadanya dan Herman Susilo sebagai Bupati dan Wakil Bupati Barito Kuala 2025-2030."
+        },
+        {
+          "url": "https://lenterakalimantan.com/2025/03/bupati-bahrul-ilmi-kalau-bukan-kita-siapa-lagi-yang-diharapkan-mensejahterakan-masyarakat/",
+          "title": "Bupati Bahrul Ilmi : Kalau Bukan Kita Siapa Lagi Yang Diharapkan Mensejahterakan Masyarakat",
+          "kutipan": "Bupati Barito Kuala Dr. H. Bahrul Ilmi, S.H., M.H. menyampaikan terima kasih kepada seluruh masyarakat Kabupaten Barito Kuala yang telah memberikan kepercayaan kepadanya dan Herman Susilo sebagai Bupati dan Wakil Bupati Barito Kuala 2025-2030."
+        }
+      ],
+      "confidence": 1.0,
+      "status": "rejected_unverifiable",
+      "verified_count": 1
+    },
+    "e49a759d-9edd-4d68-882c-4bd43269194e::Bupati": {
+      "wilayah_nama": "Kabupaten Hulu Sungai Selatan",
+      "posisi": "Bupati",
+      "ran_at": "2026-05-07T15:14:24.593762+00:00",
+      "dry_run": false,
+      "status": "rejected_no_research"
+    },
+    "f6a29b6e-5d3e-4ee4-b6c2-801e3801fec5::Bupati": {
+      "wilayah_nama": "Kabupaten Tabalong",
+      "posisi": "Bupati",
+      "ran_at": "2026-05-07T15:16:16.533721+00:00",
+      "dry_run": false,
+      "status": "rejected_no_research"
+    },
+    "911fc78a-9baf-4679-8275-94d95ce3e2cd::Bupati": {
+      "wilayah_nama": "Kabupaten Tanah Bumbu",
+      "posisi": "Bupati",
+      "ran_at": "2026-05-07T15:17:58.321008+00:00",
+      "dry_run": false,
+      "status": "rejected_no_research"
+    },
+    "911fc78a-9baf-4679-8275-94d95ce3e2cd::Wakil Bupati": {
+      "wilayah_nama": "Kabupaten Tanah Bumbu",
+      "posisi": "Wakil Bupati",
+      "ran_at": "2026-05-07T15:20:11.029006+00:00",
+      "dry_run": false,
+      "proposed_name": "Bahsanuddin",
+      "claimed_sources": [
+        {
+          "url": "https://radarbanjarmasin.jawapos.com/opini/1975670327/menanti-beraksi-sang-bupati-wakil-bupati-kabupaten-tanah-bumbu-ada-harapan-pertanian-maju-dan-petani-sejahtera",
+          "title": "Menanti BerAksi Sang Bupati - Wakil Bupati Kabupaten Tanah Bumbu (Ada Harapan Pertanian Maju dan Petani Sejahtera)",
+          "kutipan": "Pun, Kabupaten Tanah Bumbu juga memiliki pemimpin baru, yaitu pasangan Andi Rudi Latif, A.Md T, SH, MM dan H. Bahsanuddin, S. Sos, M. AP, sebagai Bupati dan Wakil Bupati masa bakti 2025-2030."
+        },
+        {
+          "url": "https://www.genpikalsel.com/dprd-tanah-bumbu-resmi-umumkan-pengangkatan-bupati-dan-wakil-bupati-terpilih-2025-2030/",
+          "title": "DPRD Tanah Bumbu Resmi Umumkan Pengangkatan Bupati dan Wakil Bupati Terpilih 2025-2030",
+          "kutipan": "BATULICIN - Dalam momen yang bersejarah bagi Kabupaten Tanah Bumbu, DPRD Tanah Bumbu menggelar Rapat Paripurna untuk mengumumkan pengusulan pengangkatan Bupati dan Wakil Bupati terpilih periode 2025-2030."
+        }
+      ],
+      "confidence": 0.9,
+      "status": "rejected_unverifiable",
+      "verified_count": 1
+    },
+    "4a9391a0-fb83-4d2f-8237-6c8513468d98::Bupati": {
+      "wilayah_nama": "Kabupaten Tanah Laut",
+      "posisi": "Bupati",
+      "ran_at": "2026-05-07T15:21:47.821471+00:00",
+      "dry_run": false,
+      "proposed_name": "Rahmat Trianto",
+      "claimed_sources": [
+        {
+          "url": "https://setda.tanahlautkab.go.id/main",
+          "title": "BupatiTanahLaut (Tala) H Rahmat Trianto berharap pemusnahan barang bukti pidana menjadi momentum untuk memperkuat kepercayaan masyarakat terhadap penegakan hukum sekaligus menjadi peringatan akan bahaya berbagai tindak pidana yang masih terjadi di tengah masyarakat.",
+          "kutipan": "BupatiTanahLaut (Tala) H Rahmat Trianto berharap pemusnahan barang bukti pidana menjadi momentum untuk memperkuat kepercayaan masyarakat terhadap penegakan hukum sekaligus menjadi peringatan akan bahaya berbagai tindak pidana yang masih terjadi di tengah masyarakat."
+        },
+        {
+          "url": "https://dprd.tanahlautkab.go.id/selamat-dan-sukses-atas-dilantiknya-h-rahmat-trianto--h-m-zazuli-sebagai-bupati--wakil-bupati-tanah-laut-periode-20252030",
+          "title": "SELAMAT DAN SUKSES ATAS DILANTIKNYA H. RAHMAT TRIANTO & H. M. ZAZULI SEBAGAI BUPATI & WAKIL BUPATI TANAH LAUT PERIODE 2025-2030",
+          "kutipan": "SELAMAT DAN SUKSES ATAS DILANTIKNYA H. RAHMAT TRIANTO & H. M. ZAZULI SEBAGAI BUPATI & WAKIL BUPATI TANAH LAUT PERIODE 2025-2030"
+        }
+      ],
+      "confidence": 0.8,
+      "status": "rejected_unverifiable",
+      "verified_count": 0
+    },
+    "4a9391a0-fb83-4d2f-8237-6c8513468d98::Wakil Bupati": {
+      "wilayah_nama": "Kabupaten Tanah Laut",
+      "posisi": "Wakil Bupati",
+      "ran_at": "2026-05-07T15:23:01.324641+00:00",
+      "dry_run": false,
+      "proposed_name": "Muhammad Zazuli",
+      "claimed_sources": [
+        {
+          "url": "https://wartabanjar.com/2025/02/20/resmi-dilantik-rahmat-trianto-muhammad-zazuli-pimpin-tanah-laut-2025-2030-siap-wujudkan-tala-simpun/",
+          "title": "Resmi Dilantik! Rahmat Trianto – Muhammad Zazuli Pimpin Tanah Laut 2025-2030, Siap Wujudkan \"Tala Simpun\"",
+          "kutipan": "H Rahmat Trianto dan H Muhammad Zazuli telah resmi dilantik sebagai Bupati dan Wakil Bupati Tanah Laut periode 2025-2030."
+        },
+        {
+          "url": "https://www.inspirasitala.co.id/bupati-dan-wabup-tala-2025-2030-resmi-dilantik-presiden-ri/",
+          "title": "Bupati dan Wabup Tala 2025 – 2030 Resmi Dilantik Presiden RI",
+          "kutipan": "H Rahmat Trianto dan H Muhammad Zazuli resmi dilantik sebagai Kepala Daerah dan Wakil Kepala Daerah Kabupaten Tanah Laut periode 2025-2030 oleh Presiden Republik Indonesia Prabowo Subinto di Istana Negara, Jakarta, pada Kamis (20/2/2025)"
+        },
+        {
+          "url": "https://nusawarta.id/dprd-tanah-laut-umumkan-bupati-dan-wakil-bupati-terpilih-periode-2025-2030/",
+          "title": "DPRD Tanah Laut Umumkan Bupati dan Wakil Bupati Terpilih Periode 2025-2030",
+          "kutipan": "Dewan Perwakilan Rakyat Daerah (DPRD) Kabupaten Tanah Laut (Tala) menggelar Rapat Paripurna untuk mengumumkan pasangan Bupati dan Wakil Bupati terpilih periode 2025-2030"
+        }
+      ],
+      "confidence": 0.95,
+      "status": "rejected_unverifiable",
+      "verified_count": 1
+    },
+    "dc4f4422-4ca7-4260-b512-28a29ce09f03::Wakil Bupati": {
+      "wilayah_nama": "Kabupaten Tapin",
+      "posisi": "Wakil Bupati",
+      "ran_at": "2026-05-07T15:24:37.839983+00:00",
+      "dry_run": false,
+      "proposed_name": "H. Juanda",
+      "claimed_sources": [
+        {
+          "url": "https://www.lezen.id/pilkada/pasangan-calon/bupati-dan-wakil-bupati/tapin/6305/h-yamani-h-juanda/1097",
+          "title": "Visi Misi H. Yamani - H. Juanda Calon BUPATI DAN WAKIL BUPATI KABUPATEN TAPIN - Info Pilkada",
+          "kutipan": "#### CALON WAKIL BUPATI\n\n##### [H. Juanda](https://www.lezen.id/pilkada/profil-calon/wakil-bupati/tapin/6305/h-juanda/2194)"
+        },
+        {
+          "url": "https://banjarmasin.tribunnews.com/2025/02/22/profil-bupati-tapin-h-yamani-dari-keluarga-petani-kini-orang-nomor-satu-bumi-ruhui-rahayu",
+          "title": "TribunNews.com - 403",
+          "kutipan": "H Yamani menggandeng H Juanda sebagai wakil Bupati Tapin."
+        }
+      ],
+      "confidence": 0.8,
+      "status": "rejected_unverifiable",
+      "verified_count": 1
+    },
+    "8c35a03d-0c5b-49df-a282-4680bc697e62::Wakil Walikota": {
+      "wilayah_nama": "Kota Banjar Baru",
+      "posisi": "Wakil Walikota",
+      "ran_at": "2026-05-07T15:26:01.554439+00:00",
+      "dry_run": false,
+      "proposed_name": "Wartono",
+      "claimed_sources": [
+        {
+          "url": "https://rsb.banjarkab.go.id/wabup-banjar-hadiri-pelantikan-wali-kota-dan-wakil-wali-kota-banjarbaru/",
+          "title": "Wabup Banjar Hadiri Pelantikan Wali Kota dan Wakil Wali Kota Banjarbaru",
+          "kutipan": "Hj Erna Lisa Halaby dan Wartono resmi dilantik sebagai Wali Kota dan Wakil Wali Kota Banjarbaru untuk masa jabatan 2025–2030."
+        },
+        {
+          "url": "https://prokom.banjarmasinkota.go.id/2025/06/pelantikan-wali-kota-dan-wakil-wali.html",
+          "title": "Pelantikan Wali Kota dan Wakil Wali Kota Banjarbaru",
+          "kutipan": "Hj Erna Lisa Halaby dan Wartono sebagai WaliKota dan WakilWaliKotaBanjarbaru terpilih, dilantik secara langsung oleh Gubernur Kalsel, H Muhidin di Gedung Idham Chalid Banjarbaru."
+        },
+        {
+          "url": "https://diskominfomc.kalselprov.go.id/2025/06/21/gubernur-kalsel-lantik-wali-kota-dan-wakil-wali-kota-banjarbaru-masa-jabatan-2025-2030/",
+          "title": "Gubernur Kalsel Lantik Wali Kota dan Wakil Wali Kota Banjarbaru Masa Jabatan 2025–2030",
+          "kutipan": "Gubernur Kalimantan Selatan (Kalsel), Muhidin secara resmi melantik WaliKota dan WakilWaliKotaBanjarbaru masa jabatan 2025-2030, Hj. Erna Lisa Halaby dan Wartono,"
+        },
+        {
+          "url": "https://bspjibanjarbaru.kemenperin.go.id/ucapan-selamat-atas-pelantikan-wali-kota-wakil-wali-kota-banjarbaru/",
+          "title": "Ucapan selamat atas Pelantikan Wali Kota & Wakil Wali Kota Banjarbaru - BSPJI BANJARBARU",
+          "kutipan": "Hj. Erna Lisa Halaby sebagai WaliKota Wartono, S.E sebagai WakilWaliKota Pada tanggal 21 Juni 2025 di Aula Idham Chalid Kantor Gubernur Kalsel, Banjarbaru."
+        }
+      ],
+      "confidence": 1.0,
+      "status": "verified",
+      "verified_sources": [
+        {
+          "url": "https://rsb.banjarkab.go.id/wabup-banjar-hadiri-pelantikan-wali-kota-dan-wakil-wali-kota-banjarbaru/",
+          "title": "Wabup Banjar Hadiri Pelantikan Wali Kota dan Wakil Wali Kota Banjarbaru",
+          "kutipan": "Hj Erna Lisa Halaby dan Wartono resmi dilantik sebagai Wali Kota dan Wakil Wali Kota Banjarbaru untuk masa jabatan 2025–2030."
+        },
+        {
+          "url": "https://diskominfomc.kalselprov.go.id/2025/06/21/gubernur-kalsel-lantik-wali-kota-dan-wakil-wali-kota-banjarbaru-masa-jabatan-2025-2030/",
+          "title": "Gubernur Kalsel Lantik Wali Kota dan Wakil Wali Kota Banjarbaru Masa Jabatan 2025–2030",
+          "kutipan": "Gubernur Kalimantan Selatan (Kalsel), Muhidin secara resmi melantik WaliKota dan WakilWaliKotaBanjarbaru masa jabatan 2025-2030, Hj. Erna Lisa Halaby dan Wartono,"
+        }
+      ]
+    },
+    "6b337dc1-4bea-4ed1-b81e-41458c2659ac::Bupati": {
+      "wilayah_nama": "Kota Banjarmasin",
+      "posisi": "Bupati",
+      "ran_at": "2026-05-07T15:28:19.449912+00:00",
+      "dry_run": false,
+      "proposed_name": "Muhammad Yamin HR",
+      "claimed_sources": [
+        {
+          "url": "https://www.banjarmasinkota.go.id/2025/",
+          "title": "Jelang Malam Pergantian Tahun, Wali Kota Banjarmasin Pantau Posko dan Tegaskan Larangan Penggunaan Kembang Api",
+          "kutipan": "MEDCENTBJM – Mendekati malam pergantian tahun 2026, Wali Kota Banjarmasin H. Muhammad Yamin HR bersama unsur-unsur Forkopimda dan SKPD terkait terjun langsung melaksanakan pemantauan kesiapan sejumla…"
+        },
+        {
+          "url": "https://www.banjarmasinkota.go.id/2025/02/sah-yamin-ananda-dilantik-presiden-ri.html",
+          "title": "Sah! Yamin-Ananda Dilantik Presiden RI Sebagai Walikota dan Wakil Walikota Banjarmasin",
+          "kutipan": "Saya rasa kami Wali KotaBanjarmasin yang pertama dilantik langsung, selama kemerdekaan Indonesia ke 79 ini,\" kesan Yamin. Dirinya pun berharap, momen ini dapat menyatukan dan menselaraskan program pemerintah pusat, pemerintah provinsi, pemerintah kota dan kabupaten se- Indonesia, dalam pelaksanaan di daerah masing-masing."
+        },
+        {
+          "url": "https://kdh.banjarmasinkota.go.id/",
+          "title": "Kepala Daerah Kota Banjarmasin",
+          "kutipan": "[![Image 2: Wali Kota Banjarmasin - MUHAMMAD YAMIN HR](https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgGQSUxVauGOpRdE-rdyS7VSPS-atRHXWKt5ZWTdzgp64N5BWGXuCYyXVNKujJqVMpo3i-ULhWoY95B9x5NFnz-qTX9BcdAH5YRq4IgQJQeInBjGdtbXWuvt47jvETcFSu7_M7kzHRpZa3jUaZ-r8y1n1AzVBSzneCxeZy9BprQfc9t8re41A_gXXyeEblD/w400/H%20M%20YAMIN%20HR%20-.png)](https://kdh.banjarmasinkota.go.id/2025/02/wali-kota-banjarmasin-muhammad-yamin-hr.html) ### [Wali Kota Banjarmasin - MUHAMMAD YAMIN HR](https://kdh.banjarmasinkota.go.id/2025/02/wali-kota-banjarmasin-muhammad-yamin-hr.html) Instagram Facebook Youtube Sahabat HMY www.sahabathmy.com"
+        }
+      ],
+      "confidence": 1.0,
+      "status": "verified",
+      "verified_sources": [
+        {
+          "url": "https://www.banjarmasinkota.go.id/2025/",
+          "title": "Jelang Malam Pergantian Tahun, Wali Kota Banjarmasin Pantau Posko dan Tegaskan Larangan Penggunaan Kembang Api",
+          "kutipan": "MEDCENTBJM – Mendekati malam pergantian tahun 2026, Wali Kota Banjarmasin H. Muhammad Yamin HR bersama unsur-unsur Forkopimda dan SKPD terkait terjun langsung melaksanakan pemantauan kesiapan sejumla…"
+        },
+        {
+          "url": "https://kdh.banjarmasinkota.go.id/",
+          "title": "Kepala Daerah Kota Banjarmasin",
+          "kutipan": "[![Image 2: Wali Kota Banjarmasin - MUHAMMAD YAMIN HR](https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgGQSUxVauGOpRdE-rdyS7VSPS-atRHXWKt5ZWTdzgp64N5BWGXuCYyXVNKujJqVMpo3i-ULhWoY95B9x5NFnz-qTX9BcdAH5YRq4IgQJQeInBjGdtbXWuvt47jvETcFSu7_M7kzHRpZa3jUaZ-r8y1n1AzVBSzneCxeZy9BprQfc9t8re41A_gXXyeEblD/w400/H%20M%20YAMIN%20HR%20-.png)](https://kdh.banjarmasinkota.go.id/2025/02/wali-kota-banjarmasin-muhammad-yamin-hr.html) ### [Wali Kota Banjarmasin - MUHAMMAD YAMIN HR](https://kdh.banjarmasinkota.go.id/2025/02/wali-kota-banjarmasin-muhammad-yamin-hr.html) Instagram Facebook Youtube Sahabat HMY www.sahabathmy.com"
+        }
+      ]
+    },
+    "6b337dc1-4bea-4ed1-b81e-41458c2659ac::Wakil Wali Kota": {
+      "wilayah_nama": "Kota Banjarmasin",
+      "posisi": "Wakil Wali Kota",
+      "ran_at": "2026-05-07T15:29:49.041278+00:00",
+      "dry_run": false,
+      "proposed_name": "Ananda",
+      "claimed_sources": [
+        {
+          "url": "https://www.banjarmasinkota.go.id/2025/",
+          "title": "Jelang Malam Pergantian Tahun, Wali Kota Banjarmasin Pantau Posko dan Tegaskan Larangan Penggunaan Kembang Api",
+          "kutipan": "Wali Kota Banjarmasin, H. Muhammad Yamin HR secara resmi melantik dan mengukuhkan Wakil Wali Kota Banjarmasin, Hj. Ananda, sebagai Ketua Gabungan Organisasi Wanita (GOW) Kota Banjarmasin"
+        },
+        {
+          "url": "https://disdukcapil.banjarmasinkota.go.id/2025/02/selamat-dan-sukses-atas-pelantikan-wali.html",
+          "title": "Selamat dan Sukses atas Pelantikan Wali Kota dan Wakil Wali Kota Banjarmasin Periode 2025 - 2030",
+          "kutipan": "Keluarga besar Dinas Kependudukan dan Pencatatan Sipil KotaBanjarmasin mengucapkan Selamat dan Sukses atas Pelantikan Bapak H. M. YAMIN HR dan Ibu Hj. ANANDA Sebagai WaliKota dan WakilWaliKotaBanjarmasin Periode 2025 - 2030"
+        },
+        {
+          "url": "https://pn-banjarmasin.go.id/web/index.php/berita/berita-terkini/763-kunjungan-ibu-hj-ananda-wakil-walikota-banjarmasin-periode-2025-2030-pada-pengadilan-negeri-banjarmasin",
+          "title": "Kunjungan Ibu Hj. Ananda Wakil Walikota Banjarmasin Periode 2025-2030 Pada Pengadilan Negeri Banjarmasin",
+          "kutipan": "Dalam pertemuan bersama tersebut disambut oleh Ketua, Wakil Ketua, Panitera dan Sekretaris, selain bersilaturahmi memperkenalkan diri sebagai wakilwalikotaBanjarmasin yang baru, Ibu Hj. Ananda juga membahas mengenai pelayanan yang diberikan oleh Pengadilan Negeri kepada masyarakat pencari keadilan, lebih khusus masyarakat kotaBanjarmasin."
+        }
+      ],
+      "confidence": 1.0,
+      "status": "rejected_unverifiable",
+      "verified_count": 0
+    }
+  }
+}

@@ -43,3 +43,13 @@ scraper:
   delay_between_requests: 2
   max_retries: 3
   confidence_threshold_review: 0.5
+
+# Phase 9A — LLM-agent backfill. Separate from scraper LLM so the existing
+# pipeline (glm-4.5-air) is untouched. Model needs broad web reasoning.
+agent_llm:
+  provider: zhipu
+  base_url: https://api.z.ai/api/coding/paas/v4
+  model: glm-4.5-air
+  api_key_env: ZHIPUAI_API_KEY
+  search_queries_per_pejabat: 4
+  rate_limit_seconds: 1.0
