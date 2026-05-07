@@ -1,6 +1,12 @@
 import Link from 'next/link'
+import IndonesiaMap from './_components/IndonesiaMap'
+import { listProvinceCounts } from '@/lib/queries'
 
-export default function HomePage() {
+export const dynamic = 'force-dynamic'
+
+export default async function HomePage() {
+  const provinces = await listProvinceCounts()
+  const total = provinces.reduce((acc, p) => acc + p.count, 0)
   return (
     <>
       <style>{`
@@ -181,6 +187,40 @@ export default function HomePage() {
           height: 3px;
           background: var(--accent);
         }
+
+        .home-map {
+          padding: 64px 48px 80px;
+          border-top: 1px solid var(--rule);
+        }
+        .map-header {
+          max-width: 800px;
+          margin: 0 auto 36px;
+          text-align: center;
+        }
+        .map-eyebrow {
+          font-size: 10px;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          color: var(--accent);
+          margin-bottom: 14px;
+        }
+        .map-title {
+          font-family: 'Fraunces', serif;
+          font-size: clamp(28px, 4vw, 44px);
+          font-weight: 200;
+          line-height: 1.15;
+          color: var(--ink);
+        }
+        .map-title em { font-style: italic; color: var(--accent); }
+        .map-credit {
+          margin-top: 18px;
+          font-size: 10px;
+          letter-spacing: 0.08em;
+          color: var(--muted);
+          text-align: right;
+        }
+        .map-credit a { color: var(--muted); text-decoration: underline; }
+        .map-credit a:hover { color: var(--ink); }
       `}</style>
 
       <div className="home-root">
@@ -204,14 +244,30 @@ export default function HomePage() {
             Data dikumpulkan dari sumber resmi, diverifikasi, dan diperbarui secara berkala.
           </p>
           <div className="hero-actions">
-            <Link href="/admin/dashboard" className="btn-primary">
-              Panel Admin →
+            <Link href="/pejabat" className="btn-primary">
+              Telusuri Direktori →
             </Link>
             <Link href="/admin/login" className="btn-ghost">
-              Masuk
+              Panel Admin
             </Link>
           </div>
         </main>
+
+        <section className="home-map">
+          <div className="map-header">
+            <p className="map-eyebrow">Peta Sebaran · {total.toLocaleString('id-ID')} pejabat</p>
+            <h2 className="map-title">
+              Klik provinsi untuk <em>melihat datanya</em>
+            </h2>
+          </div>
+          <IndonesiaMap provinces={provinces} height={520} />
+          <p className="map-credit">
+            Geometri provinsi dari{' '}
+            <a href="https://github.com/assai-id/nemesis" target="_blank" rel="noopener noreferrer">
+              assai-id/nemesis
+            </a>.
+          </p>
+        </section>
 
         <footer className="home-footer">
           <span>© {new Date().getFullYear()} Peta Pejabat Indonesia</span>
