@@ -159,47 +159,63 @@ DB state unchanged this session.
 - **Cost:** ~21 calls × ~3 sources × Jina fetch + ~21 LLM calls (mostly `glm-4.5-air`, 2 `glm-4.7`). Negligible — well under $1 of credits.
 - **Net judgment:** the `verify_citations()` rigor is the key value-add over the original scraper. Loosening to "1 source any domain" would lift yield to ~76% but reintroduces the hallucination-friendly mode the old scraper had. **Keep the strict rule, improve sourcing instead.**
 
+### Session 5 (continued) — 2026-05-08 Phase 9A polish v1 + v2
+
+**Polish v1 — sourcing + verification + prompt:**
+- Replaced 4 generic queries with 6 stratified queries (`site:go.id`, `site:kpu.go.id`, `"dilantik sebagai"`, news-site-or'd, terpilih-2024, plain). Bumped fetched-page cap from 5 → 7.
+- `_verify_one()` now branches on trust tier: `.go.id`, `wikipedia.org`, top-tier news (kompas/detik/antara/tempo/cnn/tribun/republika/liputan6) only need the name to appear in fetched text. Untrusted domains still need the kutipan probe (lowered to first 30 chars).
+- Removed the "asumsikan aktif per 2026" phrasing from the research prompt — it was inviting model second-guessing. Replaced with "berikan nama yang PALING BARU disebutkan… sumber adalah otoritas, bukan pengetahuanmu."
+- **v1 result on previously-rejected 12: 6 verified, lifting cumulative yield from 43% → 71%.**
+
+**Polish v2 — captcha detection + deeper pool + Playwright fallback + flag-for-manual:**
+- `_looks_like_captcha()` scans fetched text for Cloudflare/3-letter-403 markers ("performing security verification", "checking your browser", "just a moment", "cloudflare ray id", etc.). Marks affected pages as failed-fetch instead of feeding model a "security verification page" of nonsense.
+- `_gather_sources` now expands to 20 candidate URLs (was 5–7), keeps fetching until either 7 *clean* pages or all 20 candidates exhausted. Diagnostics (`candidates_tried`, `fetch_failures`) plumbed through `ResearchResult` for downstream use.
+- For `.go.id` URLs that come back as captcha pages, retry once via existing Playwright `browser.navigate()`. **Caveat:** Cloudflare often blocks headless Playwright too. Hit rate observed in pilot ~0% — the gov sites with strict bot fight win every time. Worth keeping for when a site has a soft challenge, but don't expect miracles.
+- **Stale-loop bug in `scraper/pipeline/browser.py`:** the lazy-singleton browser was created on a previous `asyncio.run()`'s loop. By the next `asyncio.run()` the underlying transport is dead, but `_browser.is_connected()` still returned True → `Browser.new_page` exploded with `'NoneType' object has no attribute 'send'`. Fixed by tracking the loop the browser was created on and discarding when it changes.
+- New script flow: when verification can't be satisfied, insert into the `flags` table (type=`system`, reason prefixed `[agent_unresolved]` plus the URL list and per-URL failure reasons) so it lands on `/admin/review` for human triage. Idempotent — duplicate flags are skipped.
+- `--resume` now also skips `flagged_unresolved` log entries (don't re-burn LLM tokens on hopeless cases without intent). Old "rejected_*" entries from earlier runs are retried — they pre-date the new failure modes.
+- **Migration `006_flag_type_agent.sql` written but NOT applied** — Supabase doesn't expose an `exec_sql` RPC and the user's env has no direct Postgres URL. The script currently uses `flag_type='system'` with an `[agent_unresolved]` reason prefix. Apply the migration via Supabase dashboard SQL editor when convenient and the prefix can become a proper enum value.
+- **v2 result on previously-rejected 6: 1 verified (Herman Susilo / Wakil Bupati Barito Kuala) + 4 flagged-for-manual + 0 silent placeholders.**
+
+**Final pilot scoreboard (cumulative across v0 + v1 + v2):**
+
+| | placeholders before | renamed | flagged-for-manual | placeholders left |
+|---|---|---|---|---|
+| DI Yogyakarta | 7 | 5 | 2 | 2 |
+| Kalimantan Selatan | 14 | 12 | 2 | 2 |
+| **total** | **21** | **17 (81%)** | **4 (19%)** | 4 (all flagged) |
+
+Zero silent failures. Every original placeholder has either a verified real name or a pending admin-review flag with full URL diagnostics.
+
+DB state: pejabat 1096 → 1096 (renames in-place), real-name count +17, agent_unresolved pending flags = 4.
+
 ## Next Session Should Start With
 
-**Top priority — improve Phase 9A yield, then scale to remaining 20 provinces.**
+**Top priority — scale Phase 9A to remaining 20 below-65% provinces.**
 
-Phase 9A pipeline is built and proven on the DIY + Kalsel pilot (Session 5). Combined yield 9/21 = 43% with **zero unverified data inserted**. Before scaling to the other 20 below-65%-coverage provinces, address the two yield-killers we identified:
-
-### Yield improvement #1 — better sourcing (target: +20% yield)
-
-Of 12 rejections in the pilot, ~7 were "found a name with 1 non-`.go.id` source." This means the model often gets it right but our query mix doesn't surface enough corroborating sources. Fixes to try in `scraper/agent.py:_build_queries()`:
-
-- Add explicit news-site-targeted queries: `"<jabatan> <wilayah>" site:detik.com OR site:kompas.com OR site:antaranews.com`
-- Add KPU-targeted: `"<wilayah>" pelantikan bupati 2025 site:kpu.go.id`
-- Try `"dilantik sebagai <jabatan>"` phrasing — Indonesian news convention
-- Currently `_gather_sources` caps at 5 fetched pages. Try 7 — Jina is cheap.
-
-### Yield improvement #2 — kutipan verification is too strict (target: +10% yield)
-
-`_verify_one()` checks the first 60 chars of the model's `kutipan` appear verbatim in the page text. ~3 rejections had 0 verified sources because models slightly paraphrase even when told not to. Two non-mutually-exclusive options:
-
-- Lower the kutipan probe to first 30 chars (still meaningful but tolerates whitespace/punctuation diffs).
-- Drop the kutipan check entirely and rely solely on "name appears in page text" — but **only if** the page domain is in a trust allowlist (`.go.id`, `wikipedia.org`, top-tier news). For untrusted domains keep the strict kutipan rule.
-
-### Yield improvement #3 — model self-rejection (target: +5% yield)
-
-2 rejections were the model itself saying "I'm not sure if this is the current officeholder as of 2026." Fix the prompt: drop the "asumsikan pejabat aktif per tanggal ini" phrasing — this *invites* the model to second-guess. Replace with: "Berikan nama yang paling baru disebutkan dalam sumber sebagai pejabat saat ini."
-
-### Then: scale to all 20 remaining provinces
-
-Once yield is >55% combined, run agent backfill on the 20 remaining below-65% provinces (see priority list at bottom). Order by placeholder count desc to maximize impact per provider call.
+The pipeline is fully built and pilot-validated (81% rename + 19% flagged, 0 silent). Run on the 20 remaining provinces in priority-list order. Estimated runtime ~6–8 hours for all 20 at observed pace (~3 min/target × ~150 targets total).
 
 ```bash
-# After tuning, scale-out command pattern:
-for prov in "Bengkulu" "DKI Jakarta" "Kalimantan Utara" ...; do
+# Scale-out — leave overnight. --resume is safe across crashes.
+for prov in \
+  "Bengkulu" "DKI Jakarta" "Kalimantan Utara" "Maluku Utara" \
+  "Papua Tengah" "Papua Barat Daya" "Sulawesi Selatan" "Aceh" \
+  "Maluku" "Nusa Tenggara Barat" "Kalimantan Barat" "Jambi" \
+  "Banten" "Sumatera Barat" "Sulawesi Utara" "Papua Barat" \
+  "Nusa Tenggara Timur" "Kalimantan Tengah" "Sulawesi Tengah" "Sumatera Utara"; do
   python scripts/run_agent_backfill.py --provinsi "$prov" --resume
 done
 python scripts/report_province_coverage.py
 ```
 
-`--resume` is safe to use across runs — already-verified targets are skipped.
+After scale-out: review `/admin/review` for the agent_unresolved flags, decide which to research manually (.go.id sites that even Playwright can't bypass might have the answer in a press-release PDF you can grab by hand).
 
-### Phase 9B — LHKPN integration (after 9A converges)
+### Optional v3 polish (defer unless yield drops on scale-out)
+- Apply migration `006_flag_type_agent.sql` and switch flags to proper `flag_type='agent_unresolved'` so `/admin/review` can filter them.
+- Add a `--retry-flagged` arg to `run_agent_backfill.py` to revisit `flagged_unresolved` log entries (e.g. after improving sourcing further).
+- Consider a paid CAPTCHA-solver fallback (2captcha / capsolver) for high-value `.go.id` pages — only worth it if a non-trivial number of governorships sit behind hard challenges.
+
+### Phase 9B — LHKPN integration (after 9A scale-out)
 
 Once names are reliable, add the data that actually matters for the public-interest goal: **wealth + education from KPK's LHKPN database** (`elhkpn.kpk.go.id`). Every kepala daerah is legally required to file. This is structured, authoritative, and directly answers "how rich + how educated" without LLM hallucination risk.
 

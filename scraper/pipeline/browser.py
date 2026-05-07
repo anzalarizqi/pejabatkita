@@ -7,12 +7,23 @@ logger = logging.getLogger(__name__)
 
 _playwright_instance = None
 _browser = None
+_browser_loop: asyncio.AbstractEventLoop | None = None
 _idle_task: asyncio.Task | None = None
 IDLE_SECONDS = 300  # close browser after 5 min idle
 
 
 async def _get_browser():
-    global _playwright_instance, _browser, _idle_task
+    global _playwright_instance, _browser, _idle_task, _browser_loop
+
+    cur_loop = asyncio.get_running_loop()
+    # If the cached browser was created on a prior event loop (e.g. a previous
+    # asyncio.run() invocation), its underlying transport is dead even though
+    # is_connected() may still report True. Discard and rebuild.
+    if _browser is not None and _browser_loop is not cur_loop:
+        logger.debug("Browser belongs to a stale event loop — discarding")
+        _browser = None
+        _playwright_instance = None
+        _browser_loop = None
 
     if _browser is None or not _browser.is_connected():
         try:
@@ -22,6 +33,7 @@ async def _get_browser():
                 headless=True,
                 args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
             )
+            _browser_loop = cur_loop
             logger.debug("Headless Chromium launched")
         except Exception as e:
             logger.error("Failed to launch browser: %s", e)

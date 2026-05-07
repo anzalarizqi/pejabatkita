@@ -34,7 +34,7 @@ import httpx
 import yaml
 from dotenv import load_dotenv
 
-from scraper.pipeline import websearch
+from scraper.pipeline import websearch, browser
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +71,9 @@ class ResearchResult:
     sumber: list[Citation] = field(default_factory=list)
     confidence: float = 0.0
     verified_sources: list[Citation] = field(default_factory=list)
+    # Diagnostics for flag-for-manual on giveup
+    candidates_tried: list[str] = field(default_factory=list)
+    fetch_failures: dict = field(default_factory=dict)  # url -> reason
 
     def to_dict(self) -> dict:
         return {
@@ -82,6 +85,8 @@ class ResearchResult:
             "sumber": [c.to_dict() for c in self.sumber],
             "confidence": self.confidence,
             "verified_sources": [c.to_dict() for c in self.verified_sources],
+            "candidates_tried": self.candidates_tried,
+            "fetch_failures": self.fetch_failures,
         }
 
 
@@ -139,6 +144,10 @@ def _agent_chat(prompt: str, *, max_tokens: int = 4096) -> str:
         ],
         "max_tokens": max_tokens,
         "temperature": 0.1,
+        # Force-disable CoT. Even glm-4.5-air sometimes thinks and burns the
+        # token budget without returning content. We don't need reasoning —
+        # the work was done in Python before the model saw anything.
+        "thinking": {"type": "disabled"},
     }
     headers = {
         "Content-Type": "application/json",
@@ -211,19 +220,78 @@ def _extract_json(text: str) -> str:
 
 
 def _build_queries(jabatan: str, wilayah: str) -> list[str]:
-    """Generate diverse queries — different angles, different domains."""
+    """Generate diverse queries — different angles, different domains.
+
+    Mix of: official-site (.go.id), KPU/inauguration, top news outlets,
+    Indonesian news phrasing ("dilantik sebagai"). The model gets at most
+    `max_pages` distinct results overall, ranked .go.id > wikipedia > else.
+    """
     return [
-        f'"{jabatan}" "{wilayah}" 2025',
-        f'"{jabatan} {wilayah}" dilantik',
-        f'site:go.id {jabatan} {wilayah}',
-        f'{jabatan} {wilayah} terpilih',
+        f'site:go.id "{jabatan}" "{wilayah}"',
+        f'site:kpu.go.id "{wilayah}" pelantikan',
+        f'"dilantik sebagai {jabatan}" "{wilayah}"',
+        f'"{jabatan} {wilayah}" 2025 site:detik.com OR site:kompas.com OR site:antaranews.com',
+        f'"{jabatan}" "{wilayah}" terpilih 2024',
+        f'"{jabatan} {wilayah}"',
     ]
 
 
+_CAPTCHA_MARKERS = (
+    "performing security verification",
+    "security verification",
+    "checking your browser",
+    "just a moment",
+    "cloudflare ray id",
+    "access denied",
+    "403 forbidden",
+    "<title>403",
+    "<title>access denied",
+    "ddos protection",
+    "challenge-platform",
+    "verifying you are human",
+)
+
+
+def _looks_like_captcha(text: str) -> bool:
+    if not text or len(text) < 200:
+        return True  # too short to contain real article content
+    head = text[:3000].lower()
+    return any(m in head for m in _CAPTCHA_MARKERS)
+
+
+async def _fetch_clean(url: str) -> tuple[str, str]:
+    """Fetch via Jina; if it returns captcha/empty AND url is .go.id, retry
+    via Playwright. Returns (text, failure_reason). text is empty on failure."""
+    try:
+        text = await websearch.read_url(url)
+    except Exception as e:
+        return "", f"jina-exc: {e}"
+    if not text:
+        return "", "jina-empty"
+    if _looks_like_captcha(text):
+        if _is_gov(url):
+            try:
+                pw_text = await browser.navigate(url)
+            except Exception as e:
+                return "", f"jina-captcha;pw-exc: {e}"
+            if pw_text and not _looks_like_captcha(pw_text):
+                return pw_text, ""
+            return "", "jina-captcha;pw-still-blocked"
+        return "", "jina-captcha"
+    return text, ""
+
+
 async def _gather_sources(
-    jabatan: str, wilayah: str, max_pages: int = 5
-) -> dict[str, dict]:
-    """Run queries, dedupe URLs, fetch top pages via Jina. Returns {url: {title, text}}."""
+    jabatan: str,
+    wilayah: str,
+    max_pages: int = 7,
+    max_candidates: int = 20,
+) -> tuple[dict[str, dict], list[str], dict[str, str]]:
+    """Run queries, dedupe URLs, fetch in priority order until we have
+    `max_pages` clean pages or exhaust `max_candidates` URLs.
+
+    Returns (fetched, candidates_tried, fetch_failures).
+    """
     queries = _build_queries(jabatan, wilayah)
     seen_urls: dict[str, dict] = {}
 
@@ -240,31 +308,47 @@ async def _gather_sources(
             if websearch.is_private_url(url):
                 continue
             seen_urls[url] = {"title": r.get("title", ""), "text": ""}
-            if len(seen_urls) >= max_pages * 2:
+            if len(seen_urls) >= max_candidates:
                 break
-        if len(seen_urls) >= max_pages * 2:
+        if len(seen_urls) >= max_candidates:
             break
 
-    # Fetch pages — prioritize .go.id, then take more until max_pages
     def _priority(url: str) -> int:
         host = (urlparse(url).hostname or "").lower()
         if host.endswith(".go.id"):
             return 0
         if "wikipedia.org" in host:
             return 1
-        return 2
+        if any(host.endswith(d) or host.endswith("." + d) for d in (
+            "kompas.com", "detik.com", "antaranews.com",
+            "tempo.co", "cnnindonesia.com", "tribunnews.com",
+        )):
+            return 2
+        return 3
 
-    ordered = sorted(seen_urls.keys(), key=_priority)[:max_pages]
+    ordered = sorted(seen_urls.keys(), key=_priority)
     fetched: dict[str, dict] = {}
+    tried: list[str] = []
+    failures: dict[str, str] = {}
+
     for url in ordered:
-        try:
-            text = await websearch.read_url(url)
-        except Exception as e:
-            logger.debug("read_url failed for %s: %s", url, e)
-            text = ""
+        if len(fetched) >= max_pages:
+            break
+        if len(tried) >= max_candidates:
+            break
+        tried.append(url)
+        text, reason = await _fetch_clean(url)
         if text:
             fetched[url] = {"title": seen_urls[url]["title"], "text": text}
-    return fetched
+        else:
+            failures[url] = reason or "unknown"
+
+    logger.info(
+        "  sources: %d fetched / %d tried / %d failed (%s)",
+        len(fetched), len(tried), len(failures),
+        ", ".join(sorted(set(failures.values()))) if failures else "none",
+    )
+    return fetched, tried, failures
 
 
 def _build_research_prompt(
@@ -280,10 +364,13 @@ def _build_research_prompt(
     return f"""
 Posisi yang dicari: {jabatan}
 Wilayah: {wilayah}
-Tanggal saat ini: 2026-05-07 (asumsikan pejabat yang aktif per tanggal ini)
 
 Sumber-sumber:
 {sources_block}
+
+Tugas: berikan nama pejabat yang PALING BARU disebutkan di sumber-sumber
+ini sebagai pemegang posisi tersebut. Jangan ragu jika sumber-sumber
+konsisten — sumber adalah otoritas, bukan pengetahuanmu.
 
 Kembalikan JSON sesuai schema. Pastikan setiap entri di `sumber` punya URL
 persis dari header "=== Sumber: ... ===" dan `kutipan` yang COPY-PASTE
@@ -293,11 +380,24 @@ dari sumber itu (mengandung nama pejabat). Minimal 2 sumber. Confidence
 
 
 def research_pejabat(jabatan: str, wilayah: str) -> Optional[ResearchResult]:
-    """Research current officeholder. Returns None on hard failure."""
-    sources = asyncio.run(_gather_sources(jabatan, wilayah))
+    """Research current officeholder. Returns None on hard failure.
+
+    A returned ResearchResult always carries `candidates_tried` and
+    `fetch_failures` so callers can surface them to manual triage."""
+    sources, tried, failures = asyncio.run(_gather_sources(jabatan, wilayah))
     if not sources:
-        logger.warning("No sources fetched for %s / %s", jabatan, wilayah)
-        return None
+        logger.warning(
+            "No clean sources for %s / %s — tried %d candidates",
+            jabatan, wilayah, len(tried),
+        )
+        # Return a stub result so caller can flag-for-manual with diagnostics.
+        return ResearchResult(
+            nama="",
+            gelar_depan=None, gelar_belakang=None,
+            status="kosong", mulai_jabatan=None,
+            sumber=[], confidence=0.0, verified_sources=[],
+            candidates_tried=tried, fetch_failures=failures,
+        )
 
     prompt = _build_research_prompt(jabatan, wilayah, sources)
     try:
@@ -320,7 +420,13 @@ def research_pejabat(jabatan: str, wilayah: str) -> Optional[ResearchResult]:
     if not nama:
         logger.info("Agent returned no name for %s / %s (catatan: %s)",
                     jabatan, wilayah, parsed.get("catatan"))
-        return None
+        return ResearchResult(
+            nama="",
+            gelar_depan=None, gelar_belakang=None,
+            status="kosong", mulai_jabatan=None,
+            sumber=[], confidence=0.0, verified_sources=[],
+            candidates_tried=tried, fetch_failures=failures,
+        )
 
     citations = []
     for s in parsed.get("sumber", []) or []:
@@ -341,6 +447,8 @@ def research_pejabat(jabatan: str, wilayah: str) -> Optional[ResearchResult]:
         mulai_jabatan=parsed.get("mulai_jabatan"),
         sumber=citations,
         confidence=float(parsed.get("confidence") or 0.0),
+        candidates_tried=tried,
+        fetch_failures=failures,
     )
 
 
@@ -378,7 +486,34 @@ def _name_in_text(nama: str, text_norm: str) -> bool:
         idx = i + 1
 
 
+_TRUSTED_DOMAINS = (
+    ".go.id",
+    "wikipedia.org",
+    "kompas.com",
+    "detik.com",
+    "antaranews.com",
+    "tempo.co",
+    "cnnindonesia.com",
+    "tribunnews.com",
+    "republika.co.id",
+    "liputan6.com",
+)
+
+
+def _is_trusted(url: str) -> bool:
+    host = (urlparse(url).hostname or "").lower()
+    return any(host == d or host.endswith("." + d) or host.endswith(d) for d in _TRUSTED_DOMAINS)
+
+
+def _is_gov(url: str) -> bool:
+    host = (urlparse(url).hostname or "").lower()
+    return host.endswith(".go.id")
+
+
 async def _verify_one(citation: Citation, nama: str) -> bool:
+    """Verify a citation. Trust tier defines the kutipan-strictness:
+    - Trusted domains (.go.id, wikipedia, top-tier news): name-only check.
+    - Other domains: name AND kutipan-probe must appear (30 char probe)."""
     if websearch.is_private_url(citation.url):
         return False
     text = await websearch.read_url(citation.url)
@@ -386,23 +521,20 @@ async def _verify_one(citation: Citation, nama: str) -> bool:
         logger.debug("verify: empty fetch for %s", citation.url)
         return False
     text_n = _norm(text)
-    kutipan_n = _norm(citation.kutipan)
-    # Allow partial kutipan match — first 60 chars, since LLMs sometimes
-    # paraphrase the tail. But require >=20 chars to mean anything.
-    kutipan_probe = kutipan_n[:60] if len(kutipan_n) >= 60 else kutipan_n
-    kutipan_ok = len(kutipan_probe) >= 20 and kutipan_probe in text_n
     nama_ok = _name_in_text(nama, text_n)
-    if not (kutipan_ok and nama_ok):
-        logger.debug(
-            "verify FAIL %s: kutipan_ok=%s nama_ok=%s",
-            citation.url, kutipan_ok, nama_ok,
-        )
-    return kutipan_ok and nama_ok
+    if not nama_ok:
+        logger.debug("verify FAIL %s: name not in page", citation.url)
+        return False
 
+    if _is_trusted(citation.url):
+        return True
 
-def _is_gov(url: str) -> bool:
-    host = (urlparse(url).hostname or "").lower()
-    return host.endswith(".go.id")
+    kutipan_n = _norm(citation.kutipan)
+    kutipan_probe = kutipan_n[:30] if len(kutipan_n) >= 30 else kutipan_n
+    kutipan_ok = len(kutipan_probe) >= 15 and kutipan_probe in text_n
+    if not kutipan_ok:
+        logger.debug("verify FAIL %s: untrusted domain + kutipan miss", citation.url)
+    return kutipan_ok
 
 
 def verify_citations(result: ResearchResult) -> Optional[ResearchResult]:

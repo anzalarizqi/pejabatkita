@@ -176,6 +176,60 @@ def target_key(t: dict) -> str:
 # ─── Update Supabase ─────────────────────────────────────────────────────────
 
 
+def flag_unresolved(supabase, target: dict, result, dry_run: bool) -> None:
+    """Insert an admin-review row when the agent gives up on a target.
+    Captures URL list + per-URL failure reason so a human can scan and
+    either insert manually or close out as 'no public info available'."""
+    fetch_failures = getattr(result, "fetch_failures", {}) if result else {}
+    candidates = getattr(result, "candidates_tried", []) if result else []
+    fail_summary: dict[str, int] = {}
+    for reason in fetch_failures.values():
+        fail_summary[reason] = fail_summary.get(reason, 0) + 1
+
+    parts = [
+        f"[agent_unresolved] {target['posisi']} @ {target['wilayah_nama']}.",
+        f"Tried {len(candidates)} candidate URLs.",
+    ]
+    if fail_summary:
+        parts.append(
+            "Fetch failures: "
+            + ", ".join(f"{r}={n}" for r, n in sorted(fail_summary.items()))
+            + "."
+        )
+    if result and getattr(result, "nama", ""):
+        parts.append(
+            f"Model proposed name {result.nama!r} but verification rejected."
+        )
+    parts.append("URLs tried:\n" + "\n".join(f"  - {u}" for u in candidates[:25]))
+    reason_text = "\n".join(parts)
+
+    if dry_run:
+        logger.info("  [dry-run] FLAG agent_unresolved on pejabat %s",
+                    target["pejabat_id"])
+        return
+
+    # Avoid duplicate open flags for the same pejabat (we tag via reason
+    # prefix since flag_type enum is still 'system'/'public' — see migration
+    # 006_flag_type_agent.sql for the eventual proper enum value).
+    existing = (
+        supabase.table("flags")
+        .select("id, reason")
+        .eq("pejabat_id", target["pejabat_id"])
+        .eq("type", "system")
+        .eq("status", "pending")
+        .execute()
+    ).data or []
+    if any((f.get("reason") or "").startswith("[agent_unresolved]") for f in existing):
+        logger.info("  flag already pending — skipping insert")
+        return
+    supabase.table("flags").insert({
+        "pejabat_id": target["pejabat_id"],
+        "type": "system",
+        "reason": reason_text[:4000],
+        "status": "pending",
+    }).execute()
+
+
 def apply_research(supabase, target: dict, result, dry_run: bool) -> None:
     """Update existing pejabat row in-place with verified data."""
     sources_payload = [
@@ -274,8 +328,10 @@ def main() -> None:
         key = target_key(t)
         if args.resume and key in log["results"]:
             prev = log["results"][key]
-            if prev.get("status") == "verified":
-                logger.info("  ↩  skip (already verified): %s @ %s", t["posisi"], t["wilayah_nama"])
+            prev_status = prev.get("status")
+            if prev_status in ("verified", "flagged_unresolved"):
+                logger.info("  ↩  skip (%s): %s @ %s",
+                            prev_status, t["posisi"], t["wilayah_nama"])
                 continue
 
         if args.limit and attempted >= args.limit:
@@ -305,11 +361,24 @@ def main() -> None:
             time.sleep(args.rate)
             continue
 
-        if result is None:
-            entry["status"] = "rejected_no_research"
+        if result is None or not result.nama:
+            # Hard failure: either no clean sources or model couldn't pick a
+            # name. Flag for manual triage so the user can review the URLs
+            # the agent tried.
+            try:
+                flag_unresolved(supabase, t, result, args.dry_run)
+            except Exception as e:
+                logger.warning("  flag_unresolved failed: %s", e)
+            entry["status"] = "flagged_unresolved"
+            entry["candidates_tried"] = (
+                getattr(result, "candidates_tried", []) if result else []
+            )
+            entry["fetch_failures"] = (
+                getattr(result, "fetch_failures", {}) if result else {}
+            )
             log["results"][key] = entry
             run_entry["rejected"] += 1
-            logger.info("  ✗ no research result")
+            logger.info("  ⚑ flagged unresolved (no name from sources)")
             save_log(log)
             time.sleep(args.rate)
             continue
@@ -320,12 +389,18 @@ def main() -> None:
 
         verified = verify_citations(result)
         if verified is None:
-            entry["status"] = "rejected_unverifiable"
+            try:
+                flag_unresolved(supabase, t, result, args.dry_run)
+            except Exception as e:
+                logger.warning("  flag_unresolved failed: %s", e)
+            entry["status"] = "flagged_unresolved"
             entry["verified_count"] = len(result.verified_sources)
+            entry["candidates_tried"] = result.candidates_tried
+            entry["fetch_failures"] = result.fetch_failures
             log["results"][key] = entry
             run_entry["rejected"] += 1
             logger.info(
-                "  ✗ %r — only %d verified sources (need >=2 or 1 .go.id)",
+                "  ⚑ flagged %r — only %d verified sources (need >=2 or 1 .go.id)",
                 result.nama, len(result.verified_sources),
             )
             save_log(log)
