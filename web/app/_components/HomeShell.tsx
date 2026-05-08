@@ -272,7 +272,7 @@ function LeadersRail({ leaders }: { leaders: LeaderRow[] }) {
       <div className="pv-leader-list" role="list">
         {shown.map((l, i) => (
           <Link
-            href={`/pejabat/${l.id}`}
+            href={`/${l.id}`}
             className="pv-leader"
             role="listitem"
             key={l.id}
