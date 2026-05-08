@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import IndonesiaMap from '../_components/IndonesiaMap'
+import IndonesiaMap from './IndonesiaMap'
 import DisclaimerModal from './DisclaimerModal'
 import type { LeaderRow, ProvinceCount, SiteStats } from '@/lib/queries'
 
@@ -126,7 +126,7 @@ export default function PreviewShell({ provinces, stats, leaders }: Props) {
           </div>
 
           <nav className="pv-nav" aria-label="Navigasi utama">
-            <Link href="/preview" className="pv-nav-link pv-nav-active">Beranda</Link>
+            <Link href="/" className="pv-nav-link pv-nav-active">Beranda</Link>
             <Link href="/pejabat" className="pv-nav-link">Direktori</Link>
             <button
               type="button"

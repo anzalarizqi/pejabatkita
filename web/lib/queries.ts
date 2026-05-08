@@ -131,7 +131,7 @@ export async function listProvinceCounts(): Promise<ProvinceCount[]> {
     .sort((a, b) => a.nama.localeCompare(b.nama))
 }
 
-// ─── Site-wide stats (for /preview landing page) ─────────────────────────────
+// ─── Site-wide stats (for the homepage) ──────────────────────────────────────
 
 export interface SiteStats {
   realPejabat: number
@@ -211,7 +211,7 @@ export async function getSiteStats(): Promise<SiteStats> {
   }
 }
 
-// ─── Leader roster (kepala daerah only — for /preview rail) ──────────────────
+// ─── Leader roster (kepala daerah only — for homepage rail) ──────────────────
 
 export interface LeaderRow {
   id: string
