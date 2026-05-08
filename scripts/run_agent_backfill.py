@@ -187,7 +187,7 @@ def flag_unresolved(supabase, target: dict, result, dry_run: bool) -> None:
         fail_summary[reason] = fail_summary.get(reason, 0) + 1
 
     parts = [
-        f"[agent_unresolved] {target['posisi']} @ {target['wilayah_nama']}.",
+        f"{target['posisi']} @ {target['wilayah_nama']}.",
         f"Tried {len(candidates)} candidate URLs.",
     ]
     if fail_summary:
@@ -208,23 +208,20 @@ def flag_unresolved(supabase, target: dict, result, dry_run: bool) -> None:
                     target["pejabat_id"])
         return
 
-    # Avoid duplicate open flags for the same pejabat (we tag via reason
-    # prefix since flag_type enum is still 'system'/'public' — see migration
-    # 006_flag_type_agent.sql for the eventual proper enum value).
     existing = (
         supabase.table("flags")
-        .select("id, reason")
+        .select("id")
         .eq("pejabat_id", target["pejabat_id"])
-        .eq("type", "system")
+        .eq("type", "agent_unresolved")
         .eq("status", "pending")
         .execute()
     ).data or []
-    if any((f.get("reason") or "").startswith("[agent_unresolved]") for f in existing):
+    if existing:
         logger.info("  flag already pending — skipping insert")
         return
     supabase.table("flags").insert({
         "pejabat_id": target["pejabat_id"],
-        "type": "system",
+        "type": "agent_unresolved",
         "reason": reason_text[:4000],
         "status": "pending",
     }).execute()

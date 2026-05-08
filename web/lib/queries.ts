@@ -39,6 +39,7 @@ export interface ProvinceCount {
   nama: string
   kode_bps: string
   count: number
+  expected: number
 }
 
 async function fetchAll<T>(
@@ -113,9 +114,187 @@ export async function listProvinceCounts(): Promise<ProvinceCount[]> {
     counts.set(provName, (counts.get(provName) ?? 0) + 1)
   }
 
+  const kabKotaByProvId = new Map<string, number>()
+  for (const w of wilayah) {
+    if (w.level !== 'provinsi' && w.parent_id) {
+      kabKotaByProvId.set(w.parent_id, (kabKotaByProvId.get(w.parent_id) ?? 0) + 1)
+    }
+  }
+
   return provinces
-    .map((p) => ({ nama: p.nama, kode_bps: p.kode_bps, count: counts.get(p.nama) ?? 0 }))
+    .map((p) => ({
+      nama: p.nama,
+      kode_bps: p.kode_bps,
+      count: counts.get(p.nama) ?? 0,
+      expected: 2 + 2 * (kabKotaByProvId.get(p.id) ?? 0),
+    }))
     .sort((a, b) => a.nama.localeCompare(b.nama))
+}
+
+// ─── Site-wide stats (for the homepage) ──────────────────────────────────────
+
+export interface SiteStats {
+  realPejabat: number
+  expectedTotal: number
+  coveragePct: number
+  provincesCovered: number
+  provincesTotal: number
+  lastUpdated: string | null
+  kabKotaTotal: number
+}
+
+export async function getSiteStats(): Promise<SiteStats> {
+  const supabase = await createServerSupabase()
+
+  const [wilayah, pejabat, jabatan] = await Promise.all([
+    fetchAll<Pick<Wilayah, 'id' | 'level' | 'parent_id' | 'nama'>>(
+      supabase,
+      'wilayah',
+      'id, level, parent_id, nama',
+    ),
+    fetchAll<Pick<PejabatRow, 'id' | 'nama_lengkap' | 'metadata' | 'last_updated'>>(
+      supabase,
+      'pejabat',
+      'id, nama_lengkap, metadata, last_updated',
+    ),
+    fetchAll<Pick<JabatanRow, 'pejabat_id' | 'wilayah_id'>>(
+      supabase,
+      'jabatan',
+      'pejabat_id, wilayah_id',
+    ),
+  ])
+
+  const provinces = wilayah.filter((w) => w.level === 'provinsi')
+  const kabkota = wilayah.filter((w) => w.level !== 'provinsi')
+  const provincesTotal = provinces.length
+  const kabKotaTotal = kabkota.length
+  // Each province seat = 2 (gubernur + wakil), each kab/kota = 2 (bupati/walikota + wakil)
+  const expectedTotal = provincesTotal * 2 + kabKotaTotal * 2
+
+  const realPejabatIds = new Set<string>()
+  for (const p of pejabat) {
+    if (!isPlaceholderName(p.nama_lengkap)) realPejabatIds.add(p.id)
+  }
+  const realPejabat = realPejabatIds.size
+
+  // Provinces covered = provinces where at least one real pejabat holds a jabatan
+  const wilayahById = new Map<string, Pick<Wilayah, 'id' | 'level' | 'parent_id' | 'nama'>>()
+  for (const w of wilayah) wilayahById.set(w.id, w)
+  const coveredProvNames = new Set<string>()
+  for (const j of jabatan) {
+    if (!realPejabatIds.has(j.pejabat_id)) continue
+    const w = wilayahById.get(j.wilayah_id)
+    if (!w) continue
+    if (w.level === 'provinsi') coveredProvNames.add(w.nama)
+    else if (w.parent_id) {
+      const parent = wilayahById.get(w.parent_id)
+      if (parent && parent.level === 'provinsi') coveredProvNames.add(parent.nama)
+    }
+  }
+  const provincesCovered = coveredProvNames.size
+
+  // Last updated: max last_updated across pejabat
+  let lastUpdated: string | null = null
+  for (const p of pejabat) {
+    const u = p.last_updated ?? null
+    if (u && (!lastUpdated || u > lastUpdated)) lastUpdated = u
+  }
+
+  return {
+    realPejabat,
+    expectedTotal,
+    coveragePct: expectedTotal > 0 ? (realPejabat / expectedTotal) * 100 : 0,
+    provincesCovered,
+    provincesTotal,
+    lastUpdated,
+    kabKotaTotal,
+  }
+}
+
+// ─── Leader roster (kepala daerah only — for homepage rail) ──────────────────
+
+export interface LeaderRow {
+  id: string
+  nama: string
+  posisi: string
+  wilayah: string
+  wilayah_level: 'provinsi' | 'kabupaten' | 'kota'
+  provinsi: string
+}
+
+const LEADER_RANK: Record<string, number> = {
+  Gubernur: 0,
+  Bupati: 1,
+  Walikota: 1,
+  'Wali Kota': 1,
+}
+
+export async function listLeaderRoster(): Promise<LeaderRow[]> {
+  const supabase = await createServerSupabase()
+
+  const [wilayah, jabatan, pejabat] = await Promise.all([
+    fetchAll<Wilayah>(supabase, 'wilayah', 'id, kode_bps, nama, level, parent_id'),
+    fetchAll<Pick<JabatanRow, 'pejabat_id' | 'wilayah_id' | 'posisi' | 'status' | 'mulai_jabatan'>>(
+      supabase, 'jabatan', 'pejabat_id, wilayah_id, posisi, status, mulai_jabatan',
+    ),
+    fetchAll<Pick<PejabatRow, 'id' | 'nama_lengkap' | 'gelar_depan' | 'gelar_belakang'>>(
+      supabase, 'pejabat', 'id, nama_lengkap, gelar_depan, gelar_belakang',
+    ),
+  ])
+
+  const wilayahById = new Map<string, Wilayah>()
+  for (const w of wilayah) wilayahById.set(w.id, w)
+
+  const pejabatById = new Map<string, Pick<PejabatRow, 'id' | 'nama_lengkap' | 'gelar_depan' | 'gelar_belakang'>>()
+  for (const p of pejabat) {
+    if (!isPlaceholderName(p.nama_lengkap)) pejabatById.set(p.id, p)
+  }
+
+  // Best (top-rank) jabatan per pejabat among kepala-daerah-tier titles
+  const best = new Map<string, typeof jabatan[number]>()
+  for (const j of jabatan) {
+    const rank = LEADER_RANK[j.posisi ?? '']
+    if (rank === undefined) continue
+    if (!pejabatById.has(j.pejabat_id)) continue
+    const cur = best.get(j.pejabat_id)
+    if (!cur) { best.set(j.pejabat_id, j); continue }
+    const curRank = LEADER_RANK[cur.posisi ?? ''] ?? 99
+    if (rank < curRank) best.set(j.pejabat_id, j)
+    else if (rank === curRank && (j.mulai_jabatan ?? '') > (cur.mulai_jabatan ?? '')) {
+      best.set(j.pejabat_id, j)
+    }
+  }
+
+  const rows: LeaderRow[] = []
+  for (const [pid, j] of best) {
+    const w = wilayahById.get(j.wilayah_id)
+    if (!w) continue
+    const p = pejabatById.get(pid)!
+    const provNama =
+      w.level === 'provinsi'
+        ? w.nama
+        : w.parent_id
+          ? wilayahById.get(w.parent_id)?.nama ?? ''
+          : ''
+    rows.push({
+      id: p.id,
+      nama: p.nama_lengkap,
+      posisi: j.posisi ?? '',
+      wilayah: w.nama,
+      wilayah_level: w.level as LeaderRow['wilayah_level'],
+      provinsi: provNama,
+    })
+  }
+
+  rows.sort((a, b) => {
+    const ra = LEADER_RANK[a.posisi] ?? 99
+    const rb = LEADER_RANK[b.posisi] ?? 99
+    if (ra !== rb) return ra - rb
+    if (a.provinsi !== b.provinsi) return a.provinsi.localeCompare(b.provinsi)
+    return a.wilayah.localeCompare(b.wilayah)
+  })
+
+  return rows
 }
 
 // ─── Pejabat listing (for /pejabat page) ──────────────────────────────────────
