@@ -78,6 +78,30 @@ PROVINCE_MAP: dict[str, tuple[str, str]] = {
 
 BASE_URL = "https://raw.githubusercontent.com/assai-id/nemesis/main/seed/geo/02-provinces/with-districts"
 
+# Per-province alias map: nemesis WADMKK (lowercased) → canonical wilayah.nama.
+# Used when nemesis snapshot uses different naming than the canonical wilayah seed.
+# Direction is canonical-name-stable: the wilayah seed is the source of truth, and
+# we re-label the polygon to whatever the seed says. Six known mismatches as of
+# 2026-05-08 — see CLAUDE.md Phase 8 #2 notes.
+ALIASES: dict[str, dict[str, str]] = {
+    "Sumatera_Utara": {
+        "toba": "Kabupaten Toba Samosir",
+        "kota padang sidempuan": "Kota Padangsidimpuan",
+    },
+    "Sulawesi_Barat": {
+        "pasangkayu": "Kabupaten Mamuju Utara",
+    },
+    "Maluku": {
+        "kepulauan tanimbar": "Kabupaten Maluku Tenggara Barat",
+    },
+    "Sulawesi_Utara": {
+        "kep. siau tagulandang biaro": "Kabupaten Siau Tagulandang Biaro",
+    },
+    "Kalimantan_Timur": {
+        "mahakam ulu": "Kabupaten Mahakam Hulu",
+    },
+}
+
 
 def _norm(name: str) -> tuple[str, str]:
     """Return (level, normalized_stem). level is 'kota' for kota entries, else 'kabupaten'."""
@@ -174,6 +198,7 @@ def build_one(slug: str, provinsi_nama: str, web_slug: str, work: Path) -> tuple
 
     canonical = fetch_canonical_kabkota(provinsi_nama)
     canonical_set = {nama for nama, _ in canonical}
+    aliases = ALIASES.get(slug, {})
     matched: set[str] = set()
     kept = []
     for f in features:
@@ -181,7 +206,12 @@ def build_one(slug: str, provinsi_nama: str, web_slug: str, work: Path) -> tuple
         wadmkk = props.get("WADMKK") or ""
         if not wadmkk:
             continue
-        canon = _match_to_canonical(wadmkk, canonical)
+        canon = aliases.get(wadmkk.lower())
+        if canon and canon not in canonical_set:
+            logger.warning("  alias %s → %s, but canonical missing", wadmkk, canon)
+            canon = None
+        if not canon:
+            canon = _match_to_canonical(wadmkk, canonical)
         if not canon:
             logger.warning("  no canonical match for %s/%s", provinsi_nama, wadmkk)
             continue
