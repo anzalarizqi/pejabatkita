@@ -189,66 +189,54 @@ Zero silent failures. Every original placeholder has either a verified real name
 
 DB state: pejabat 1096 → 1096 (renames in-place), real-name count +17, agent_unresolved pending flags = 4.
 
+### Session 6 — 2026-05-08 (Phase 10 homepage shipped + 9A scale-out in parallel)
+
+- **Phase 10 brought forward** ahead of 9B/9C per user call. Built `/preview` as parallel route, iterated through six visual reviews (v1–v6), then promoted to `/` and deleted the preview route. Old editorial homepage preserved in git history.
+- **Architecture of the new homepage:** `app/page.tsx` (server, parallel fetch) → `app/_components/HomeShell.tsx` (~1100 lines, all client). New query: `listLeaderRoster()` returns gubernur/bupati/walikota with rank ordering. New: `getSiteStats()` returns `{realPejabat, expectedTotal, coveragePct, provincesCovered, provincesTotal, lastUpdated, kabKotaTotal}`. `ProvinceCount` gained an `expected` field so Tercatat can colour by completion % instead of raw count.
+- **Map colour-mode toggle:** four modes — `Tercatat` (live, count/expected → 0–100% gradient) + `Pendidikan` / `LHKPN` / `Rekam Bersih` (mock, deterministic `hash01(name, salt)` with per-mode centres). Mock modes have inverted polarity so red = danger across the board. `IndonesiaMap` got optional `colorBy` and `tooltip` props that default to existing behaviour, so `/pejabat` is unchanged.
+- **Honesty layer:** every mock mode triple-tagged — PRATINJAU button label, "DATA ILUSTRASI · Q2 2026" red stamp on map top-left, italic legend caption ("ilustrasi"). User explicitly approved this approach over showing fake numbers without markers.
+- **Disclaimer modal** on first visit (localStorage `pejabatkita_disclaimer_v1`). The `Misi Kami` nav item dispatches a window event to reopen it — the disclaimer copy IS the mission statement so reuse > duplicate.
+- **Leader rail performance:** initial render was ~34000px scroll height (all ~420 cards). Added client-side pagination (`PAGE_SIZE = 30` + "Tampilkan N lagi" button) → ~13× lighter DOM at first paint.
+- **Layout iteration learnings** (worth remembering): (1) `min-height: 100vh` doesn't bound a grid row → child `overflow-y: auto` won't engage; use `height: 100vh` + `minmax(0, 1fr)` + `overflow: hidden`. (2) Floating overlays on the map covered key landmasses (Sumatra/Java) — moved stats into a strip ABOVE the map per user reference (audit-pengadaan.LKPP). (3) Legend was conflating "raw count" with "completion" — switched Tercatat colour to `count / expected` so the legend's 0%–100% lands honestly.
+- **One link bug fixed at end of session:** leader cards linked to `/pejabat/<id>` but the profile route is `/[pejabat-id]` at the app root. Matched what `/pejabat/PejabatBrowse.tsx` does, link to `/<id>`.
+- **Hydration-mismatch warning** from form-filler browser extensions (`fdprocessedid` injected before hydration) — added `suppressHydrationWarning` to the affected form elements (4 mode tabs, search input, clear button, sort select, Misi-kami button).
+- **Migration `006_flag_type_agent.sql`** confirmed applied early in session. `run_agent_backfill.py` switched from prefix-workaround (`type='system'` + `[agent_unresolved]` reason) to native enum (`type='agent_unresolved'`). `FlagCard.tsx` got a styled badge for the new type.
+- **9A scale-out ran in background** all session via the documented overnight loop. DB grew from ~763 real names → 846+ (and still climbing at session end). Cakupan crossed 76%.
+
+DB state at session end: 38/38 provinces with at least one real pejabat, 846+ real names of 1104 expected (~76.6%). Backfill log at `scripts/agent_backfill_log.json` is the source of truth for what's been processed.
+
 ## Next Session Should Start With
 
-**Top priority — scale Phase 9A to remaining 20 below-65% provinces.**
+**Phase 10 (homepage UX overhaul) shipped this session and is live on `main`.** The new `/` is map-first: header nav · leader rail (search/sort/load-more) · stat strip · map colour-mode toggle (Tercatat live, Pendidikan/LHKPN/Rekam-Bersih as PRATINJAU mocks with red=danger semantics) · feature-preview strip · ticker. `/preview` route deleted; old editorial homepage preserved at `git show <pre-merge-sha>:web/app/page.tsx` if rollback needed. Phase 10 ordering decision was reversed mid-flight — we built it before 9B/9C because the user wanted screenshot-worthy UI now and the mock toggle layer makes the future LHKPN/integrity features tangible without lying about current data.
 
-The pipeline is fully built and pilot-validated (81% rename + 19% flagged, 0 silent). Run on the 20 remaining provinces in priority-list order. Estimated runtime ~6–8 hours for all 20 at observed pace (~3 min/target × ~150 targets total).
+The 9A scale-out also ran in parallel during this session: pejabat database climbed from ~763 → 846+ real names (76.6% cakupan). Background process should be wrapped or near wrapping — verify with `python scripts/report_province_coverage.py` before starting next session.
 
-```bash
-# Scale-out — leave overnight. --resume is safe across crashes.
-for prov in \
-  "Bengkulu" "DKI Jakarta" "Kalimantan Utara" "Maluku Utara" \
-  "Papua Tengah" "Papua Barat Daya" "Sulawesi Selatan" "Aceh" \
-  "Maluku" "Nusa Tenggara Barat" "Kalimantan Barat" "Jambi" \
-  "Banten" "Sumatera Barat" "Sulawesi Utara" "Papua Barat" \
-  "Nusa Tenggara Timur" "Kalimantan Tengah" "Sulawesi Tengah" "Sumatera Utara"; do
-  python scripts/run_agent_backfill.py --provinsi "$prov" --resume
-done
-python scripts/report_province_coverage.py
-```
+### Top priority next session — Partai backfill (small, high visible value)
 
-After scale-out: review `/admin/review` for the agent_unresolved flags, decide which to research manually (.go.id sites that even Playwright can't bypass might have the answer in a press-release PDF you can grab by hand).
+User asked when partai/masa-jabatan/kekayaan/pendidikan would land on profile pages. Decision: **do partai first**, before 9B. It's almost free (Wikipedia infobox usually has it, the agent already fetches those pages) and unlocks meaningful chips on every profile card.
 
-### Optional v3 polish (defer unless yield drops on scale-out)
-- Add a `--retry-flagged` arg to `run_agent_backfill.py` to revisit `flagged_unresolved` log entries (e.g. after improving sourcing further).
-- Consider a paid CAPTCHA-solver fallback (2captcha / capsolver) for high-value `.go.id` pages — only worth it if a non-trivial number of governorships sit behind hard challenges.
+- Extend `scraper/agent.py` research prompt to also extract `partai_politik` from the same fetched sources, with the same citation-rigor (≥2 verified sources OR 1 .go.id/wikipedia).
+- Schema: `pejabat.partai` is already a column (check `core/schema.py`); just need to populate it.
+- Re-run `run_agent_backfill.py --resume` once across all provinces — the existing agent log dedup will skip already-resolved targets, so this is a cheap second pass that adds partai to existing rows.
+- UI: surface partai as a small chip on the profile page riwayat-jabatan table (currently column exists, mostly "—") and on the leader cards in the homepage rail.
 
-### Phase 9B — LHKPN integration (after 9A scale-out)
+### Phase 9B — LHKPN integration (after partai)
 
-Once names are reliable, add the data that actually matters for the public-interest goal: **wealth + education from KPK's LHKPN database** (`elhkpn.kpk.go.id`). Every kepala daerah is legally required to file. This is structured, authoritative, and directly answers "how rich + how educated" without LLM hallucination risk.
+Schema additions: `pejabat.kekayaan_total`, `pejabat.kekayaan_breakdown` (assets/debts), `pejabat.pendidikan_terakhir`. Source is `elhkpn.kpk.go.id`. Every kepala daerah is legally required to file. Captcha is the hard part — start with Playwright + manual solve, evaluate paid solver (2captcha/capsolver) only if non-trivial number of high-value targets sit behind hard challenges. Public UI: when a real value lands, the homepage feature-strip mock gets swapped for live data and the LHKPN tag dot in the leader rail flips from ◌ to ●.
 
-- Captcha is real on elhkpn → Playwright with manual captcha solve, or check if there's a public API endpoint
-- Schema additions: `pejabat.kekayaan_total`, `pejabat.kekayaan_breakdown` (assets/debts/etc), `pejabat.pendidikan_terakhir`
-- Public UI: wealth bar chart per pejabat, education badge, link to original LHKPN PDF
+### Phase 9C — Rekam-jejak / corruption history (after 9B)
 
-### Phase 9B — LHKPN integration (serves the origin thesis)
+Search KPK case archive + ICW database + news filtered to `tersangka|vonis|tipikor`. Same agent pattern as 9A but with strict verification (only insert if source is KPK / pengadilan / major news). Defer until 9A+9B are stable.
 
-Once names are reliable, add the data that actually matters for the public-interest goal: **wealth + education from KPK's LHKPN database** (`elhkpn.kpk.go.id`). Every kepala daerah is legally required to file. This is structured, authoritative, and directly answers "how rich + how educated" without LLM hallucination risk.
+### Phase 10 follow-ups (deferred)
 
-- Captcha is real on elhkpn → Playwright with manual captcha solve, or check if there's a public API endpoint
-- Schema additions: `pejabat.kekayaan_total`, `pejabat.kekayaan_breakdown` (assets/debts/etc), `pejabat.pendidikan_terakhir`
-- Public UI: wealth bar chart per pejabat, education badge, link to original LHKPN PDF
+Mobile responsiveness. OG cards per profile (sitemap.xml of all 1100+ pejabat pages). Per-province alias map for the 6 unmatched kab/kota polygons. None of these are blocking — pick up if a specific need surfaces.
 
-### Phase 9C — Corruption history (later)
+### Operational notes for next session
 
-Search KPK case archive + ICW database + news filtered to "tersangka/vonis/tipikor" terms. Same agent pattern as 9A but with stricter verification (only insert if source is KPK/court/major-news). Defer until 9A+9B are stable.
-
-### Phase 10 — Frontend UX overhaul (after 9B + 9C)
-
-Current site feels slow to navigate page-to-page and the flow doesn't push users toward the wow-moment (the map). Reference for the desired feel: **nemesis.assai.id** — disclaimer modal on first visit, then straight to a full-bleed map with key stats overlaid. Goal: make the homepage screenshot-worthy so people share it organically.
-
-Concrete items in scope:
-- Disclaimer modal on first visit (localStorage to remember dismissal). Should explain data sources + limitations.
-- Map-first landing — `/` becomes the map with stats overlay (real pejabat count, placeholder count, last updated, % covered) instead of the current editorial hero.
-- Reduce navigation latency: prefetch province/kab data on hover, route transitions, or single-page-style drill-down (no full page reload between country → province → kab/kota).
-- Improve mobile: maps are not currently optimized for touch; consider pinch-to-zoom and tap-to-select.
-- "Cool" polish: hover tooltips with mini-stats per province, animated transitions on province click, color palette refresh, card design refresh.
-- Each pejabat profile page should have a shareable OG card so screenshots on social media look editorial (ties back to deferred SEO + OG cards from Phase 8).
-
-**Order decision (Session 5):** Phase 10 ships after 9B + 9C. Reasoning: a UX overhaul on incomplete data peaks lower than the same overhaul on wealth + corruption history. The screenshots are more compelling when the data behind them is.
-
-**Tooling preference (Session 5):** when Phase 10 begins, switch the active model to **Claude Opus 4.7** and use the **`frontend-design` skill** (built into Claude Code: "Create distinctive, production-grade frontend interfaces with high design quality. Generates creative, polished code that avoids generic AI aesthetics."). The skill runs in-terminal via `Skill frontend-design <args>` — no separate canvas tool needed. Opus 4.7 + frontend-design is the right pairing for taste-driven work where "doesn't look AI-generated" is the bar.
+- 9A `--retry-flagged` flag still un-implemented; only worth adding if a v3 sourcing improvement justifies revisiting hopeless cases.
+- The map mode toggle's mock data uses `hash01(name, salt)` with per-mode centres — when real LHKPN/integrity data lands in 9B/9C, swap the hash for the real per-province aggregation; legend/colour/UI stay the same.
+- The leader rail is paginated client-side (`PAGE_SIZE = 30`). If the roster grows past ~1000 we should switch to server pagination, but for now this is fine.
 
 ---
 
