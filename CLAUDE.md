@@ -205,24 +205,50 @@ DB state: pejabat 1096 → 1096 (renames in-place), real-name count +17, agent_u
 
 DB state at session end: 38/38 provinces with at least one real pejabat, 846+ real names of 1104 expected (~76.6%). Backfill log at `scripts/agent_backfill_log.json` is the source of truth for what's been processed.
 
+### Session 7 — 2026-05-08 (post-9A polish: alias map, proxy, profile, partai prompt queued)
+
+- **9A backfill wrapped.** Final scoreboard via `scripts/report_province_coverage.py`: **866 real / 1104 expected = 78.4% coverage, 231 placeholders left, 0 critical/0 warning provinces** (all 38 ≥65%). Lowest tier: Kaltara, Sultra, Jatim at 67%. Highest: Banten, Kepri, Papua Barat at 94%. Snapshot in `output/_province_coverage.json`.
+- **Kab/kota alias map** for the 6 nemesis-naming mismatches (commit `0976122`). Added per-province `ALIASES` dict in `scripts/build_kabkota_geojson.py` keyed on raw nemesis WADMKK string → canonical wilayah seed name. Direction is canonical-stable: the wilayah seed is the source of truth, and we re-label polygons to whatever the seed says. Rebuilt 5 affected provinces (Sumut, Sulbar, Maluku, Sulut, Kaltim) with **0 missing canonical entries**. The remaining "no canonical match" warning in Sulut is `Minahasa Selatan/Bolaang Mongondwo Timur` — a joined-polygon glitch in nemesis itself, not in our 6.
+- **Middleware → proxy migration** (commit `d0756a2`). `web/middleware.ts` deleted, `web/proxy.ts` created using Next 16 file convention. Function renamed `middleware` → `proxy`. Behavior unchanged: `/admin/*` still gates on `admin_session` cookie. Verified working: dev log shows `proxy.ts: 120ms` on `/admin/review`.
+- **Profile page polish** (commit `e43dd7a`).
+  - Editorial header matching homepage (◐ brand mark + Beranda/Direktori/Lapor nav). Replaces the old tiny `Beranda > Name` breadcrumb.
+  - Crumb under header now deep-links to `/pejabat?provinsi=...`. Province resolved by querying `wilayah` for `level=provinsi, kode_bps=<first-2-digits>` of the active jabatan's wilayah kode_bps.
+  - **PRATINJAU sections for LHKPN + Rekam Bersih** with the same `DATA ILUSTRASI · Q2 2026` red-stamp pattern the homepage uses. Mock values are deterministic per pejabat (`hash01(id+':lhkpn')`, `hash01(id+':bersih')`). When 9B/9C ship, swap the hash for real values; markup stays the same.
+  - Active jabatan `partai` promoted to a styled chip; biodata section auto-collapses when all four fields are empty (Sri Sultan was the test case).
+  - Added dynamic `<title>`/description metadata via `generateMetadata()`, plus JSON-LD `Person` schema in `<script type="application/ld+json">` for SEO.
+  - Mobile breakpoint at 720px (single-column biodata, hidden edisi label, condensed nav). Full mobile pass still deferred.
+  - Type-checks clean. Smoke-tested via Playwright on Sri Sultan profile.
+- **Partai prompt extension queued (uncommitted).** Working tree has the agent extension ready for next session: `scraper/agent.py` `ResearchResult` got a `partai: Optional[str]` field, system prompt now describes partai schema (singkatan resmi, "Independen" untuk perseorangan, null kalau sumber tidak menyebut — JANGAN menebak). `apply_research()` in `run_agent_backfill.py` now writes a unified `jabatan_patch` dict with whichever of `mulai_jabatan` / `partai` the model returned, so partial answers don't blank existing values. **Important schema correction:** `partai` lives on `jabatan` (varchar), NOT on `pejabat` — the prior CLAUDE.md note was wrong. Confirmed via `001_schema.sql:51` and `core/schema.py:54`.
+- **Operational note:** 6 of the original 6 unmatched kab/kota polygons now resolve. `web/public/kabkota/sumatera-utara.json` etc. are checked in. No web-side change needed beyond the rebuilt geojsons.
+
+DB state unchanged in this session (no scraper runs).
+
 ## Next Session Should Start With
 
-**Phase 10 (homepage UX overhaul) shipped this session and is live on `main`.** The new `/` is map-first: header nav · leader rail (search/sort/load-more) · stat strip · map colour-mode toggle (Tercatat live, Pendidikan/LHKPN/Rekam-Bersih as PRATINJAU mocks with red=danger semantics) · feature-preview strip · ticker. `/preview` route deleted; old editorial homepage preserved at `git show <pre-merge-sha>:web/app/page.tsx` if rollback needed. Phase 10 ordering decision was reversed mid-flight — we built it before 9B/9C because the user wanted screenshot-worthy UI now and the mock toggle layer makes the future LHKPN/integrity features tangible without lying about current data.
+**Where we are:** 9A done at 78.4% coverage. Three small polish items shipped in Session 7 (alias map, middleware→proxy migration, profile page). The partai prompt extension is sitting in the working tree, **uncommitted, untested against a live LLM call**. Bulk-pass design choice still pending.
 
-The 9A scale-out also ran in parallel during this session: pejabat database climbed from ~763 → 846+ real names (76.6% cakupan). Background process should be wrapped or near wrapping — verify with `python scripts/report_province_coverage.py` before starting next session.
+### Top priority — finish + commit partai backfill, then bulk-pass
 
-### Top priority next session — Partai backfill (small, high visible value)
+The diff currently in the working tree extends the agent to extract `partai` and writes it to `jabatan` when present. To finish the partai feature:
 
-User asked when partai/masa-jabatan/kekayaan/pendidikan would land on profile pages. Decision: **do partai first**, before 9B. It's almost free (Wikipedia infobox usually has it, the agent already fetches those pages) and unlocks meaningful chips on every profile card.
+1. **Commit the queued diff** (`scraper/agent.py` + `scripts/run_agent_backfill.py`). Suggested message: "Add partai extraction to research agent + jabatan write".
+2. **Smoke test** with one province: `python scripts/run_agent_backfill.py --provinsi "DI Yogyakarta" --limit 2 --dry-run`. Confirm the LLM emits a `partai` field that survives the JSON parser. If the model returns `partai: null` for everyone, loosen the prompt by adding 1-2 examples.
+3. **Decide the bulk-pass design**: existing `--resume` SKIPS already-verified targets (line 329 in run_agent_backfill.py — `prev_status in ("verified", "flagged_unresolved")`). To re-visit verified pejabat just to add partai, options:
+   - (a) Add a `--retry-partai` flag that overrides the skip when the corresponding `jabatan.partai IS NULL`. Rerun cost: ~860 LLM calls. ~$1-2 of credits, a few hours wall-clock.
+   - (b) Write a leaner `run_partai_only_pass.py` that re-uses the already-verified `metadata.sources` URLs from `pejabat`, fetches them via Jina, and asks the LLM only for partai (no name search). Cheaper (~3 fetches/target) and faster, but a separate code path to maintain.
+   - (a) is simpler and reuses tested code. Recommended unless we discover the agent yields partai on <50% of new runs, in which case (b) is needed.
+4. **UI:** partai chip on the homepage leader rail (currently shows posisi+wilayah only) and a small visual treatment on the profile-page riwayat-jabatan partai column (currently grey "—" when null).
 
-- Extend `scraper/agent.py` research prompt to also extract `partai_politik` from the same fetched sources, with the same citation-rigor (≥2 verified sources OR 1 .go.id/wikipedia).
-- Schema: `pejabat.partai` is already a column (check `core/schema.py`); just need to populate it.
-- Re-run `run_agent_backfill.py --resume` once across all provinces — the existing agent log dedup will skip already-resolved targets, so this is a cheap second pass that adds partai to existing rows.
-- UI: surface partai as a small chip on the profile page riwayat-jabatan table (currently column exists, mostly "—") and on the leader cards in the homepage rail.
+### After partai — Phase 9B (LHKPN)
 
-### Phase 9B — LHKPN integration (after partai)
+Schema additions: `pejabat.kekayaan_total`, `pejabat.kekayaan_breakdown` (assets/debts), `pejabat.pendidikan_terakhir`. Source is `elhkpn.kpk.go.id`. Every kepala daerah is legally required to file. Captcha is the hard part — start with Playwright + manual solve, evaluate paid solver (2captcha/capsolver) only if a non-trivial number of high-value targets sit behind hard challenges.
 
-Schema additions: `pejabat.kekayaan_total`, `pejabat.kekayaan_breakdown` (assets/debts), `pejabat.pendidikan_terakhir`. Source is `elhkpn.kpk.go.id`. Every kepala daerah is legally required to file. Captcha is the hard part — start with Playwright + manual solve, evaluate paid solver (2captcha/capsolver) only if non-trivial number of high-value targets sit behind hard challenges. Public UI: when a real value lands, the homepage feature-strip mock gets swapped for live data and the LHKPN tag dot in the leader rail flips from ◌ to ●.
+**Pre-9B housekeeping:**
+- Drain the `agent_unresolved` flags on `/admin/review`. Either rename manually or close as "no public info available". Important because LHKPN files by name — placeholder rows poison the lookup.
+- Decide what to do with the 231 remaining placeholders: rerun a v3 sourcing pass with looser .go.id retry, or hard-delete from `pejabat`. Either is fine; just don't drag them into 9B.
+- Take a Supabase snapshot before applying the 9B migrations.
+
+When real LHKPN data lands, swap the homepage `hash01(name, 'lhkpn')` mock for the real per-province aggregation; legend/colour/UI stays the same. Same swap on the profile-page PRATINJAU section — it's wired to `hash01(pejabat.id, ':lhkpn')` exactly so the swap is one-line.
 
 ### Phase 9C — Rekam-jejak / corruption history (after 9B)
 
@@ -230,13 +256,13 @@ Search KPK case archive + ICW database + news filtered to `tersangka|vonis|tipik
 
 ### Phase 10 follow-ups (deferred)
 
-Mobile responsiveness. OG cards per profile (sitemap.xml of all 1100+ pejabat pages). Per-province alias map for the 6 unmatched kab/kota polygons. None of these are blocking — pick up if a specific need surfaces.
+Full mobile responsiveness pass on homepage + /pejabat (profile page already got a 720px breakpoint in Session 7). OG cards per profile + sitemap.xml of all real-name pejabat pages — wait until partai pass completes so URLs and metadata are stable. None of these are blocking.
 
-### Operational notes for next session
+### Operational notes
 
-- 9A `--retry-flagged` flag still un-implemented; only worth adding if a v3 sourcing improvement justifies revisiting hopeless cases.
-- The map mode toggle's mock data uses `hash01(name, salt)` with per-mode centres — when real LHKPN/integrity data lands in 9B/9C, swap the hash for the real per-province aggregation; legend/colour/UI stay the same.
-- The leader rail is paginated client-side (`PAGE_SIZE = 30`). If the roster grows past ~1000 we should switch to server pagination, but for now this is fine.
+- 9A `--retry-flagged` flag still un-implemented. Probably still not worth it — the 4 cumulative flagged-unresolved cases from the pilot didn't yield even with v2 sourcing, and the bulk run produced its own flag set that hasn't been inspected.
+- The map mode toggle's mock data uses `hash01(name, salt)` with per-mode centres. Real LHKPN/integrity data → swap the hash for the real per-province aggregation. Profile page does the same with `hash01(pejabat.id, salt)`.
+- The leader rail is paginated client-side (`PAGE_SIZE = 30`). If the roster grows past ~1000 switch to server pagination; for now fine.
 
 ---
 
