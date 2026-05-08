@@ -276,14 +276,21 @@ def apply_research(supabase, target: dict, result, dry_run: bool) -> None:
 
     supabase.table("pejabat").update(update_body).eq("id", target["pejabat_id"]).execute()
 
-    # Also write a fresh jabatan row update if mulai_jabatan was returned
+    # Update jabatan row with mulai_jabatan and/or partai when the agent
+    # returned them. Both are optional — only fields the model populated land
+    # in the patch, so we don't blank out existing values on a partial answer.
+    jabatan_patch: dict = {}
     if result.mulai_jabatan:
+        jabatan_patch["mulai_jabatan"] = result.mulai_jabatan
+    if getattr(result, "partai", None):
+        jabatan_patch["partai"] = result.partai
+    if jabatan_patch:
         try:
-            supabase.table("jabatan").update({
-                "mulai_jabatan": result.mulai_jabatan,
-            }).eq("id", target["jabatan_id"]).execute()
+            supabase.table("jabatan").update(jabatan_patch).eq(
+                "id", target["jabatan_id"]
+            ).execute()
         except Exception as e:
-            logger.warning("    jabatan mulai_jabatan update failed: %s", e)
+            logger.warning("    jabatan update failed (%s): %s", jabatan_patch, e)
 
 
 # ─── Main loop ───────────────────────────────────────────────────────────────

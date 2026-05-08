@@ -68,6 +68,12 @@ class ResearchResult:
     gelar_belakang: Optional[str]
     status: str  # "menjabat" | "penjabat" | "kosong"
     mulai_jabatan: Optional[str]
+    # Partai politik (single string per jabatan period). None if independent
+    # ("perseorangan"), unknown, or model couldn't extract from sources.
+    # Verification piggybacks on the same citations as `nama` — we only trust
+    # partai when the verified sources collectively support both name and
+    # party in the same context.
+    partai: Optional[str] = None
     sumber: list[Citation] = field(default_factory=list)
     confidence: float = 0.0
     verified_sources: list[Citation] = field(default_factory=list)
@@ -82,6 +88,7 @@ class ResearchResult:
             "gelar_belakang": self.gelar_belakang,
             "status": self.status,
             "mulai_jabatan": self.mulai_jabatan,
+            "partai": self.partai,
             "sumber": [c.to_dict() for c in self.sumber],
             "confidence": self.confidence,
             "verified_sources": [c.to_dict() for c in self.verified_sources],
@@ -110,6 +117,13 @@ Aturan WAJIB:
   `{"nama": null}` dan jelaskan singkat di field `catatan`.
 - Pakai null untuk field yang tidak diketahui.
 
+- `partai` adalah partai politik pengusung saat dilantik. Gunakan singkatan
+  resmi (PDIP, Golkar, Gerindra, PKB, NasDem, PPP, PKS, Demokrat, PAN, dll.).
+  Jika dicalonkan oleh koalisi beberapa partai, sebut partai utama
+  (yang menjadi pengusung pertama). Jika maju jalur perseorangan, isi
+  "Independen". Kalau sumber tidak menyebut partai dengan jelas, isi null
+  — JANGAN menebak. Jangan campur aduk dengan partai pejabat sebelumnya.
+
 Schema output:
 {
   "nama": "string atau null",
@@ -117,6 +131,7 @@ Schema output:
   "gelar_belakang": "string atau null",
   "status": "menjabat | penjabat | kosong",
   "mulai_jabatan": "YYYY-MM-DD atau null",
+  "partai": "string atau null",
   "sumber": [
     {"url": "string", "title": "string", "kutipan": "string"}
   ],
@@ -439,12 +454,16 @@ def research_pejabat(jabatan: str, wilayah: str) -> Optional[ResearchResult]:
             kutipan=(s.get("kutipan") or "").strip(),
         ))
 
+    partai_raw = parsed.get("partai")
+    partai = partai_raw.strip() if isinstance(partai_raw, str) and partai_raw.strip() else None
+
     return ResearchResult(
         nama=nama,
         gelar_depan=parsed.get("gelar_depan"),
         gelar_belakang=parsed.get("gelar_belakang"),
         status=(parsed.get("status") or "menjabat").strip(),
         mulai_jabatan=parsed.get("mulai_jabatan"),
+        partai=partai,
         sumber=citations,
         confidence=float(parsed.get("confidence") or 0.0),
         candidates_tried=tried,
