@@ -180,9 +180,12 @@ export default function PreviewShell({ provinces, stats, leaders }: Props) {
 
 // ─── Leaders rail ────────────────────────────────────────────────────────────
 
+const PAGE_SIZE = 30
+
 function LeadersRail({ leaders }: { leaders: LeaderRow[] }) {
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<SortKey>('posisi')
+  const [visible, setVisible] = useState(PAGE_SIZE)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -204,6 +207,12 @@ function LeadersRail({ leaders }: { leaders: LeaderRow[] }) {
     // 'posisi' is the default order from the server
     return sorted
   }, [leaders, query, sort])
+
+  // Reset pagination when filters change so users don't scroll through stale results
+  useEffect(() => { setVisible(PAGE_SIZE) }, [query, sort])
+
+  const shown = filtered.slice(0, visible)
+  const hasMore = visible < filtered.length
 
   return (
     <div className="pv-rail-inner">
@@ -254,14 +263,14 @@ function LeadersRail({ leaders }: { leaders: LeaderRow[] }) {
       </div>
 
       <div className="pv-rail-count">
-        <span>{filtered.length} ditampilkan</span>
+        <span>{shown.length} dari {filtered.length}</span>
         <span className="pv-rail-legend">
           <span className="pv-dot pv-dot-empty" /> belum ada · <span className="pv-dot pv-dot-ok" /> tersedia
         </span>
       </div>
 
       <div className="pv-leader-list" role="list">
-        {filtered.map((l, i) => (
+        {shown.map((l, i) => (
           <Link
             href={`/pejabat/${l.id}`}
             className="pv-leader"
@@ -289,6 +298,19 @@ function LeadersRail({ leaders }: { leaders: LeaderRow[] }) {
         ))}
         {filtered.length === 0 && (
           <div className="pv-empty">Tidak ada hasil untuk «{query}».</div>
+        )}
+        {hasMore && (
+          <button
+            type="button"
+            className="pv-loadmore"
+            onClick={() => setVisible((v) => v + PAGE_SIZE)}
+            suppressHydrationWarning
+          >
+            Tampilkan {Math.min(PAGE_SIZE, filtered.length - visible)} lagi
+            <span className="pv-loadmore-rest">
+              · sisa {filtered.length - visible}
+            </span>
+          </button>
         )}
       </div>
     </div>
@@ -794,6 +816,33 @@ const styles = `
     padding: 40px 0; text-align: center;
     font-family: 'Fraunces', serif; font-style: italic; font-size: 13px;
     color: var(--muted);
+  }
+
+  .pv-loadmore {
+    width: 100%;
+    margin-top: 12px;
+    background: var(--paper-2);
+    border: 1px dashed var(--rule);
+    padding: 12px 14px;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted-2);
+    transition: all 0.15s ease;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .pv-loadmore:hover {
+    background: var(--paper);
+    border-color: var(--ink);
+    border-style: solid;
+    color: var(--ink);
+  }
+  .pv-loadmore-rest {
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
   }
 
   /* ── Stage ───────────────────────────────────────────────────── */
