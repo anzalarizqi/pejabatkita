@@ -225,19 +225,25 @@ DB state unchanged in this session (no scraper runs).
 
 ## Next Session Should Start With
 
-**Where we are:** 9A done at 78.4% coverage. Three small polish items shipped in Session 7 (alias map, middleware→proxy migration, profile page). The partai prompt extension is sitting in the working tree, **uncommitted, untested against a live LLM call**. Bulk-pass design choice still pending.
+**Where we are (Session 8 end):** Leader names ~95%+ filled via Gemini CSV workflow. Jabatan cleanup done (171 stray rows removed, all provinces ≤100% coverage). Public data priority locked: Korupsi → LHKPN → Pendidikan. Map modes and "Terlengkap" visibility policy decided (see below).
 
-### Top priority — finish + commit partai backfill, then bulk-pass
+### Top priority — Brainstorm: Gemini CSV vs scraping for multi-field enrichment
 
-The diff currently in the working tree extends the agent to extract `partai` and writes it to `jabatan` when present. To finish the partai feature:
+User observation: for enriching multiple fields per pejabat (tanggal lahir, masa jabatan, partai, LHKPN value, rekam bersih), Gemini CSV workflow has proven faster, more accurate, and cheaper than the Python scraper + agent pipeline. Next session should be a structured comparison before committing to either approach for phases 9B–9D.
 
-1. **Commit the queued diff** (`scraper/agent.py` + `scripts/run_agent_backfill.py`). Suggested message: "Add partai extraction to research agent + jabatan write".
-2. **Smoke test** with one province: `python scripts/run_agent_backfill.py --provinsi "DI Yogyakarta" --limit 2 --dry-run`. Confirm the LLM emits a `partai` field that survives the JSON parser. If the model returns `partai: null` for everyone, loosen the prompt by adding 1-2 examples.
-3. **Decide the bulk-pass design**: existing `--resume` SKIPS already-verified targets (line 329 in run_agent_backfill.py — `prev_status in ("verified", "flagged_unresolved")`). To re-visit verified pejabat just to add partai, options:
-   - (a) Add a `--retry-partai` flag that overrides the skip when the corresponding `jabatan.partai IS NULL`. Rerun cost: ~860 LLM calls. ~$1-2 of credits, a few hours wall-clock.
-   - (b) Write a leaner `run_partai_only_pass.py` that re-uses the already-verified `metadata.sources` URLs from `pejabat`, fetches them via Jina, and asks the LLM only for partai (no name search). Cheaper (~3 fetches/target) and faster, but a separate code path to maintain.
-   - (a) is simpler and reuses tested code. Recommended unless we discover the agent yields partai on <50% of new runs, in which case (b) is needed.
-4. **UI:** partai chip on the homepage leader rail (currently shows posisi+wilayah only) and a small visual treatment on the profile-page riwayat-jabatan partai column (currently grey "—" when null).
+**Questions to resolve:**
+- For each field type (korupsi, LHKPN, pendidikan), is Gemini CSV viable at scale (~1000 rows)?
+- What does a Gemini CSV template look like for multi-field enrichment vs. single-field?
+- Does Gemini's web search reliably find KPK cases and LHKPN values by name?
+- What's the verification/trust story for Gemini-filled data vs. agent-verified citations?
+- Is there a hybrid: use Gemini CSV for discovery, agent for citation verification?
+- Cost + time estimate for each approach across all 3 phases.
+
+**Do not start implementing 9B until this comparison is done.**
+
+### After brainstorm — partai bulk-pass
+
+Once enrichment strategy is decided, run the partai backfill pass (all ~1000 pejabat with real names, `jabatan.partai IS NULL`). The `--retry-partai` flag approach (option a) is simplest. Then wire partai chip on homepage leader rail + profile page.
 
 ## Public Data Priority (locked)
 
@@ -248,6 +254,18 @@ After all leader names are filled, public-facing enrichment follows this fixed o
 3. **Pendidikan** — education background third. Source: Wikipedia, official bio pages, KPU data.
 
 This order is intentional: corruption data is what citizens actually look for first. LHKPN requires correct names (can't file lookup on a placeholder). Pendidikan is additive but not urgent.
+
+## Map Mode Policy (locked)
+
+**"Terlengkap" (coverage %) is admin-only** — it belongs on `/admin/dashboard`, not on the public homepage. The public map has exactly three modes, all showing civic risk (redder = worse):
+
+| Mode | What red means |
+|---|---|
+| **Rekam Bersih** | More leaders with corruption history in that province |
+| **LHKPN** | Lower % of leaders who have filed asset declarations |
+| **Pendidikan** | Lower average education level of leaders in that province |
+
+All three modes follow inverted polarity: red = bad, so the legend is consistent across modes. The `hash01` mock stays until real data lands for each mode — swap is one-line per mode.
 
 ### After partai — Phase 9B (Rekam Jejak Korupsi)
 
