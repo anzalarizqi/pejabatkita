@@ -59,14 +59,14 @@ export default function ReviewClient({ flags: initialFlags }: { flags: FlagWithP
       `}</style>
 
       <div className="review-header">
-        <h2 className="review-title">Antrian Tinjauan</h2>
-        <span className="review-count">{flags.length} pending</span>
+        <h2 className="review-title">Koreksi dari Warga</h2>
+        <span className="review-count">{flags.length} menunggu tindakan</span>
       </div>
 
       {flags.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">✓</div>
-          <div>Tidak ada bendera yang perlu ditinjau.</div>
+          <div>Semua laporan sudah ditindaklanjuti.</div>
         </div>
       ) : (
         <div className="flag-list">

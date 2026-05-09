@@ -208,34 +208,34 @@ export default function PlaceholdersPage() {
       <div className="ph-wrap">
         {/* Export section */}
         <div className="ph-section">
-          <div className="ph-section-title">1 — Ekspor daftar placeholder</div>
+          <div className="ph-section-title">Langkah 1 — Unduh daftar nama kosong</div>
           <div className="ph-section-sub">
-            Unduh CSV berisi semua pejabat yang namanya belum terisi.
-            Buka di Gemini (gemini.google.com) dengan web search aktif,
-            minta Gemini mengisi kolom <code>nama_baru</code> dan <code>sumber_url</code>.
+            Unduh CSV berisi semua pejabat yang namanya belum diketahui.
+            Buka di Gemini (gemini.google.com) dengan pencarian web aktif,
+            gunakan prompt di bawah, lalu minta Gemini mengisi kolom <code>nama_baru</code> dan <code>sumber_url</code>.
           </div>
           <div className="ph-steps">
-            Buka gemini.google.com → aktifkan pencarian web → unggah/tempel isi CSV<br />
-            Gunakan prompt di bawah → copy hasil CSV → lanjut ke langkah 2
+            Buka gemini.google.com → aktifkan pencarian web → unggah atau tempel isi CSV<br />
+            Gunakan prompt di bawah → salin hasil CSV → lanjut ke Langkah 2
           </div>
           <GeminiPrompt />
           <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
             <button className="btn btn-primary" onClick={handleExport}>
-              ⬇ Unduh CSV Placeholder
+              ⬇ Unduh Daftar Nama Kosong
             </button>
             <button className="btn btn-ghost" onClick={handleExportAll}>
-              ⬇ Unduh Semua Pejabat (Audit)
+              ⬇ Unduh Semua Pejabat
             </button>
           </div>
         </div>
 
         {/* Import section */}
         <div className="ph-section">
-          <div className="ph-section-title">2 — Impor hasil Gemini</div>
+          <div className="ph-section-title">Langkah 2 — Unggah hasil verifikasi</div>
           <div className="ph-section-sub">
             Unggah kembali CSV yang sudah diisi Gemini. Hanya baris dengan
             <code>nama_baru</code> tidak kosong yang akan diproses.
-            Nama yang terlihat seperti placeholder tetap diabaikan.
+            Nama yang masih berbentuk jabatan (misal: "Bupati Klaten") tetap diabaikan.
           </div>
 
           <div className="upload-zone">
@@ -247,7 +247,7 @@ export default function PlaceholdersPage() {
               disabled={importing}
             />
             <div className="upload-label">
-              {importing ? 'Memproses...' : 'Klik atau seret file CSV / Excel hasil Gemini'}
+              {importing ? 'Memproses...' : 'Klik atau seret file CSV / Excel yang sudah diisi'}
             </div>
           </div>
 
@@ -266,7 +266,7 @@ export default function PlaceholdersPage() {
                 </div>
                 <div className="result-stat">
                   <div className="result-num">{result.skippedBadName}</div>
-                  <div className="result-label">Nama Buruk</div>
+                  <div className="result-label">Bukan Nama</div>
                 </div>
                 <div className="result-stat">
                   <div className="result-num">{result.total}</div>

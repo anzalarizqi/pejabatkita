@@ -288,22 +288,28 @@ export default function ImportPage() {
         <div className="import-steps">
           <div className={`step-item${step === 'upload' ? ' active' : ' done'}`}>
             <span className="step-num">{step !== 'upload' ? '✓' : '1'}</span>
-            Unggah File
+            Pilih File
           </div>
           <div className="step-sep" />
           <div className={`step-item${step === 'preview' ? ' active' : step === 'done' ? ' done' : ''}`}>
             <span className="step-num">{step === 'done' ? '✓' : '2'}</span>
-            Pratinjau Diff
+            Tinjau Perubahan
           </div>
           <div className="step-sep" />
           <div className={`step-item${step === 'done' ? ' active done' : ''}`}>
             <span className="step-num">{step === 'done' ? '✓' : '3'}</span>
-            Konfirmasi
+            Simpan ke Database
           </div>
         </div>
 
         {step === 'upload' && (
           <>
+            <div style={{ marginBottom: 28 }}>
+              <p style={{ fontSize: 12, color: '#5a5750', letterSpacing: '0.03em', lineHeight: 1.8, borderLeft: '2px solid #d4cfc5', paddingLeft: 16 }}>
+                Unggah file <code style={{ fontFamily: "'DM Mono', monospace", background: 'rgba(0,0,0,0.05)', padding: '1px 5px', fontSize: 10 }}>pejabat.json</code> dari hasil pipeline Python scraper.<br />
+                Bukan CSV nama kosong — itu ada di menu <strong>Isi Nama Kosong</strong>.
+              </p>
+            </div>
             <div className="upload-zone">
               <input
                 ref={fileRef}
@@ -313,11 +319,11 @@ export default function ImportPage() {
                 disabled={loading}
               />
               <div className="upload-icon">⊕</div>
-              <div className="upload-title">Unggah File JSON</div>
+              <div className="upload-title">Unggah Output Scraper</div>
               <div className="upload-sub">
                 {loading
                   ? 'Memproses file...'
-                  : 'Klik atau seret file pejabat.json hasil scraper / verifier'}
+                  : 'Klik atau seret file pejabat.json — hasil python scripts/run_scraper.py'}
               </div>
             </div>
             {error && <div className="error-banner">{error}</div>}
@@ -334,7 +340,7 @@ export default function ImportPage() {
                 onClick={handleConfirm}
                 disabled={loading || (diff.newCount + diff.updatedCount === 0)}
               >
-                {loading ? 'Mengimpor...' : `Konfirmasi Impor (${diff.newCount + diff.updatedCount} perubahan)`}
+                {loading ? 'Menyimpan...' : `Simpan ke Database (${diff.newCount + diff.updatedCount} perubahan)`}
               </button>
               <button className="btn btn-ghost" onClick={handleReset} disabled={loading}>
                 ← Batal
@@ -345,7 +351,7 @@ export default function ImportPage() {
 
         {step === 'done' && result && (
           <div className="result-card">
-            <div className="result-title">Impor Selesai</div>
+            <div className="result-title">Data Tersimpan</div>
             <div className="result-stats">
               <div className="result-stat">
                 <div className="result-num">{result.inserted}</div>
@@ -357,7 +363,7 @@ export default function ImportPage() {
               </div>
               <div className="result-stat">
                 <div className="result-num">{result.flagged}</div>
-                <div className="result-label">Perlu Tinjauan</div>
+                <div className="result-label">Perlu Koreksi</div>
               </div>
             </div>
             {result.errors.length > 0 && (
