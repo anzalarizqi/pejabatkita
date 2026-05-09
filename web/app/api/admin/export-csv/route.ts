@@ -19,6 +19,20 @@ function csvRow(fields: string[]): string {
   }).join(',')
 }
 
+async function fetchAll<T>(supabase: Awaited<ReturnType<typeof createServerSupabase>>, table: string, columns: string): Promise<T[]> {
+  const pageSize = 1000
+  const rows: T[] = []
+  let offset = 0
+  while (true) {
+    const { data } = await supabase.from(table).select(columns).range(offset, offset + pageSize - 1)
+    const chunk = (data ?? []) as T[]
+    rows.push(...chunk)
+    if (chunk.length < pageSize) break
+    offset += pageSize
+  }
+  return rows
+}
+
 export async function GET() {
   const cookieStore = await cookies()
   const session = cookieStore.get('admin_session')
@@ -28,35 +42,35 @@ export async function GET() {
 
   const supabase = await createServerSupabase(true)
 
-  const [pejabatRes, provRes] = await Promise.all([
-    supabase
-      .from('pejabat')
-      .select('id, nama_lengkap, jabatan(id, posisi, wilayah:wilayah_id(id, nama, kode_bps, level))')
-      .limit(5000),
-    supabase.from('wilayah').select('kode_bps, nama').eq('level', 'provinsi'),
+  // Separate queries — avoids PostgREST nested-join silently dropping rows
+  const [wilayahRows, pejabatRows, jabatanRows] = await Promise.all([
+    fetchAll<{ id: string; kode_bps: string; nama: string; level: string }>(supabase, 'wilayah', 'id, kode_bps, nama, level'),
+    fetchAll<{ id: string; nama_lengkap: string }>(supabase, 'pejabat', 'id, nama_lengkap'),
+    fetchAll<{ id: string; pejabat_id: string; wilayah_id: string; posisi: string }>(supabase, 'jabatan', 'id, pejabat_id, wilayah_id, posisi'),
   ])
 
-  const provMap: Record<string, string> = {}
-  for (const w of provRes.data ?? []) {
-    provMap[w.kode_bps] = w.nama
+  const wilayahById = new Map(wilayahRows.map(w => [w.id, w]))
+  const provMap = new Map(wilayahRows.filter(w => w.level === 'provinsi').map(w => [w.kode_bps, w.nama]))
+
+  // Index jabatan by pejabat_id
+  const jabatanByPejabat = new Map<string, typeof jabatanRows>()
+  for (const j of jabatanRows) {
+    const list = jabatanByPejabat.get(j.pejabat_id) ?? []
+    list.push(j)
+    jabatanByPejabat.set(j.pejabat_id, list)
   }
 
-  const rows: string[] = []
-  rows.push(csvRow(['pejabat_id', 'jabatan_id', 'posisi', 'wilayah', 'provinsi', 'placeholder_saat_ini', 'nama_baru', 'sumber_url', 'catatan']))
+  const entries: Array<{
+    pejabatId: string; jabatanId: string; posisi: string
+    wilayah: string; provinsi: string; placeholder: string; isWakil: boolean
+  }> = []
 
-  const pejabatList = pejabatRes.data ?? []
-  type WilayahRaw = { id: string; nama: string; kode_bps: string; level: string }
-  type JabatanRaw = { id: string; posisi: string; wilayah: WilayahRaw | WilayahRaw[] | null }
-  type PejabatRaw = { id: string; nama_lengkap: string; jabatan: JabatanRaw[] }
-
-  const entries: Array<{ pejabatId: string; jabatanId: string; posisi: string; wilayah: string; provinsi: string; placeholder: string; isWakil: boolean }> = []
-
-  for (const p of pejabatList as unknown as PejabatRaw[]) {
+  for (const p of pejabatRows) {
     if (!isPlaceholder(p.nama_lengkap)) continue
-    for (const j of (p.jabatan ?? [])) {
-      const w = Array.isArray(j.wilayah) ? j.wilayah[0] ?? null : j.wilayah
+    for (const j of jabatanByPejabat.get(p.id) ?? []) {
+      const w = wilayahById.get(j.wilayah_id)
       const kode = w?.kode_bps ?? ''
-      const provinsi = provMap[kode.slice(0, 2)] ?? ''
+      const provinsi = provMap.get(kode.slice(0, 2)) ?? ''
       entries.push({
         pejabatId: p.id,
         jabatanId: j.id,
@@ -76,14 +90,13 @@ export async function GET() {
     return a.wilayah.localeCompare(b.wilayah)
   })
 
-  for (const e of entries) {
-    rows.push(csvRow([e.pejabatId, e.jabatanId, e.posisi, e.wilayah, e.provinsi, e.placeholder, '', '', '']))
-  }
+  const rows: string[] = [
+    csvRow(['pejabat_id', 'jabatan_id', 'posisi', 'wilayah', 'provinsi', 'placeholder_saat_ini', 'nama_baru', 'sumber_url', 'catatan']),
+    ...entries.map(e => csvRow([e.pejabatId, e.jabatanId, e.posisi, e.wilayah, e.provinsi, e.placeholder, '', '', ''])),
+  ]
 
-  const csv = rows.join('\n')
   const date = new Date().toISOString().slice(0, 10)
-
-  return new NextResponse(csv, {
+  return new NextResponse(rows.join('\n'), {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
       'Content-Disposition': `attachment; filename="placeholders_${date}.csv"`,
