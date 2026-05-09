@@ -142,7 +142,6 @@ export default function PreviewShell({ provinces, stats, leaders }: Props) {
             >
               Misi Kami
             </button>
-            <Link href="/pejabat" className="pv-nav-link">Lapor</Link>
           </nav>
 
           <div className="pv-header-meta">
