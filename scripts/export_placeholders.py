@@ -49,6 +49,19 @@ def get_supabase():
     )
 
 
+def fetch_all(supabase, table: str, columns: str, page_size: int = 1000) -> list[dict]:
+    rows: list[dict] = []
+    offset = 0
+    while True:
+        res = supabase.table(table).select(columns).range(offset, offset + page_size - 1).execute()
+        chunk = res.data or []
+        rows.extend(chunk)
+        if len(chunk) < page_size:
+            break
+        offset += page_size
+    return rows
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--provinsi", help="Filter to one province")
@@ -59,24 +72,27 @@ def main() -> None:
 
     print("Fetching data from Supabase...")
 
-    # Province map
-    prov_res = supabase.table("wilayah").select("kode_bps, nama").eq("level", "provinsi").execute()
-    prov_map: dict[str, str] = {w["kode_bps"]: w["nama"] for w in (prov_res.data or [])}
+    # Separate queries — avoids PostgREST nested-join row drops
+    wilayah_rows = fetch_all(supabase, "wilayah", "id, kode_bps, nama, level")
+    pejabat_rows = fetch_all(supabase, "pejabat", "id, nama_lengkap")
+    jabatan_rows = fetch_all(supabase, "jabatan", "id, pejabat_id, wilayah_id, posisi")
 
-    # All pejabat + jabatan
-    q = (
-        supabase.table("pejabat")
-        .select("id, nama_lengkap, jabatan(id, posisi, wilayah:wilayah_id(id, nama, kode_bps, level))")
-        .limit(5000)
-        .execute()
-    )
+    wilayah_by_id: dict[str, dict] = {w["id"]: w for w in wilayah_rows}
+    prov_map: dict[str, str] = {
+        w["kode_bps"]: w["nama"] for w in wilayah_rows if w["level"] == "provinsi"
+    }
+
+    # Index jabatan by pejabat_id
+    jab_by_pejabat: dict[str, list[dict]] = {}
+    for j in jabatan_rows:
+        jab_by_pejabat.setdefault(j["pejabat_id"], []).append(j)
 
     rows: list[dict] = []
-    for p in (q.data or []):
+    for p in pejabat_rows:
         if not is_placeholder(p.get("nama_lengkap")):
             continue
-        for j in (p.get("jabatan") or []):
-            w = j.get("wilayah") or {}
+        for j in jab_by_pejabat.get(p["id"], []):
+            w = wilayah_by_id.get(j["wilayah_id"]) or {}
             kode = w.get("kode_bps", "")
             provinsi_nama = prov_map.get(kode[:2], "")
 
