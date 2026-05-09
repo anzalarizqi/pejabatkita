@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import IndonesiaMap from './IndonesiaMap'
 import DisclaimerModal from './DisclaimerModal'
+import MisiKamiModal from './MisiKamiModal'
 import type { LeaderRow, ProvinceCount, SiteStats } from '@/lib/queries'
 
 interface Props {
@@ -48,6 +49,10 @@ export default function PreviewShell({ provinces, stats, leaders }: Props) {
   function reopenDisclaimer() {
     try { window.localStorage.removeItem('pejabatkita_disclaimer_v1') } catch {}
     window.dispatchEvent(new Event('pv:open-disclaimer'))
+  }
+
+  function openMisi() {
+    window.dispatchEvent(new Event('pv:open-misi'))
   }
 
   const provinceMaps = useMemo(() => {
@@ -108,6 +113,7 @@ export default function PreviewShell({ provinces, stats, leaders }: Props) {
     <>
       <style>{styles}</style>
       <DisclaimerModal />
+      <MisiKamiModal />
 
       <div className="pv-root">
         <RegistrationMark className="pv-mark pv-mark-tl" />
@@ -131,12 +137,12 @@ export default function PreviewShell({ provinces, stats, leaders }: Props) {
             <button
               type="button"
               className="pv-nav-link pv-nav-btn"
-              onClick={reopenDisclaimer}
+              onClick={openMisi}
               suppressHydrationWarning
             >
               Misi Kami
             </button>
-            <Link href="/admin/login" className="pv-nav-link">Lapor</Link>
+            <Link href="/pejabat" className="pv-nav-link">Lapor</Link>
           </nav>
 
           <div className="pv-header-meta">
