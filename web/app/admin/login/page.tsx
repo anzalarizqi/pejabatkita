@@ -27,7 +27,7 @@ export default function LoginPage() {
         body: JSON.stringify({ password }),
       })
       if (res.ok) {
-        router.push('/admin/dashboard')
+        window.location.href = '/admin/dashboard'
       } else {
         setError('Kata sandi salah.')
         setPassword('')
