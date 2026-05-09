@@ -28,9 +28,17 @@ export default function ImportPage() {
     setLoading(true)
     try {
       const text = await file.text()
-      const raw = JSON.parse(text)
+      if (text.trimStart().startsWith('pejabat_id') || text.trimStart().startsWith('"pejabat_id"')) {
+        throw new Error('Ini adalah file CSV nama kosong — unggah di menu Isi Nama Kosong, bukan di sini.')
+      }
+      let raw: unknown
+      try {
+        raw = JSON.parse(text)
+      } catch {
+        throw new Error('File bukan JSON yang valid. Halaman ini hanya menerima pejabat.json dari scraper Python.')
+      }
       // Accept both array and { data: [] } formats
-      const data: PejabatJSON[] = Array.isArray(raw) ? raw : raw.data ?? raw.pejabat ?? []
+      const data: PejabatJSON[] = Array.isArray(raw) ? raw : (raw as Record<string, unknown>).data as PejabatJSON[] ?? (raw as Record<string, unknown>).pejabat as PejabatJSON[] ?? []
       if (!data.length) throw new Error('File kosong atau format tidak dikenali.')
 
       const res = await fetch('/api/import/preview', {
