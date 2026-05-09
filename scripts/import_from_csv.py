@@ -124,8 +124,10 @@ def main() -> None:
                 "sources": [{"url": sumber, "method": "gemini_web"}] if sumber else [],
                 "confidence": 0.9 if sumber else 0.7,
             }
+            from datetime import datetime, timezone
             supabase.table("pejabat").update({
                 "nama_lengkap": nama,
+                "last_updated": datetime.now(timezone.utc).isoformat(),
                 "metadata": metadata_patch,
             }).eq("id", pid).execute()
             updated += 1

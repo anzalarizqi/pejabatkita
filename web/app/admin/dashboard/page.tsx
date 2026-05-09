@@ -16,7 +16,7 @@ async function getCoverageData() {
 
   const [wilayahRes, jabatanRes, scrapeRes, flagRes] = await Promise.all([
     supabase.from('wilayah').select('*').order('nama'),
-    supabase.from('jabatan').select('wilayah_id, pejabat_id').eq('status', 'aktif'),
+    supabase.from('jabatan').select('wilayah_id, pejabat_id'),
     supabase
       .from('scrape_runs')
       .select('*')

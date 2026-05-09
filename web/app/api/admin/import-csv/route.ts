@@ -88,6 +88,7 @@ export async function POST(req: NextRequest) {
     try {
       await supabase.from('pejabat').update({
         nama_lengkap: nama,
+        last_updated: new Date().toISOString(),
         metadata: {
           verified_by: 'gemini_manual',
           sources: sumber ? [{ url: sumber, method: 'gemini_web' }] : [],
