@@ -239,20 +239,38 @@ The diff currently in the working tree extends the agent to extract `partai` and
    - (a) is simpler and reuses tested code. Recommended unless we discover the agent yields partai on <50% of new runs, in which case (b) is needed.
 4. **UI:** partai chip on the homepage leader rail (currently shows posisi+wilayah only) and a small visual treatment on the profile-page riwayat-jabatan partai column (currently grey "—" when null).
 
-### After partai — Phase 9B (LHKPN)
+## Public Data Priority (locked)
 
-Schema additions: `pejabat.kekayaan_total`, `pejabat.kekayaan_breakdown` (assets/debts), `pejabat.pendidikan_terakhir`. Source is `elhkpn.kpk.go.id`. Every kepala daerah is legally required to file. Captcha is the hard part — start with Playwright + manual solve, evaluate paid solver (2captcha/capsolver) only if a non-trivial number of high-value targets sit behind hard challenges.
+After all leader names are filled, public-facing enrichment follows this fixed order:
+
+1. **Rekam Jejak Korupsi** — corruption history first. Highest civic value, most searched. Source: KPK case archive, ICW database, news filtered to `tersangka|vonis|tipikor`. Strict verification only (KPK / pengadilan / major news).
+2. **LHKPN** — asset declarations second. Every kepala daerah is legally required to file. Source: `elhkpn.kpk.go.id`. Enables the LHKPN map mode.
+3. **Pendidikan** — education background third. Source: Wikipedia, official bio pages, KPU data.
+
+This order is intentional: corruption data is what citizens actually look for first. LHKPN requires correct names (can't file lookup on a placeholder). Pendidikan is additive but not urgent.
+
+### After partai — Phase 9B (Rekam Jejak Korupsi)
+
+Search KPK case archive + ICW database + news filtered to `tersangka|vonis|tipikor`. Same agent pattern as 9A but with strict verification (only insert if source is KPK / pengadilan / major news).
+
+Schema additions on `jabatan` or separate `kasus` table (TBD): kasus_id, jenis (tersangka/terdakwa/terpidana), lembaga (KPK/kejaksaan), tahun, url_sumber.
 
 **Pre-9B housekeeping:**
-- Drain the `agent_unresolved` flags on `/admin/review`. Either rename manually or close as "no public info available". Important because LHKPN files by name — placeholder rows poison the lookup.
-- Decide what to do with the 231 remaining placeholders: rerun a v3 sourcing pass with looser .go.id retry, or hard-delete from `pejabat`. Either is fine; just don't drag them into 9B.
-- Take a Supabase snapshot before applying the 9B migrations.
+- Drain the `agent_unresolved` flags on `/admin/review`.
+- Names must be clean before running — corruption lookup is by name.
+
+### Phase 9C — LHKPN (after 9B)
+
+Schema additions: `pejabat.kekayaan_total`, `pejabat.kekayaan_breakdown` (assets/debts). Source is `elhkpn.kpk.go.id`. Every kepala daerah is legally required to file. Captcha is the hard part — start with Playwright + manual solve, evaluate paid solver (2captcha/capsolver) only if needed.
+
+**Pre-9C housekeeping:**
+- Take a Supabase snapshot before applying migrations.
 
 When real LHKPN data lands, swap the homepage `hash01(name, 'lhkpn')` mock for the real per-province aggregation; legend/colour/UI stays the same. Same swap on the profile-page PRATINJAU section — it's wired to `hash01(pejabat.id, ':lhkpn')` exactly so the swap is one-line.
 
-### Phase 9C — Rekam-jejak / corruption history (after 9B)
+### Phase 9D — Pendidikan (after 9C)
 
-Search KPK case archive + ICW database + news filtered to `tersangka|vonis|tipikor`. Same agent pattern as 9A but with strict verification (only insert if source is KPK / pengadilan / major news). Defer until 9A+9B are stable.
+Schema additions: `pejabat.pendidikan_terakhir`, `pejabat.universitas`. Source: Wikipedia, official bio, KPU calon data. Enables the Pendidikan map mode.
 
 ### Phase 10 follow-ups (deferred)
 
