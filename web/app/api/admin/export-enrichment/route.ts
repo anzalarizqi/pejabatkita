@@ -34,15 +34,51 @@ async function fetchAll<T>(
   supabase: Awaited<ReturnType<typeof createServerSupabase>>,
   table: string,
   columns: string,
-  extra?: (q: ReturnType<typeof supabase.from>) => ReturnType<typeof supabase.from>,
 ): Promise<T[]> {
   const rows: T[] = []
   let offset = 0
   while (true) {
-    let q = supabase.from(table).select(columns)
-    if (extra) q = extra(q) as typeof q
-    const { data } = await (q as ReturnType<typeof supabase.from>).range(offset, offset + 999)
+    const { data } = await supabase.from(table).select(columns).range(offset, offset + 999)
     const chunk = (data ?? []) as T[]
+    rows.push(...chunk)
+    if (chunk.length < 1000) break
+    offset += 1000
+  }
+  return rows
+}
+
+async function fetchJabatanNullPartai(
+  supabase: Awaited<ReturnType<typeof createServerSupabase>>,
+): Promise<{ id: string; pejabat_id: string; wilayah_id: string; posisi: string; mulai_jabatan: string | null; selesai_jabatan: string | null }[]> {
+  const rows: { id: string; pejabat_id: string; wilayah_id: string; posisi: string; mulai_jabatan: string | null; selesai_jabatan: string | null }[] = []
+  let offset = 0
+  while (true) {
+    const { data } = await supabase
+      .from('jabatan')
+      .select('id, pejabat_id, wilayah_id, posisi, mulai_jabatan, selesai_jabatan')
+      .is('partai', null)
+      .range(offset, offset + 999)
+    const chunk = data ?? []
+    rows.push(...chunk)
+    if (chunk.length < 1000) break
+    offset += 1000
+  }
+  return rows
+}
+
+async function fetchPendingUnresolvedFlags(
+  supabase: Awaited<ReturnType<typeof createServerSupabase>>,
+): Promise<{ pejabat_id: string; reason: string | null }[]> {
+  const rows: { pejabat_id: string; reason: string | null }[] = []
+  let offset = 0
+  while (true) {
+    const { data } = await supabase
+      .from('flags')
+      .select('pejabat_id, reason')
+      .eq('type', 'agent_unresolved')
+      .eq('status', 'pending')
+      .range(offset, offset + 999)
+    const chunk = data ?? []
     rows.push(...chunk)
     if (chunk.length < 1000) break
     offset += 1000
@@ -65,14 +101,8 @@ export async function GET() {
     fetchAll<{ id: string; nama_lengkap: string; gelar_depan: string | null; gelar_belakang: string | null }>(
       supabase, 'pejabat', 'id, nama_lengkap, gelar_depan, gelar_belakang',
     ),
-    fetchAll<{ id: string; pejabat_id: string; wilayah_id: string; posisi: string; mulai_jabatan: string | null; selesai_jabatan: string | null }>(
-      supabase, 'jabatan', 'id, pejabat_id, wilayah_id, posisi, mulai_jabatan, selesai_jabatan',
-      q => q.is('partai', null),
-    ),
-    fetchAll<{ pejabat_id: string; reason: string | null }>(
-      supabase, 'flags', 'pejabat_id, reason',
-      q => q.eq('type', 'agent_unresolved').eq('status', 'pending'),
-    ),
+    fetchJabatanNullPartai(supabase),
+    fetchPendingUnresolvedFlags(supabase),
   ])
 
   const wilayahById = new Map(wilayahRows.map(w => [w.id, w]))
