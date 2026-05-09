@@ -175,14 +175,17 @@ export async function getSiteStats(): Promise<SiteStats> {
   for (const p of pejabat) {
     if (!isPlaceholderName(p.nama_lengkap)) realPejabatIds.add(p.id)
   }
-  const realPejabat = realPejabatIds.size
 
-  // Provinces covered = provinces where at least one real pejabat holds a jabatan
+  // Count filled jabatan positions (not distinct people) — one person can hold
+  // two roles (e.g., plt), so counting distinct pejabat undercounts coverage.
   const wilayahById = new Map<string, Pick<Wilayah, 'id' | 'level' | 'parent_id' | 'nama'>>()
   for (const w of wilayah) wilayahById.set(w.id, w)
+
+  let realPejabat = 0
   const coveredProvNames = new Set<string>()
   for (const j of jabatan) {
     if (!realPejabatIds.has(j.pejabat_id)) continue
+    realPejabat++
     const w = wilayahById.get(j.wilayah_id)
     if (!w) continue
     if (w.level === 'provinsi') coveredProvNames.add(w.nama)
