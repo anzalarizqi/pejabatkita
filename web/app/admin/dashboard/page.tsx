@@ -89,6 +89,11 @@ async function getCoverageData() {
 }
 
 export default async function DashboardPage() {
-  const rows = await getCoverageData()
+  let rows: Awaited<ReturnType<typeof getCoverageData>> = []
+  try {
+    rows = await getCoverageData()
+  } catch (e) {
+    console.error('[dashboard] getCoverageData failed:', e)
+  }
   return <DashboardClient rows={rows} />
 }
