@@ -7,6 +7,7 @@ import { useState } from 'react'
 const NAV = [
   { href: '/admin/dashboard', label: 'Cakupan Data', icon: '◉' },
   { href: '/admin/placeholders', label: 'Isi Nama Kosong', icon: '✎' },
+  { href: '/admin/enrichment', label: 'Partai & Masa Jabatan', icon: '⊞' },
   { href: '/admin/import', label: 'Impor Scraper', icon: '⊕' },
   { href: '/admin/review', label: 'Koreksi Warga', icon: '⚑' },
 ]
