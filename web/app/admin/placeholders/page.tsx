@@ -242,12 +242,12 @@ export default function PlaceholdersPage() {
             <input
               ref={fileRef}
               type="file"
-              accept=".csv"
+              accept=".csv,.xlsx,.xls"
               onChange={handleImport}
               disabled={importing}
             />
             <div className="upload-label">
-              {importing ? 'Memproses...' : 'Klik atau seret file CSV hasil Gemini'}
+              {importing ? 'Memproses...' : 'Klik atau seret file CSV / Excel hasil Gemini'}
             </div>
           </div>
 

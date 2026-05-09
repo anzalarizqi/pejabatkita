@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase'
 import { cookies } from 'next/headers'
+import * as XLSX from 'xlsx'
 
 const PLACEHOLDER_RE = /^(Bupati|Walikota|Wali Kota|Wakil Bupati|Wakil Walikota|Wakil Wali Kota|Gubernur|Wakil Gubernur|Penjabat|Pj\.?)\s+\S/i
 const LLM_ERR_RE = /^\[LLM Error\]/i
@@ -53,8 +54,19 @@ export async function POST(req: NextRequest) {
   const file = formData.get('file') as File | null
   if (!file) return NextResponse.json({ error: 'No file uploaded' }, { status: 400 })
 
-  const text = await file.text()
-  const rows = parseCsv(text)
+  const isExcel = /\.(xlsx|xls)$/i.test(file.name)
+  let rows: Record<string, string>[]
+
+  if (isExcel) {
+    const buffer = await file.arrayBuffer()
+    const wb = XLSX.read(buffer, { type: 'array' })
+    const ws = wb.Sheets[wb.SheetNames[0]]
+    rows = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { defval: '' })
+  } else {
+    const text = await file.text()
+    rows = parseCsv(text)
+  }
+
   if (!rows.length) return NextResponse.json({ error: 'File kosong atau format tidak dikenali' }, { status: 400 })
 
   const supabase = await createServerSupabase(true)
@@ -65,7 +77,7 @@ export async function POST(req: NextRequest) {
   const errors: string[] = []
 
   for (const row of rows) {
-    const nama = (row['nama_baru'] ?? '').trim()
+    const nama = (row['nama_baru'] ?? row['nama_koreksi'] ?? '').trim()
     const pid = (row['pejabat_id'] ?? '').trim()
     const sumber = (row['sumber_url'] ?? '').trim()
 
