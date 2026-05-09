@@ -23,6 +23,13 @@ export default function PlaceholdersPage() {
     a.click()
   }
 
+  async function handleExportAll() {
+    const a = document.createElement('a')
+    a.href = '/api/admin/export-all-csv'
+    a.download = ''
+    a.click()
+  }
+
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -212,9 +219,12 @@ export default function PlaceholdersPage() {
             Gunakan prompt di bawah → copy hasil CSV → lanjut ke langkah 2
           </div>
           <GeminiPrompt />
-          <div style={{ marginTop: 24 }}>
+          <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
             <button className="btn btn-primary" onClick={handleExport}>
               ⬇ Unduh CSV Placeholder
+            </button>
+            <button className="btn btn-ghost" onClick={handleExportAll}>
+              ⬇ Unduh Semua Pejabat (Audit)
             </button>
           </div>
         </div>
