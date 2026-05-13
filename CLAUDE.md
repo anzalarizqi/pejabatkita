@@ -118,31 +118,31 @@ All modes: inverted polarity (red = bad), consistent legend. `hash01` mock stays
 
 ## Next Session Should Start With
 
-**Where we are (Session 8 end):** Leader names ~95%+ filled via Gemini CSV workflow. Jabatan cleanup done (171 stray rows removed, all provinces ≤100% coverage). Public data priority locked: Korupsi → LHKPN → Pendidikan. Map modes and "Terlengkap" visibility policy decided.
+**Where we are (Session 9 end):**
+- Leader names done: 1,103 / 1,104 pejabat have real names; 1 row is legitimately empty (Wakil Bupati Ciamis — cawabup meninggal sebelum Pilkada, posisi tidak dilantik).
+- All 456 stale pending flags resolved (they pre-dated the Gemini name pass; every flagged pejabat now has a real name).
+- `/admin/enrichment` workflow cleaned up: provinsi-column bug fixed, dropped dead `urls_tried`/`has_unresolved_flag` columns from the CSV.
+- Brainstorm done. **Adopted policy:** Gemini CSV for structured factoid fields (partai, masa jabatan, pendidikan); existing agent `verify_citations` as the trust gate for libel-risky fields (korupsi); Playwright only where canonical source requires it (LHKPN captcha). Per-field Gemini passes, not mega-passes.
 
-### Top priority — Brainstorm: Gemini CSV vs scraping for multi-field enrichment
+### Top priority — Run the partai + masa-jabatan enrichment
 
-User observation: for enriching multiple fields per pejabat (tanggal lahir, masa jabatan, partai, LHKPN value, rekam bersih), Gemini CSV workflow has proven faster, more accurate, and cheaper than the Python scraper + agent pipeline. Next session should be a structured comparison before committing to either approach for phases 9B–9D.
+The tooling is ready. Operate the workflow, don't rebuild it.
 
-**Questions to resolve:**
-- For each field type (korupsi, LHKPN, pendidikan), is Gemini CSV viable at scale (~1000 rows)?
-- What does a Gemini CSV template look like for multi-field enrichment vs. single-field?
-- Does Gemini's web search reliably find KPK cases and LHKPN values by name?
-- What's the verification/trust story for Gemini-filled data vs. agent-verified citations?
-- Is there a hybrid: use Gemini CSV for discovery, agent for citation verification?
-- Cost + time estimate for each approach across all 3 phases.
+1. Visit `/admin/enrichment` → click **Unduh CSV Enrichment** (~1,005 rows where `jabatan.partai IS NULL`).
+2. Send to Claude with the on-page prompt. Likely needs chunking (split by provinsi) for accuracy on long sheets.
+3. Upload result via the same page; check the result card and any `errors[]` returned by the import.
+4. After import, current partai coverage will jump from 9% (99/1,104) toward target. Re-run export for any remaining nulls.
 
-**Do not start implementing 9B until this comparison is done.**
-
-### After brainstorm — partai bulk-pass
-
-Run partai backfill pass (all ~1000 pejabat with real names, `jabatan.partai IS NULL`). The `--retry-partai` flag approach is simplest. Then wire partai chip on homepage leader rail + profile page.
+**Watch out:** import-enrichment loops sequential `await supabase.update().eq()`. ~1,000 rows = ~1,000 sequential HTTP calls. If it's painfully slow, batch via RPC or `upsert` with array payload.
 
 ### Phase 9B — Rekam Jejak Korupsi (after partai)
 
-Search KPK case archive + ICW + news filtered to `tersangka|vonis|tipikor`. Same agent pattern as 9A. Schema TBD: additions to `jabatan` or separate `kasus` table (kasus_id, jenis, lembaga, tahun, url_sumber).
+Hybrid plan (per brainstorm):
+1. Gemini CSV pass: `name → has_record (Y/N/maybe), source_url, jenis, tahun` on the full ~1,100 pejabat.
+2. Run existing `verifier/verifier.py` (or agent `verify_citations`) only on Y/maybe rows. Sources accepted: KPK, pengadilan, major news.
+3. Anything that fails verification → new flag for `/admin/review`.
 
-**Pre-9B:** drain `agent_unresolved` flags on `/admin/review`. Names must be clean before running.
+Schema TBD: additions to `jabatan` or separate `kasus` table (kasus_id, jenis, lembaga, tahun, url_sumber).
 
 ### Phase 9C — LHKPN (after 9B)
 

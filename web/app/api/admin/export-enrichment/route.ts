@@ -4,21 +4,10 @@ import { cookies } from 'next/headers'
 
 const PLACEHOLDER_RE = /^(Bupati|Walikota|Wali Kota|Wakil Bupati|Wakil Walikota|Wakil Wali Kota|Gubernur|Wakil Gubernur|Penjabat|Pj\.?)\s+\S/i
 const LLM_ERR_RE = /^\[LLM Error\]/i
-const URLS_TRIED_RE = /URLs tried:\n((?:  - .+\n?)+)/m
 
 function isPlaceholder(name: string | null): boolean {
   if (!name?.trim()) return true
   return LLM_ERR_RE.test(name) || PLACEHOLDER_RE.test(name)
-}
-
-function extractUrls(reason: string | null): string {
-  if (!reason) return ''
-  const m = URLS_TRIED_RE.exec(reason)
-  if (!m) return ''
-  return m[1].split('\n')
-    .map(l => l.trim().replace(/^- /, ''))
-    .filter(Boolean)
-    .join(' | ')
 }
 
 function csvRow(fields: (string | null | undefined)[]): string {
@@ -66,26 +55,6 @@ async function fetchJabatanNullPartai(
   return rows
 }
 
-async function fetchPendingUnresolvedFlags(
-  supabase: Awaited<ReturnType<typeof createServerSupabase>>,
-): Promise<{ pejabat_id: string; reason: string | null }[]> {
-  const rows: { pejabat_id: string; reason: string | null }[] = []
-  let offset = 0
-  while (true) {
-    const { data } = await supabase
-      .from('flags')
-      .select('pejabat_id, reason')
-      .eq('type', 'agent_unresolved')
-      .eq('status', 'pending')
-      .range(offset, offset + 999)
-    const chunk = data ?? []
-    rows.push(...chunk)
-    if (chunk.length < 1000) break
-    offset += 1000
-  }
-  return rows
-}
-
 export async function GET() {
   const cookieStore = await cookies()
   if (!cookieStore.get('admin_session')?.value) {
@@ -94,7 +63,7 @@ export async function GET() {
 
   const supabase = await createServerSupabase(true)
 
-  const [wilayahRows, pejabatRows, jabatanRows, flagRows] = await Promise.all([
+  const [wilayahRows, pejabatRows, jabatanRows] = await Promise.all([
     fetchAll<{ id: string; kode_bps: string; nama: string; level: string; parent_id: string | null }>(
       supabase, 'wilayah', 'id, kode_bps, nama, level, parent_id',
     ),
@@ -102,17 +71,15 @@ export async function GET() {
       supabase, 'pejabat', 'id, nama_lengkap, gelar_depan, gelar_belakang',
     ),
     fetchJabatanNullPartai(supabase),
-    fetchPendingUnresolvedFlags(supabase),
   ])
 
   const wilayahById = new Map(wilayahRows.map(w => [w.id, w]))
   const provById = new Map(wilayahRows.filter(w => w.level === 'provinsi').map(w => [w.id, w.nama]))
   const provByKode = new Map(wilayahRows.filter(w => w.level === 'provinsi').map(w => [w.kode_bps, w.nama]))
   const pejabatById = new Map(pejabatRows.map(p => [p.id, p]))
-  const flagByPejabat = new Map(flagRows.map(f => [f.pejabat_id, f]))
 
   function getProvinsi(w: { level: string; parent_id: string | null; kode_bps: string }): string {
-    if (w.level === 'provinsi') return provById.get(w.kode_bps) ?? ''
+    if (w.level === 'provinsi') return provById.get(w.id) ?? ''
     if (w.parent_id) return provById.get(w.parent_id) ?? ''
     return provByKode.get(w.kode_bps.slice(0, 2)) ?? ''
   }
@@ -121,8 +88,7 @@ export async function GET() {
     pejabat_id: string; jabatan_id: string; nama_lengkap: string
     posisi: string; wilayah: string; provinsi: string
     mulai_jabatan: string; selesai_jabatan: string
-    is_placeholder: string; has_unresolved_flag: string; urls_tried: string
-    isWakil: boolean
+    is_placeholder: string
   }
 
   const entries: Entry[] = []
@@ -136,7 +102,6 @@ export async function GET() {
     const gelarD = p.gelar_depan?.trim() ?? ''
     const gelarB = p.gelar_belakang?.trim() ?? ''
     const nama = [gelarD, p.nama_lengkap, gelarB].filter(Boolean).join(' ')
-    const flag = flagByPejabat.get(p.id)
 
     entries.push({
       pejabat_id: p.id,
@@ -148,9 +113,6 @@ export async function GET() {
       mulai_jabatan: j.mulai_jabatan ?? '',
       selesai_jabatan: j.selesai_jabatan ?? '',
       is_placeholder: isPlaceholder(p.nama_lengkap) ? 'Y' : '',
-      has_unresolved_flag: flag ? 'Y' : '',
-      urls_tried: extractUrls(flag?.reason ?? null),
-      isWakil: /wakil/i.test(j.posisi ?? ''),
     })
   }
 
@@ -165,16 +127,14 @@ export async function GET() {
 
   const header = csvRow([
     'pejabat_id', 'jabatan_id', 'nama_lengkap', 'posisi', 'wilayah', 'provinsi',
-    'mulai_jabatan', 'selesai_jabatan',
-    'is_placeholder', 'has_unresolved_flag', 'urls_tried',
+    'mulai_jabatan', 'selesai_jabatan', 'is_placeholder',
     'partai', 'mulai_jabatan_baru', 'selesai_jabatan_baru', 'nama_baru', 'sumber_url', 'catatan',
   ])
   const rows = [
     header,
     ...entries.map(e => csvRow([
       e.pejabat_id, e.jabatan_id, e.nama_lengkap, e.posisi, e.wilayah, e.provinsi,
-      e.mulai_jabatan, e.selesai_jabatan,
-      e.is_placeholder, e.has_unresolved_flag, e.urls_tried,
+      e.mulai_jabatan, e.selesai_jabatan, e.is_placeholder,
       '', '', '', '', '', '',
     ])),
   ]

@@ -17,7 +17,6 @@ Untuk setiap baris, cari di web:
 3. selesai_jabatan_baru — tanggal selesai jabatan format YYYY-MM-DD, jika sudah selesai menjabat.
 4. nama_baru — isi HANYA untuk baris is_placeholder=Y, dengan nama lengkap orang yang menjabat.
 5. sumber_url — URL sumber.
-Kolom urls_tried berisi URL yang sudah terbukti tidak bisa diakses — jangan gunakan URL tersebut, cari sumber lain.
 Kembalikan seluruh tabel CSV dengan format yang sama persis (termasuk header dan baris yang tidak berubah).`
 
 function ClaudePrompt() {
