@@ -78,7 +78,7 @@ export async function GET() {
   const provByKode = new Map(wilayahRows.filter(w => w.level === 'provinsi').map(w => [w.kode_bps, w.nama]))
   const pejabatById = new Map(pejabatRows.map(p => [p.id, p]))
 
-  function getProvinsi(w: { level: string; parent_id: string | null; kode_bps: string }): string {
+  function getProvinsi(w: { id: string; level: string; parent_id: string | null; kode_bps: string }): string {
     if (w.level === 'provinsi') return provById.get(w.id) ?? ''
     if (w.parent_id) return provById.get(w.parent_id) ?? ''
     return provByKode.get(w.kode_bps.slice(0, 2)) ?? ''
