@@ -277,6 +277,25 @@ export default function DashboardClient({ rows }: { rows: ProvinceRow[] }) {
           color: #0f1117;
           margin-bottom: 20px;
         }
+
+        .dl-btn {
+          display: inline-block;
+          padding: 8px 16px;
+          background: #0f1117;
+          color: #f5f1ea;
+          font-family: 'DM Mono', monospace;
+          font-size: 11px;
+          letter-spacing: 0.08em;
+          text-decoration: none;
+          border: 1px solid #3a3e4a;
+          transition: background 0.15s, border-color 0.15s;
+          margin-bottom: 32px;
+        }
+
+        .dl-btn:hover {
+          background: #1e2230;
+          border-color: #d4cfc5;
+        }
       `}</style>
 
       {/* Summary stats */}
@@ -298,6 +317,10 @@ export default function DashboardClient({ rows }: { rows: ProvinceRow[] }) {
           <div className="stat-label">Perlu Ditinjau</div>
         </div>
       </div>
+
+      <a href="/api/admin/export-all-csv" className="dl-btn">
+        ↓ Unduh Semua Pejabat (CSV)
+      </a>
 
       <h2 className="section-title">Cakupan per Provinsi</h2>
 

@@ -19,6 +19,20 @@ function csvRow(fields: string[]): string {
   }).join(',')
 }
 
+async function fetchAll<T>(supabase: Awaited<ReturnType<typeof createServerSupabase>>, table: string, columns: string): Promise<T[]> {
+  const pageSize = 1000
+  const rows: T[] = []
+  let offset = 0
+  while (true) {
+    const { data } = await supabase.from(table).select(columns).range(offset, offset + pageSize - 1)
+    const chunk = (data ?? []) as T[]
+    rows.push(...chunk)
+    if (chunk.length < pageSize) break
+    offset += pageSize
+  }
+  return rows
+}
+
 export async function GET() {
   const cookieStore = await cookies()
   const session = cookieStore.get('admin_session')
@@ -28,31 +42,32 @@ export async function GET() {
 
   const supabase = await createServerSupabase(true)
 
-  const [pejabatRes, provRes] = await Promise.all([
-    supabase
-      .from('pejabat')
-      .select('id, nama_lengkap, metadata, jabatan(id, posisi, wilayah:wilayah_id(nama, kode_bps))')
-      .limit(5000),
-    supabase.from('wilayah').select('kode_bps, nama').eq('level', 'provinsi'),
+  const [wilayahRows, pejabatRows, jabatanRows] = await Promise.all([
+    fetchAll<{ id: string; kode_bps: string; nama: string; level: string }>(supabase, 'wilayah', 'id, kode_bps, nama, level'),
+    fetchAll<{ id: string; nama_lengkap: string; metadata: Record<string, unknown> | null }>(supabase, 'pejabat', 'id, nama_lengkap, metadata'),
+    fetchAll<{ pejabat_id: string; wilayah_id: string; posisi: string; partai: string | null; mulai_jabatan: string | null; selesai_jabatan: string | null; status: string }>(
+      supabase, 'jabatan', 'pejabat_id, wilayah_id, posisi, partai, mulai_jabatan, selesai_jabatan, status'
+    ),
   ])
 
-  const provMap: Record<string, string> = {}
-  for (const w of provRes.data ?? []) provMap[w.kode_bps] = w.nama
+  const wilayahById = new Map(wilayahRows.map(w => [w.id, w]))
+  const provMap = new Map(wilayahRows.filter(w => w.level === 'provinsi').map(w => [w.kode_bps, w.nama]))
+  const pejabatById = new Map(pejabatRows.map(p => [p.id, p]))
 
-  type WilayahRaw = { nama: string; kode_bps: string }
-  type JabatanRaw = { id: string; posisi: string; wilayah: WilayahRaw | WilayahRaw[] | null }
-  type PejabatRaw = { id: string; nama_lengkap: string; metadata: Record<string, unknown> | null; jabatan: JabatanRaw[] }
-
-  const rows: string[] = []
-  rows.push(csvRow(['pejabat_id', 'nama_lengkap', 'posisi', 'wilayah', 'provinsi', 'status', 'confidence', 'sumber_url', 'nama_koreksi', 'catatan']))
+  const jabatanByPejabat = new Map<string, typeof jabatanRows>()
+  for (const j of jabatanRows) {
+    const list = jabatanByPejabat.get(j.pejabat_id) ?? []
+    list.push(j)
+    jabatanByPejabat.set(j.pejabat_id, list)
+  }
 
   const entries: Array<Record<string, string>> = []
 
-  for (const p of (pejabatRes.data ?? []) as unknown as PejabatRaw[]) {
-    for (const j of (p.jabatan ?? [])) {
-      const w = Array.isArray(j.wilayah) ? j.wilayah[0] ?? null : j.wilayah
+  for (const p of pejabatRows) {
+    for (const j of jabatanByPejabat.get(p.id) ?? []) {
+      const w = wilayahById.get(j.wilayah_id)
       const kode = w?.kode_bps ?? ''
-      const provinsi = provMap[kode.slice(0, 2)] ?? ''
+      const provinsi = provMap.get(kode.slice(0, 2)) ?? ''
       const meta = p.metadata ?? {}
       const sources = (meta.sources as Array<{ url?: string }> | undefined) ?? []
       const sumber = sources[0]?.url ?? ''
@@ -65,11 +80,13 @@ export async function GET() {
         posisi: j.posisi ?? '',
         wilayah: w?.nama ?? '',
         provinsi,
+        partai: j.partai ?? '',
+        mulai_jabatan: j.mulai_jabatan ?? '',
+        selesai_jabatan: j.selesai_jabatan ?? '',
+        jabatan_status: j.status ?? '',
         status,
         confidence,
         sumber_url: sumber,
-        nama_koreksi: '',
-        catatan: '',
         _isWakil: /wakil/i.test(j.posisi ?? '') ? '1' : '0',
       })
     }
@@ -82,17 +99,16 @@ export async function GET() {
     return a.wilayah.localeCompare(b.wilayah)
   })
 
-  for (const e of entries) {
-    rows.push(csvRow([e.pejabat_id, e.nama_lengkap, e.posisi, e.wilayah, e.provinsi, e.status, e.confidence, e.sumber_url, e.nama_koreksi, e.catatan]))
-  }
+  const rows: string[] = [
+    csvRow(['pejabat_id', 'nama_lengkap', 'posisi', 'wilayah', 'provinsi', 'partai', 'mulai_jabatan', 'selesai_jabatan', 'jabatan_status', 'status', 'confidence', 'sumber_url']),
+    ...entries.map(e => csvRow([e.pejabat_id, e.nama_lengkap, e.posisi, e.wilayah, e.provinsi, e.partai, e.mulai_jabatan, e.selesai_jabatan, e.jabatan_status, e.status, e.confidence, e.sumber_url])),
+  ]
 
-  const csv = rows.join('\n')
   const date = new Date().toISOString().slice(0, 10)
-
-  return new NextResponse(csv, {
+  return new NextResponse(rows.join('\n'), {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': `attachment; filename="audit_pejabat_${date}.csv"`,
+      'Content-Disposition': `attachment; filename="semua_pejabat_${date}.csv"`,
     },
   })
 }
