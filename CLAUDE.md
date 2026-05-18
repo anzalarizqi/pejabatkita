@@ -118,15 +118,31 @@ All modes: inverted polarity (red = bad), consistent legend. `hash01` mock stays
 
 ## Next Session Should Start With
 
-**Where we are (Session 9 end):**
-- Leader names done: 1,103 / 1,104 pejabat have real names; 1 row is legitimately empty (Wakil Bupati Ciamis — cawabup meninggal sebelum Pilkada, posisi tidak dilantik).
-- All 456 stale pending flags resolved (they pre-dated the Gemini name pass; every flagged pejabat now has a real name).
-- `/admin/enrichment` workflow cleaned up: provinsi-column bug fixed, dropped dead `urls_tried`/`has_unresolved_flag` columns from the CSV.
-- Brainstorm done. **Adopted policy:** Gemini CSV for structured factoid fields (partai, masa jabatan, pendidikan); existing agent `verify_citations` as the trust gate for libel-risky fields (korupsi); Playwright only where canonical source requires it (LHKPN captcha). Per-field Gemini passes, not mega-passes.
+**Where we are (name verification pass, mid-session):**
+- Verifying all ~1,103 pejabat in `C:\Users\anzal\Downloads\semua_pejabat_verified.csv` for name accuracy post-Pilkada 2024 (mass inauguration 20 Feb 2025).
+- **Verified through line 803** (Kota Tarakan, Kalimantan Utara) — batches 1–41 complete. Jawa Timur + seluruh Kalimantan fully done.
+- Total corrections pushed to Supabase: ~94+ across all batches; last push covered batches 39–41 (12 corrections incl. 3 salah orang: Kapuas Kalteng→Dodo, PPU→Abdul Waris Muin, Tana Tidung→Sabri; 1 PSU: Mahakam Hulu→Suhuk).
+- CSV at `C:\Users\anzal\Downloads\semua_pejabat_verified.csv` has `nama_koreksi` + `verifikasi_batch` columns already appended.
+- Push script: `scripts/update_verified_names.py` — update CORRECTIONS list, run `python scripts/update_verified_names.py`.
 
-### Top priority — Run the partai + masa-jabatan enrichment
+### Top priority — Continue name verification at line 743
 
-The tooling is ready. Operate the workflow, don't rebuild it.
+**Resume at line 804** (first row after Kalimantan Utara). Remaining: ~lines 804–1100+ covering Maluku → NTB → NTT → Papua → Riau → Sulawesi → Sumatra.
+
+**Workflow per batch (20 rows):**
+1. Read 20 rows from CSV
+2. Spawn agent to verify each name via web search (Indonesian sources)
+3. Write `nama_koreksi;batch_number` for any corrections in CSV
+4. Push to Supabase every ~3 batches (~60 rows) via update script
+
+**Watch for:**
+- Incomplete single names (e.g. "Erwin", "Iin", "Dena") → find full legal name
+- Bupati/Wakil confused (same pejabat_id assigned to wrong role)
+- Nonaktif status on a person who is actually the current 2025 official (scraper put wrong dates)
+- All-caps entries are usually cosmetically wrong, verify the person is correct
+- PSU (vote recount) kabupaten had delayed inauguration (e.g. Pamekasan 19 Mar 2025, Magetan 23 Mei 2025)
+
+### After name verification completes — partai + masa-jabatan enrichment
 
 1. Visit `/admin/enrichment` → click **Unduh CSV Enrichment** (~1,005 rows where `jabatan.partai IS NULL`).
 2. Send to Claude with the on-page prompt. Likely needs chunking (split by provinsi) for accuracy on long sheets.
