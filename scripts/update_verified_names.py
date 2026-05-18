@@ -46,6 +46,28 @@ CORRECTIONS = [
     ("7f7c2d1b-b989-45c9-adc5-c7a41eca27fe", "Saefuddin Zuhri"),        # Wakil Walikota Samarinda (casing)
     ("f53a9e4b-1c6e-4c05-81ea-3fb20a257b68", "Kilat Bilung"),            # Wakil Bupati Bulungan (nama tidak lengkap)
     ("f0153d92-4b38-40a5-8a82-c21fbaee71e4", "Sabri"),                   # Wakil Bupati Tana Tidung (salah orang)
+    # Batch 42
+    ("11e00224-fbee-41f2-b880-e253e24e7e8a", "Raja Bayu Febri Gunadian"),  # Wakil Bupati Anambas (tidak lengkap)
+    ("427770c4-74fa-4701-b435-8639dc802eb3", "Jarmin Sidik"),              # Wakil Bupati Natuna (tidak lengkap + all-caps)
+    ("d22c26d1-0690-4c37-99ad-098f46ca9792", "Li Claudia Chandra"),        # Wakil Walikota Batam (tidak lengkap)
+    ("972037cf-ed7d-4cc4-92a8-e4a63a0bfb2d", "Raja Ariza"),                # Wakil Walikota Tanjung Pinang (casing)
+    # Batch 43
+    ("075fb856-9ad7-4211-9e11-83f285c7315d", "M. Syaiful Anwar"),          # Wakil Bupati Lampung Selatan (tidak lengkap)
+    ("660b89f9-f381-4055-9082-e1c366ebb2d6", "I Komang Koheri"),           # Wakil Bupati Lampung Tengah (tidak lengkap)
+    ("f849ceb6-3bc4-491a-8609-bbc5d5906e06", "Azwar Hadi"),                # Wakil Bupati Lampung Timur (casing)
+    ("21cfa719-d180-49ed-a870-cafe5cf6df5a", "Antonius Muhammad Ali"),     # Wakil Bupati Pesawaran (salah orang - PSU)
+    ("0bfbd981-00c1-4ba3-a551-510bf141a733", "Ayu Asalasiyah"),            # Wakil Bupati Way Kanan (ejaan)
+    ("2b7fd141-c4c1-41c0-8623-0cd5f45809fc", "Deddy Amarullah Yacub"),     # Wakil Walikota Bandar Lampung (casing + lengkap)
+    # Batch 44
+    ("c67a0a84-e462-42d3-b200-6aed976c9fd9", "Sudarmo"),                   # Wakil Bupati Buru (ejaan)
+    ("b0e6a698-f966-45e7-975b-31d37fb6ede9", "Mohamad Djumpa"),            # Wakil Bupati Kepulauan Aru (tidak lengkap)
+    ("ae93a6fb-a56b-4f0a-94c5-25a21937cc3a", "Agustinus Lekwardai Kilikily"), # Wakil Bupati Maluku Barat Daya (ejaan)
+    ("38be7b05-6c03-40d7-862c-4366f16ad2f0", "Juliana Chatarina Ratuanak"), # Wakil Bupati Kep. Tanimbar (salah total)
+    ("9a40d169-9576-4e01-b71b-2a535aff2071", "Selfinus Kainama"),           # Wakil Bupati Seram Bagian Barat (casing)
+    ("01ef0d99-c62c-4a0f-b2a5-b891aab79906", "Muhammad Mifta Thoha R. Wattimena"), # Wakil Bupati SBT (tidak lengkap)
+    ("8ba67cfc-94a0-482c-9be9-fa402df4b409", "Djufri Muhammad"),            # Wakil Bupati Halmahera Barat (casing)
+    ("aef81f7b-e231-44a6-83a3-c5ba334e4c9d", "Helmi Umar Muchsin"),        # Wakil Bupati Halmahera Selatan (salah orang)
+    ("5c45382c-bbfd-4bdc-9fe2-2ba0ef178bc5", "Ahmad Laiman"),               # Wakil Walikota Tidore Kepulauan (salah orang)
 ]
 
 def main():

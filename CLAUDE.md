@@ -120,14 +120,14 @@ All modes: inverted polarity (red = bad), consistent legend. `hash01` mock stays
 
 **Where we are (name verification pass, mid-session):**
 - Verifying all ~1,103 pejabat in `C:\Users\anzal\Downloads\semua_pejabat_verified.csv` for name accuracy post-Pilkada 2024 (mass inauguration 20 Feb 2025).
-- **Verified through line 803** (Kota Tarakan, Kalimantan Utara) — batches 1–41 complete. Jawa Timur + seluruh Kalimantan fully done.
-- Total corrections pushed to Supabase: ~94+ across all batches; last push covered batches 39–41 (12 corrections incl. 3 salah orang: Kapuas Kalteng→Dodo, PPU→Abdul Waris Muin, Tana Tidung→Sabri; 1 PSU: Mahakam Hulu→Suhuk).
+- **Verified through line 858** (Maluku Utara/Wagub Sarbin Sehe) — batches 1–44 complete. Jawa Timur + Kalimantan + Kep. Bangka Belitung + Kep. Riau + Lampung + Maluku + Maluku Utara fully done.
+- Total corrections pushed to Supabase: ~136+ across all batches; last push covered batches 42–44 (19 corrections incl. 4 salah orang: Pesawaran, Kep. Tanimbar, Halmahera Selatan, Tidore Kepulauan).
 - CSV at `C:\Users\anzal\Downloads\semua_pejabat_verified.csv` has `nama_koreksi` + `verifikasi_batch` columns already appended.
 - Push script: `scripts/update_verified_names.py` — update CORRECTIONS list, run `python scripts/update_verified_names.py`.
 
 ### Top priority — Continue name verification at line 743
 
-**Resume at line 804** (first row after Kalimantan Utara). Remaining: ~lines 804–1100+ covering Maluku → NTB → NTT → Papua → Riau → Sulawesi → Sumatra.
+**Resume at line 859** (first row after Maluku Utara). Remaining: ~lines 859–1100+ covering NTB → NTT → Papua → Riau → Sulawesi → Sumatra.
 
 **Workflow per batch (20 rows):**
 1. Read 20 rows from CSV
