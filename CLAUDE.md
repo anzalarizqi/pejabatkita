@@ -120,14 +120,22 @@ All modes: inverted polarity (red = bad), consistent legend. `hash01` mock stays
 
 **Where we are (name verification pass, mid-session):**
 - Verifying all ~1,103 pejabat in `C:\Users\anzal\Downloads\semua_pejabat_verified.csv` for name accuracy post-Pilkada 2024 (mass inauguration 20 Feb 2025).
-- **Verified through line 858** (Maluku Utara/Wagub Sarbin Sehe) — batches 1–44 complete. Jawa Timur + Kalimantan + Kep. Bangka Belitung + Kep. Riau + Lampung + Maluku + Maluku Utara fully done.
-- Total corrections pushed to Supabase: ~136+ across all batches; last push covered batches 42–44 (19 corrections incl. 4 salah orang: Pesawaran, Kep. Tanimbar, Halmahera Selatan, Tidore Kepulauan).
-- CSV at `C:\Users\anzal\Downloads\semua_pejabat_verified.csv` has `nama_koreksi` + `verifikasi_batch` columns already appended.
+- **Batches 1–59 complete.** Sequential pass (lines 957–1105) fully done covering Sulbar→Sulsel→Sulteng→Sultra→Sulut→Sumbar→Sumsel→Sumut. Now verifying remaining ~619 unverified rows (Bupati/Gubernur/Walikota scattered through early CSV).
+- Total corrections this session: ~80 across batches 50–59 (many salah orang, all-caps, tidak lengkap).
+- CSV at `C:\Users\anzal\Downloads\semua_pejabat_verified.csv` has `nama_koreksi` + `verifikasi_batch` columns.
 - Push script: `scripts/update_verified_names.py` — update CORRECTIONS list, run `python scripts/update_verified_names.py`.
 
-### Top priority — Continue name verification at line 743
+### Top priority — Continue name verification (619 rows remaining)
 
-**Resume at line 859** (first row after Maluku Utara). Remaining: ~lines 859–1100+ covering NTB → NTT → Papua → Riau → Sulawesi → Sumatra.
+**Resume from first unverified row** — use this to find it:
+```python
+import csv
+with open(r'C:\Users\anzal\Downloads\semua_pejabat_verified.csv', encoding='utf-8') as f:
+    rows = list(csv.DictReader(f, delimiter=';'))
+unverified = [(i+2, rows[i]) for i in range(len(rows)) if not rows[i].get('verifikasi_batch','').strip()]
+# unverified[0] is next row
+```
+Remaining rows are non-contiguous (Bupati/Gubernur/Walikota across all provinces). Use `pejabat_id` to mark batch, not row index.
 
 **Workflow per batch (20 rows):**
 1. Read 20 rows from CSV
