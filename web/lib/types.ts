@@ -65,6 +65,7 @@ export interface PejabatRow {
   pendidikan: Pendidikan[]
   metadata: PejabatMetadata
   last_updated: string
+  level: PejabatLevel
 }
 
 export interface JabatanRow {
@@ -171,4 +172,40 @@ export interface WilayahCoverage {
   pendingFlags: number
   status: 'green' | 'yellow' | 'gray'
   children?: WilayahCoverage[]
+}
+
+// ─── Pusat / Korupsi / Hotspot types ──────────────────────────────────────────
+
+export type PejabatLevel = 'daerah' | 'pusat'
+export type KasusStatus = 'tersangka' | 'terdakwa' | 'terpidana'
+
+export interface KasusRow {
+  kasus_id: string
+  pejabat_id: string
+  jenis: string | null
+  lembaga: string | null
+  status: KasusStatus
+  tahun: number | null
+  ringkasan: string | null
+  url_sumber: string | null
+  created_at: string
+}
+
+export interface HotspotEvent {
+  event_id: string
+  judul: string
+  ringkasan: string | null
+  kategori: string | null
+  lokasi_nama: string | null
+  wilayah_id: string | null
+  pejabat_id: string | null
+  url_sumber: string | null
+  sumber_nama: string | null
+  crawled_at: string
+  is_manual: boolean
+}
+
+export interface SettingRow {
+  key: string
+  value: string
 }
