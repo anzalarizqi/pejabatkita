@@ -577,3 +577,51 @@ export async function listPejabat(opts: ListPejabatOptions = {}): Promise<ListPe
     totalPages: Math.max(1, Math.ceil(total / pageSize)),
   }
 }
+
+// ─── Pejabat Pusat (kabinet) ──────────────────────────────────────────────────
+
+export interface PejabatPusatCard {
+  id: string
+  nama_lengkap: string
+  gelar_depan: string | null
+  gelar_belakang: string | null
+  posisi: string | null
+  partai: string | null
+  foto_url: string | null
+  has_kasus: boolean
+}
+
+export async function listPejabatPusat(): Promise<PejabatPusatCard[]> {
+  const supabase = await createServerSupabase()
+
+  const [pejabatRows, jabatanRows, kasusRows] = await Promise.all([
+    fetchAll<Pick<PejabatRow, 'id' | 'nama_lengkap' | 'gelar_depan' | 'gelar_belakang' | 'metadata' | 'level'>>(
+      supabase, 'pejabat', 'id, nama_lengkap, gelar_depan, gelar_belakang, metadata, level',
+    ).then((rows) => rows.filter((p) => p.level === 'pusat')),
+    fetchAll<Pick<JabatanRow, 'pejabat_id' | 'posisi' | 'partai'>>(
+      supabase, 'jabatan', 'pejabat_id, posisi, partai',
+    ),
+    supabase.from('kasus').select('pejabat_id').then(({ data }) => data ?? []),
+  ])
+
+  const kasusSet = new Set((kasusRows as Array<{ pejabat_id: string }>).map((k) => k.pejabat_id))
+  const jabByPejabat = new Map<string, Pick<JabatanRow, 'pejabat_id' | 'posisi' | 'partai'>>()
+  for (const j of jabatanRows) {
+    if (!jabByPejabat.has(j.pejabat_id)) jabByPejabat.set(j.pejabat_id, j)
+  }
+
+  return pejabatRows.map((p) => {
+    const j = jabByPejabat.get(p.id)
+    const meta = (p.metadata ?? {}) as { foto_url?: string }
+    return {
+      id: p.id,
+      nama_lengkap: p.nama_lengkap,
+      gelar_depan: p.gelar_depan,
+      gelar_belakang: p.gelar_belakang,
+      posisi: j?.posisi ?? null,
+      partai: j?.partai ?? null,
+      foto_url: meta.foto_url ?? null,
+      has_kasus: kasusSet.has(p.id),
+    }
+  })
+}
