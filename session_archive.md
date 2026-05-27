@@ -67,3 +67,24 @@ DB state at end of Session 7: pejabat 1096, jabatan 1246 (unchanged from S3).
 
 ### Session 8 — (Gemini CSV workflow, jabatan cleanup)
 Leader names ~95%+ filled via Gemini CSV workflow. Jabatan cleanup done (171 stray rows removed, all provinces ≤100% coverage). Public data priority and map mode policy locked (see main CLAUDE.md).
+
+### Session 9 — 2026-05-27 (Pejabat Pusat complete + feature vision locked)
+
+**Pejabat Pusat (COMPLETE):**
+- Built `scripts/scrape_kabinet.py` — fixed two Wikipedia parser bugs (3-cell party-group rows skipped, section end cut off at blank lines between party groups). Added `SUPPLEMENT` hardcoded list of 55+ officials Wikipedia omits.
+- DB now has 111 pusat pejabat: Presiden, Wapres, ~34 Menteri, ~34 Wakil Menteri, Seskab, and Kepala Badan. Reflects post-April 2026 reshuffle (Jumhur Hidayat as Menteri LH; Hanif Faisol Nurofiq as Wamenko Pangan). 2 legacy entries remain: Juda Agung, Benjamin Paulus Octavianus.
+- `KabinetGrid.tsx` built — featured row (Presiden/Wapres), alphabetical grid, partai + corruption badges. Label bug fixed: "Kementerian" → "Pejabat".
+- Daerah/Pusat toggle on homepage wired and working.
+- Cleanup pending (Supabase dashboard): Afriansyah Noor has 2 jabatan rows (old typo "Ketenangakerjaan" + correct "Ketenagakerjaan").
+
+**Feature vision decisions (brainstormed this session):**
+
+*Pejabat Pusat UI:* Toggle A — Daerah tab shows existing choropleth map; Pusat tab replaces map with kabinet grid. No URL change, client-side state. `pejabat.level = 'pusat' | 'daerah'`.
+
+*Rekam Jejak Korupsi scope:* Tersangka and above (KPK/Kejagung formal naming). Status tracked: tersangka → terdakwa → terpidana. Schema: separate `kasus` table (kasus_id, pejabat_id, jenis, lembaga, status, tahun, ringkasan, url_sumber). Sources accepted: KPK.go.id, SIPP Pengadilan, Tempo/Kompas/Detik with tipikor keywords. Two-pass enrichment: LLM CSV screen (Y/N/maybe) → verifier on Y/maybe only → import verified rows → flag failures for `/admin/korupsi` review.
+
+*Daily Hotspot (`/pulse`):* Fully separate from Rekam Jejak — not a korupsi intake queue. Democracy pulse map covering ALL controversy types: korupsi, pernyataan kontroversial, keputusan absurd, demonstrasi, kritik publik, dll. Each event = dot on IndonesiaMap per province. Clickable dot → summary + source link. Admin can add manual keyword → LLM searches + adds dots. Sidebar with full archived event feed, searchable. Time filter: 24h / 7 hari / 30 hari / 90 hari / semua (no date slider). Full archive — events stored permanently.
+
+**Priority order confirmed:** Rekam Bersih (real `kasus` data) → Pulse (`/pulse`) → LHKPN → Pendidikan.
+
+Full implementation plans: `docs/superpowers/plans/2026-05-26-plan2-rekam-jejak-korupsi.md` and `docs/superpowers/plans/2026-05-26-plan3-daily-hotspot.md`.
