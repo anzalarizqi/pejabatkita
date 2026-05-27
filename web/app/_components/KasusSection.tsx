@@ -174,6 +174,8 @@ export default function KasusSection({ kasus }: Props) {
       {kasus.length > 1 && (
         <button
           onClick={() => setExpanded(!expanded)}
+          aria-expanded={expanded}
+          aria-label={expanded ? 'Sembunyikan semua kasus' : `Lihat semua ${kasus.length} kasus`}
           style={{
             marginTop: '0.25rem',
             padding: 0,
