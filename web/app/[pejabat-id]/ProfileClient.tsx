@@ -501,7 +501,7 @@ export default function ProfileClient({ pejabat, jabatan, provinsiNama, kasus }:
               ))}
             </div>
 
-            {(pejabat.metadata?.confidence?.score ?? 0) > 0 && (
+            {pejabat.metadata?.confidence && (
               <div className="conf-bar">
                 <span>Kepercayaan data:</span>
                 <div className="conf-track">
