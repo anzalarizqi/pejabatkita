@@ -6,13 +6,14 @@ import IndonesiaMap from './IndonesiaMap'
 import DisclaimerModal from './DisclaimerModal'
 import MisiKamiModal from './MisiKamiModal'
 import KabinetGrid from './KabinetGrid'
-import type { LeaderRow, PejabatPusatCard, ProvinceCount, SiteStats } from '@/lib/queries'
+import type { LeaderRow, PejabatPusatCard, ProvinceCount, ProvinceKasusCount, SiteStats } from '@/lib/queries'
 
 interface Props {
   provinces: ProvinceCount[]
   stats: SiteStats
   leaders: LeaderRow[]
   pusatOfficials: PejabatPusatCard[]
+  kasusCounts: ProvinceKasusCount[]
 }
 
 type SortKey = 'posisi' | 'nama' | 'provinsi'
@@ -22,7 +23,7 @@ const COLOR_MODES: { key: ColorMode; label: string; live: boolean; hint: string 
   { key: 'tercatat',   label: 'Tercatat',   live: true,  hint: 'pejabat tercatat' },
   { key: 'pendidikan', label: 'Pendidikan', live: false, hint: '% S2/S3 · ilustrasi' },
   { key: 'lhkpn',      label: 'LHKPN',      live: false, hint: '% LHKPN lengkap · ilustrasi' },
-  { key: 'bersih',     label: 'Rekam Bersih', live: false, hint: '% tanpa catatan · ilustrasi' },
+  { key: 'bersih',     label: 'Rekam Bersih', live: true,  hint: 'pejabat dengan catatan korupsi' },
 ]
 
 function hash01(s: string, salt: number): number {
@@ -38,9 +39,15 @@ function biased(u: number, centre: number, spread: number): number {
 
 type ViewMode = 'daerah' | 'pusat'
 
-export default function PreviewShell({ provinces, stats, leaders, pusatOfficials }: Props) {
+export default function PreviewShell({ provinces, stats, leaders, pusatOfficials, kasusCounts }: Props) {
   const [mode, setMode] = useState<ColorMode>('tercatat')
   const [viewMode, setViewMode] = useState<ViewMode>('daerah')
+
+  const kasusMap = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const k of kasusCounts) m.set(k.provinsi_nama, k.kasus_count)
+    return m
+  }, [kasusCounts])
 
   const dateLabel = new Date().toLocaleDateString('id-ID', {
     day: '2-digit', month: 'long', year: 'numeric',
@@ -83,13 +90,20 @@ export default function PreviewShell({ provinces, stats, leaders, pusatOfficials
         return Math.min(1, c / e)
       }
     }
+    if (mode === 'bersih') {
+      return (name: string) => {
+        const count = kasusMap.get(name) ?? 0
+        const total = Math.max(1, provinceMaps.count.get(name) ?? 1)
+        return Math.min(1, count / total)
+      }
+    }
     return (name: string) => {
       const u = hash01(name, mode === 'pendidikan' ? 17 : mode === 'lhkpn' ? 31 : 53)
       const centre = mode === 'pendidikan' ? 0.62 : mode === 'lhkpn' ? 0.48 : 0.74
       const safety = biased(u, centre, 0.7)
       return 1 - safety // redder = lower safety
     }
-  }, [mode, provinceMaps])
+  }, [mode, provinceMaps, kasusMap])
 
   const mapTooltip = useMemo(() => {
     if (mode === 'tercatat') {
@@ -100,6 +114,14 @@ export default function PreviewShell({ provinces, stats, leaders, pusatOfficials
         return `${c} / ${e} kursi · ${pct}% terisi`
       }
     }
+    if (mode === 'bersih') {
+      return (name: string) => {
+        const count = kasusMap.get(name) ?? 0
+        return count > 0
+          ? `${count} pejabat dengan catatan korupsi`
+          : 'Tidak ada catatan korupsi ditemukan'
+      }
+    }
     return (name: string) => {
       const u = hash01(name, mode === 'pendidikan' ? 17 : mode === 'lhkpn' ? 31 : 53)
       const centre = mode === 'pendidikan' ? 0.62 : mode === 'lhkpn' ? 0.48 : 0.74
@@ -108,11 +130,10 @@ export default function PreviewShell({ provinces, stats, leaders, pusatOfficials
       const labels = {
         pendidikan: `${pct}% pendidikan ≥ S2 (ilustrasi)`,
         lhkpn:      `${pct}% LHKPN lengkap (ilustrasi)`,
-        bersih:     `${pct}% tanpa catatan publik (ilustrasi)`,
-      } as Record<Exclude<ColorMode, 'tercatat'>, string>
-      return labels[mode as Exclude<ColorMode, 'tercatat'>]
+      } as Record<Exclude<ColorMode, 'tercatat' | 'bersih'>, string>
+      return labels[mode as Exclude<ColorMode, 'tercatat' | 'bersih'>]
     }
-  }, [mode, provinceMaps])
+  }, [mode, provinceMaps, kasusMap])
 
   return (
     <>
@@ -167,7 +188,7 @@ export default function PreviewShell({ provinces, stats, leaders, pusatOfficials
                 <StatStrip stats={stats} lastUpdatedLabel={lastUpdatedLabel} />
                 <ModeToggle mode={mode} setMode={setMode} />
                 <div className="pv-stage-map">
-                  {mode !== 'tercatat' && (
+                  {mode !== 'tercatat' && mode !== 'bersih' && (
                     <div className="pv-mock-stamp">DATA ILUSTRASI · Q2 2026</div>
                   )}
                   <IndonesiaMap
@@ -426,7 +447,7 @@ function MapLegend({ mode }: { mode: ColorMode; provinces?: ProvinceCount[] }) {
   const config = {
     pendidikan: { label: '% pendidikan ≥ S2 · ilustrasi', danger: 'rendah', safe: 'tinggi' },
     lhkpn:      { label: '% LHKPN lengkap · ilustrasi',   danger: 'belum lengkap', safe: 'lengkap' },
-    bersih:     { label: '% rekam bersih · ilustrasi',    danger: 'ada catatan', safe: 'bersih' },
+    bersih:     { label: 'pejabat dengan catatan korupsi', danger: 'banyak catatan', safe: 'bersih' },
   }[mode]
 
   return (
