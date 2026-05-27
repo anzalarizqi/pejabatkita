@@ -118,28 +118,39 @@ All modes: inverted polarity (red = bad), consistent legend. `hash01` mock stays
 
 ## Next Session Should Start With
 
-### Pejabat Pusat — COMPLETE (111 officials)
+### Rekam Bersih Pipeline — IN PROGRESS
 
-`scripts/scrape_kabinet.py` imports from Wikipedia + hardcoded supplement (post-April 2026 reshuffle + Kompas Sept 2025 full Wakil Menteri list). DB has 111 pusat pejabat (109 current + 2 predecessors still in DB: Juda Agung, Benjamin Paulus Octavianus). Re-run scraper periodically as Wikipedia catches up — it's idempotent.
+Full pipeline is built and working. Scripts:
+- `scripts/screen_kasus_llm.py` — Kimi `$web_search` + Keyword B, auto-inserts to `kasus` table
+- `scripts/verify_kasus.py` — Kimi thinking mode, sets `verified=true/false` + `verified_note`
 
-UI: `KabinetGrid.tsx` + Daerah/Pusat toggle on homepage is wired and working.
+**DB migrations applied:** 007 (kasus table), 008 (kasus RLS anon read), 009 (verified columns)
 
-Minor cleanup (optional): Afriansyah Noor may have 2 jabatan rows (typo "Ketenangakerjaan" + correct "Ketenagakerjaan"). Juda Agung and Benjamin Paulus Octavianus in DB but not in current cabinet — delete via Supabase dashboard if needed.
+**Data status as of 2026-05-27:**
+- DKI Jakarta screened — 0 confirmed kasus (Rano Karno rejected: only mentioned in Atut/Wawan trial, never formally charged)
+- Jawa Tengah screening IN PROGRESS (user running now)
+- All other provinces: not yet screened
 
-### Priority 1 — Rekam Bersih (corruption map mode, real data)
+**Run order for remaining provinces:**
+```bash
+# Screen all remaining (resume-safe)
+python scripts/screen_kasus_llm.py --resume --log
 
-Goal: swap `hash01` mock in "Rekam Bersih" map mode for real `kasus` data. Full plan at `docs/superpowers/plans/2026-05-26-plan2-rekam-jejak-korupsi.md`.
+# Verify all unverified kasus rows
+python scripts/verify_kasus.py
 
-Two-pass enrichment:
-1. **LLM CSV screen** — export all ~1,100 pejabat as CSV, send to LLM (Gemini or Claude chunked by provinsi): `name → has_record (Y/N/maybe), jenis, lembaga, status, tahun, url_sumber, ringkasan`
-2. **Verifier pass** — run `verifier/verifier.py` on Y/maybe rows only. Accepted sources: KPK.go.id, SIPP Pengadilan, Tempo/Kompas/Detik with tipikor keywords.
-3. **Import** — verified rows → `kasus` table via `scripts/import_kasus.py` (to be built). Failures → `/admin/korupsi` review queue.
+# Re-run verify if errors
+python scripts/verify_kasus.py --all
+```
 
-Schema: `kasus` table already defined in spec (`docs/superpowers/specs/2026-05-26-pusat-korupsi-hotspot-design.md`), migration not yet applied.
+**Profile page:** KasusSection handles 3 states:
+1. No kasus → green badge only
+2. `verified=false` → green badge + neutral "Pernah disebut" note (combined ringkasan + verified_note)
+3. `verified=true/null` → red kasus card with status badge
 
-Profile page: add Rekam Jejak section to `/[pejabat-id]` — empty state ("Tidak ditemukan rekam jejak") or collapsible kasus cards.
+**Map:** Rekam Bersih is now default mode (leftmost). Filters `verified != false` for province counts.
 
-Map swap: one-line change in `HomeShell.tsx` once data is in DB.
+**Known issue:** Map tooltip still clips for some lower provinces (Sulawesi/Papua area) — `overflow: visible` added to container but may need deeper fix in `IndonesiaMap.tsx`.
 
 ### Priority 2 — Daily Hotspot (`/pulse`)
 
