@@ -189,6 +189,9 @@ export interface KasusRow {
   ringkasan: string | null
   url_sumber: string | null
   created_at: string
+  verified: boolean | null
+  verified_note: string | null
+  verified_at: string | null
 }
 
 export interface HotspotEvent {
