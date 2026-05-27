@@ -52,7 +52,7 @@ def upsert_kasus(client: httpx.Client, row: dict) -> bool:
         headers={
             **HEADERS,
             "Content-Type": "application/json",
-            "Prefer": "return=minimal,resolution=ignore-duplicates",
+            "Prefer": "return=minimal",
         },
         json=row,
     )
