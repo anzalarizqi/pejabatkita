@@ -1,5 +1,5 @@
 import { createServerSupabase } from './supabase'
-import type { Wilayah, JabatanRow, PejabatRow } from './types'
+import type { Wilayah, JabatanRow, PejabatRow, KasusRow } from './types'
 
 // ─── Placeholder filtering ────────────────────────────────────────────────────
 // Pejabat with these name patterns are scraper artifacts, not real people.
@@ -624,4 +624,67 @@ export async function listPejabatPusat(): Promise<PejabatPusatCard[]> {
       has_kasus: kasusSet.has(p.id),
     }
   })
+}
+
+// ─── Kasus (corruption records) ──────────────────────────────────────────────
+
+export async function getKasusByPejabat(pejabatId: string): Promise<KasusRow[]> {
+  const supabase = await createServerSupabase()
+  const { data } = await supabase
+    .from('kasus')
+    .select('*')
+    .eq('pejabat_id', pejabatId)
+    .order('tahun', { ascending: false })
+  return (data ?? []) as KasusRow[]
+}
+
+export interface ProvinceKasusCount {
+  provinsi_nama: string
+  kasus_count: number
+}
+
+export async function listProvinceKasusCounts(): Promise<ProvinceKasusCount[]> {
+  const supabase = await createServerSupabase()
+
+  const [kasusRows, jabatanRows, wilayahRows] = await Promise.all([
+    supabase.from('kasus').select('pejabat_id').then(({ data }) =>
+      (data ?? []) as Array<{ pejabat_id: string }>
+    ),
+    fetchAll<Pick<JabatanRow, 'pejabat_id' | 'wilayah_id'>>(
+      supabase, 'jabatan', 'pejabat_id, wilayah_id',
+    ),
+    fetchAll<Pick<Wilayah, 'id' | 'nama' | 'level' | 'parent_id'>>(
+      supabase, 'wilayah', 'id, nama, level, parent_id',
+    ),
+  ])
+
+  const wilayahById = new Map<string, Pick<Wilayah, 'id' | 'nama' | 'level' | 'parent_id'>>()
+  for (const w of wilayahRows) wilayahById.set(w.id, w)
+
+  const pejabatWithKasus = new Set(kasusRows.map((k) => k.pejabat_id))
+
+  function provinceNamaOf(wilayahId: string): string | null {
+    const w = wilayahById.get(wilayahId)
+    if (!w) return null
+    if (w.level === 'provinsi') return w.nama
+    if (w.parent_id) return wilayahById.get(w.parent_id)?.nama ?? null
+    return null
+  }
+
+  const counted = new Set<string>()
+  const counts = new Map<string, number>()
+  for (const j of jabatanRows) {
+    if (!pejabatWithKasus.has(j.pejabat_id)) continue
+    const prov = provinceNamaOf(j.wilayah_id)
+    if (!prov) continue
+    const key = `${j.pejabat_id}::${prov}`
+    if (counted.has(key)) continue
+    counted.add(key)
+    counts.set(prov, (counts.get(prov) ?? 0) + 1)
+  }
+
+  return Array.from(counts.entries()).map(([provinsi_nama, kasus_count]) => ({
+    provinsi_nama,
+    kasus_count,
+  }))
 }
