@@ -493,13 +493,15 @@ export default function ProfileClient({ pejabat, jabatan, provinsiNama, kasus }:
                   <span className="source-type">{s.type}</span>
                   <a href={s.url} target="_blank" rel="noopener noreferrer">{s.domain}</a>
                   <span style={{ color: 'var(--rule)', fontSize: 10 }}>
-                    {new Date(s.scraped_at).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })}
+                    {s.scraped_at && !isNaN(new Date(s.scraped_at).getTime())
+                      ? new Date(s.scraped_at).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })
+                      : '—'}
                   </span>
                 </div>
               ))}
             </div>
 
-            {pejabat.metadata?.confidence && (
+            {(pejabat.metadata?.confidence?.score ?? 0) > 0 && (
               <div className="conf-bar">
                 <span>Kepercayaan data:</span>
                 <div className="conf-track">
