@@ -28,7 +28,7 @@ llm_providers:
     priority: 5
   - name: moonshot
     base_url: https://api.moonshot.ai/v1
-    model: moonshot-v1-8k
+    model: kimi-k2.6
     api_key_env: MOONSHOT_API_KEY
     priority: 6
 

@@ -634,6 +634,7 @@ export async function getKasusByPejabat(pejabatId: string): Promise<KasusRow[]> 
     .from('kasus')
     .select('*')
     .eq('pejabat_id', pejabatId)
+    .neq('verified', false)
     .order('tahun', { ascending: false })
   return (data ?? []) as KasusRow[]
 }
