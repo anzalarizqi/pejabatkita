@@ -124,40 +124,37 @@ All modes: inverted polarity (red = bad), consistent legend. `hash01` mock stays
 
 UI: `KabinetGrid.tsx` + Daerah/Pusat toggle on homepage is wired and working.
 
-Minor cleanup (optional): Afriansyah Noor may have 2 jabatan rows (typo + correct posisi). Juda Agung and Benjamin Paulus Octavianus in DB but not in current cabinet — delete via Supabase dashboard if needed.
+Minor cleanup (optional): Afriansyah Noor may have 2 jabatan rows (typo "Ketenangakerjaan" + correct "Ketenagakerjaan"). Juda Agung and Benjamin Paulus Octavianus in DB but not in current cabinet — delete via Supabase dashboard if needed.
 
-### Top priority — partai + masa-jabatan enrichment
+### Priority 1 — Rekam Bersih (corruption map mode, real data)
 
-1. Visit `/admin/enrichment` → click **Unduh CSV Enrichment** (~1,005 rows where `jabatan.partai IS NULL`).
-2. Send to Claude with the on-page prompt. Likely needs chunking (split by provinsi) for accuracy on long sheets.
-3. Upload result via the same page; check the result card and any `errors[]` returned by the import.
-4. After import, current partai coverage will jump from 9% (99/1,104) toward target. Re-run export for any remaining nulls.
+Goal: swap `hash01` mock in "Rekam Bersih" map mode for real `kasus` data. Full plan at `docs/superpowers/plans/2026-05-26-plan2-rekam-jejak-korupsi.md`.
 
-**Watch out:** import-enrichment loops sequential `await supabase.update().eq()`. ~1,000 rows = ~1,000 sequential HTTP calls. If it's painfully slow, batch via RPC or `upsert` with array payload.
+Two-pass enrichment:
+1. **LLM CSV screen** — export all ~1,100 pejabat as CSV, send to LLM (Gemini or Claude chunked by provinsi): `name → has_record (Y/N/maybe), jenis, lembaga, status, tahun, url_sumber, ringkasan`
+2. **Verifier pass** — run `verifier/verifier.py` on Y/maybe rows only. Accepted sources: KPK.go.id, SIPP Pengadilan, Tempo/Kompas/Detik with tipikor keywords.
+3. **Import** — verified rows → `kasus` table via `scripts/import_kasus.py` (to be built). Failures → `/admin/korupsi` review queue.
 
-### Phase 9B — Rekam Jejak Korupsi (after partai)
+Schema: `kasus` table already defined in spec (`docs/superpowers/specs/2026-05-26-pusat-korupsi-hotspot-design.md`), migration not yet applied.
 
-Hybrid plan (per brainstorm):
-1. Gemini CSV pass: `name → has_record (Y/N/maybe), source_url, jenis, tahun` on the full ~1,100 pejabat.
-2. Run existing `verifier/verifier.py` (or agent `verify_citations`) only on Y/maybe rows. Sources accepted: KPK, pengadilan, major news.
-3. Anything that fails verification → new flag for `/admin/review`.
+Profile page: add Rekam Jejak section to `/[pejabat-id]` — empty state ("Tidak ditemukan rekam jejak") or collapsible kasus cards.
 
-Schema TBD: additions to `jabatan` or separate `kasus` table (kasus_id, jenis, lembaga, tahun, url_sumber).
+Map swap: one-line change in `HomeShell.tsx` once data is in DB.
 
-### Phase 9C — LHKPN (after 9B)
+### Priority 2 — Daily Hotspot (`/pulse`)
 
-Schema: `pejabat.kekayaan_total`, `pejabat.kekayaan_breakdown`. Source: `elhkpn.kpk.go.id`. Captcha is the hard part — start with Playwright + manual solve. Take Supabase snapshot before migrations.
+Full plan at `docs/superpowers/plans/2026-05-26-plan3-daily-hotspot.md` — 8 tasks, all code scaffolded.
 
-When real LHKPN data lands: swap `hash01(name, 'lhkpn')` mock for real per-province aggregation. Profile page wired to `hash01(pejabat.id, ':lhkpn')` — one-line swap.
+Summary: Supabase Edge Function `crawl-hotspot` (Deno) calls Jina search daily at 09:00 WIB, LLM extracts judul/ringkasan/kategori/lokasi, inserts to `hotspot_events`. `/pulse` page shows IndonesiaMap dots per province colored by kategori + searchable sidebar + event modal. Admin `/admin/hotspot` for manual crawl trigger.
 
-### Phase 9D — Pendidikan (after 9C)
+Route confirmed: `/pulse`.
 
-Schema: `pejabat.pendidikan_terakhir`, `pejabat.universitas`. Source: Wikipedia, official bio, KPU calon data.
+### Deferred
 
-### Phase 10 follow-ups (deferred)
-
-- Full mobile responsiveness pass on homepage + /pejabat (profile already has 720px breakpoint)
-- OG cards per profile + sitemap.xml — wait until partai pass completes
+- Partai enrichment: `/admin/enrichment` → download CSV → process → upload (~1,005 null rows)
+- Phase 9C — LHKPN (after Rekam Bersih)
+- Phase 9D — Pendidikan (after LHKPN)
+- Mobile responsiveness pass + OG cards / sitemap.xml
 
 ## Stack Notes (gotchas)
 
