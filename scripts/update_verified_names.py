@@ -183,6 +183,141 @@ CORRECTIONS = [
     ("7bfef077-3f34-4202-8896-0bd4dc8aae76", "I Komang Gede Sanjaya"),     # Bupati Tabanan (tidak lengkap)
     ("de7c41e2-c5ed-4e2c-85cf-981df83f72fe", "I Gusti Ngurah Jaya Negara"), # Walikota Denpasar (tidak lengkap)
     ("252ffeba-b6d3-4167-862c-c746fe8a8e18", "Mochamad Hasbi Asyidiki Jayabaya"), # Bupati Lebak (tidak lengkap)
+    # Batch 60
+    ("2e055e7a-ca52-49b4-8da3-c20653bd1b8c", "Muhammad Fikri Thobari"),      # Bupati Rejang Lebong (all-caps)
+    ("0d366901-cd70-436d-8136-7f900dcc4730", "Muhammad Fadjar Churniawan"),  # Bupati Kep. Seribu (Muh. → Muhammad)
+    ("a9c0cde2-3d85-417a-ae03-11fa88615999", "Arifin"),                      # Walikota Jakarta Pusat (salah orang - Dhani Sukma diganti)
+    # Batch 61
+    ("54cc6a56-3cd2-45d3-91f7-a66576aab80c", "Thariq Modanggu"),             # Bupati Gorontalo Utara (all-caps)
+    ("b6ab3789-c0ba-4445-9bda-ff1029bc8f10", "Mhd. Fadhil Arief"),           # Bupati Batang Hari (Muhammad → Mhd.)
+    ("c74aa391-462a-413a-9b27-1bdb2b19827d", "Muhammad Syukur"),             # Bupati Merangin (M. → Muhammad)
+    # Batch 62
+    ("366dd689-1428-49f3-83c1-6cf5d9ce9ee4", "Alfin"),                       # Walikota Sungai Penuh (all-caps)
+    ("e7022ae1-b3da-4823-98b3-1192e496e5e9", "Jeje Ritchie Ismail"),         # Bupati Bandung Barat (nama panggung → nama resmi)
+    ("954b1954-ff15-4a27-b108-1bab6c0ace53", "Ade Kuswara Kunang"),          # Bupati Bekasi (all-caps)
+    ("ed6da1a5-ed73-419b-a1df-81f8d5542231", "Rudy Susmanto"),               # Bupati Bogor (all-caps)
+    ("42632c00-9253-4da8-a59c-0b420af717de", "Mohammad Wahyu Ferdian"),      # Bupati Cianjur (all-caps)
+    ("bbd8bc84-c43d-4300-8fa9-40fa82f8a368", "Imron"),                       # Bupati Cirebon (all-caps + hapus H.)
+    ("3542d62a-e516-4979-b02c-170afc650263", "Eman Suherman"),               # Bupati Majalengka (tidak lengkap)
+    # Batch 63
+    ("234c0049-65ff-417b-b7e2-4f0a2bafea36", "M. Faiz Kurniawan"),           # Bupati Batang (tidak lengkap)
+    ("c01710c9-bca5-4f5f-86ce-1988c765c139", "Rober Christanto"),            # Bupati Karanganyar (salah eja)
+    ("375e1370-9b2b-40ca-911e-0582d6fb268c", "Dyah Kartika Permanasari"),    # Bupati Kendal (tidak lengkap)
+    # Batch 64
+    ("252587ee-ae24-4b90-8cc4-e0afca3ec0bd", "Hamenang Wajar Ismoyo"),       # Bupati Klaten (all-caps)
+    ("520d427b-1147-4145-b6f0-362818f5c00f", "Grengseng Pamuji"),            # Bupati Magelang (all-caps)
+    ("bea24b2a-6f89-4ff9-90f5-825eb6dbb868", "Anom Widiyantoro"),            # Bupati Pemalang (salah eja Widyantoro → Widiyantoro)
+    ("728d9a71-4bac-4dcc-a7ec-d57ad7a99624", "Achmad Afzan Arslan Djunaid"), # Walikota Pekalongan (all-caps)
+    # Batch 65
+    ("473de376-10fe-4419-a275-4a208789ec24", "Dedy Yon Supriyono"),          # Walikota Tegal (tidak lengkap)
+    ("fb91a724-1c66-434d-858d-7ae7ee095942", "Abdul Hamid Wahid"),           # Bupati Bondowoso (Abd. → Abdul)
+    ("aa11a2e6-09e4-494e-a778-4aa4adff80f9", "Fandi Akhmad Yani"),           # Bupati Gresik (all-caps)
+    ("3c30d579-d9b5-4b67-ae77-da7d2bffa5d4", "Hanindhito Himawan Pramana"), # Bupati Kediri (tidak lengkap)
+    ("1e9edb28-1317-43bf-9041-5c0e8bcff4cf", "KH. Kholilurrahman"),          # Bupati Pamekasan (gelar resmi)
+    # Batch 66
+    ("c81abf97-4a7a-4b83-803f-2ca6d95a8b5c", "Achmad Fauzi Wongsojudo"),    # Bupati Sumenep (tidak lengkap)
+    # Batch 67
+    ("ca20bff6-937d-456e-853e-b784b132ddea", "Karolin Margret Natasa"),      # Bupati Landak (hapus dr./M.H.)
+    ("9cb58f99-b21e-4592-83d4-a9ab2dc3da0a", "Saidi Mansyur"),               # Bupati Banjar (all-caps)
+    ("ea4d41d5-95d4-4a18-a2dc-a42706c61b0f", "Sahrujani"),                   # Bupati Hulu Sungai Utara (all-caps)
+    # Batch 68
+    ("460a6624-f3b6-42a2-be58-7bf0795a5a1d", "Muhammad Wiyatno"),            # Bupati Kapuas (all-caps)
+    ("30d40dcd-17ac-47ef-b20d-a8000590bd74", "Saiful"),                      # Bupati Katingan (all-caps mononym)
+    ("f047b248-213a-4987-8b8f-c318142e61e8", "Ahmad Selanorwanda"),          # Bupati Seruyan (Selanor Wanda → Selanorwanda)
+    ("12b37a52-8412-4325-b942-bf7ef1e4a014", "Masduki"),                     # Bupati Sukamara (all-caps)
+    # Batch 69
+    ("e10c1408-de29-40e7-a821-59afdeb714ae", "Ardiansyah Sulaiman"),         # Bupati Kutai Timur (all-caps)
+    ("a5363fec-504c-46e0-9a62-00ebd6272b6e", "Ibrahim Ali"),                 # Bupati Tana Tidung (all-caps)
+    ("0812e843-32d7-428a-9109-56db0171e223", "Djoni Alamsyah Hidayat"),      # Bupati Belitung (tidak lengkap)
+    # Batch 70
+    ("8f6c7e14-ca1b-4bc4-add6-f503ce3befef", "Aneng"),                       # Bupati Anambas (all-caps mononym)
+    ("c9ca462c-e431-4894-93e9-728fe7fe4ec0", "Muhammad Nizar"),              # Bupati Lingga (all-caps)
+    ("c7baa4e4-1846-4ae6-92e8-c73a4628a4d5", "Ansar Ahmad"),                 # Gubernur Kepri (tidak lengkap)
+    ("39a43db0-0159-4605-a77f-1cd47fa044ca", "Elfianah Khamamik"),           # Bupati Mesuji (all-caps + tidak lengkap)
+    ("535acbf8-f37f-4984-9458-4482befae9a0", "Nanda Indira Bastian"),        # Bupati Pesawaran (all-caps + tidak lengkap)
+    # Batch 71
+    ("3ab74d50-5270-49ca-bb1d-ddb44039aee4", "Ikram Umasugi"),               # Bupati Buru (all-caps)
+    ("b44de836-203c-4944-a743-630990456cfc", "La Hamidi"),                   # Bupati Buru Selatan (all-caps)
+    ("b414cbf0-3a47-4b6f-96d1-4c48305ee4f2", "Asri Arman"),                 # Bupati Seram Bagian Barat (all-caps)
+    ("f4827cd6-ae77-4fc8-836b-52beb5250db3", "James Uang"),                  # Bupati Halmahera Barat (all-caps)
+    # Batch 72
+    ("7089feda-e981-4668-90b9-46f7e03b4045", "A. Rahman H. Abidin"),        # Walikota Kota Bima (incomplete)
+    ("a4bda1d3-3e0c-4238-b692-e2e7965b20ac", "Mohan Roliskana"),            # Walikota Mataram (all-caps)
+    ("f96bdb40-71e7-43ca-8b5e-ed7d401f850a", "Willybrodus Lay"),            # Bupati Belu (all-caps)
+    # Batch 73
+    ("6a9d6019-c279-47d3-98c9-0c2193a8ad20", "Krisman Bernard Riwu Kore"), # Bupati Sabu Raijua (all-caps)
+    ("a6681eb5-831b-4865-9792-d8946ce78b90", "Yunus Wonda"),                # Bupati Jayapura (all-caps)
+    # Batch 74
+    ("e4ffb068-49de-43c0-8ef3-8b3101749637", "Karel Murafer"),              # Bupati Maybrat (all-caps)
+    # Batch 75
+    ("acc18ae7-daec-476e-98a4-797faa8d2422", "Yuni Wonda"),                 # Bupati Puncak Jaya (Dr. prefix + all-caps)
+    ("0c725e25-5e43-49b6-a267-314611365f10", "Herman"),                     # Bupati Indragiri Hilir (H. prefix + all-caps)
+    ("2a1cd658-ee5b-4ca7-bfe6-e508ff6a0f1a", "Ade Agus Hartanto"),         # Bupati Indragiri Hulu (all-caps)
+    ("cfebf100-3182-4c47-9af3-670fcdf0cca4", "Asmar"),                     # Bupati Kepulauan Meranti (military rank prefix)
+    # Batch 76
+    ("b898d43a-af39-40af-9d6d-064d9899025e", "Bistamam"),                  # Bupati Rokan Hilir (H prefix + all-caps)
+    ("416f5075-e199-4872-aa21-1bd82964b861", "Anton"),                     # Bupati Rokan Hulu (SALAH_ORANG — was H. Indra Gunawan)
+    ("48da845f-56a9-419c-983d-796225836189", "Paisal"),                    # Walikota Dumai (H. prefix + all-caps)
+    ("19a9af3b-1639-4cd9-995f-5317c8293d0f", "Sitti Sutinah Suhardi"),    # Bupati Mamuju (incomplete — Suhardi missing)
+    ("07427421-37dd-41bc-8ce3-e9e83a021515", "Arsal Aras"),                # Bupati Mamuju Tengah (all-caps)
+    ("d965293a-b335-407e-969b-b81f20872fbc", "Muhammad Fathul Fauzy Nurdin"), # Bupati Bantaeng (all-caps)
+    # Batch 77
+    ("ed39ed71-7259-4112-910c-563dfe7310a1", "Ratnawati Arif"),             # Bupati Sinjai (Dra. Hj. prefix + M.Si suffix)
+    ("2b7228cf-cceb-405a-ad01-28a7ea755c98", "Mohammad Firdaus Daeng Manye"), # Bupati Takalar (all-caps)
+    ("4a9bab1a-ffe8-419d-9659-62f02ac0c128", "Amirudin Tamoreka"),          # Bupati Banggai (incomplete — Tamoreka missing)
+    ("a55c2e07-a45f-4818-8853-fc48ecf5056d", "Rusli Moidady"),              # Bupati Banggai Kepulauan (all-caps)
+    # Batch 78
+    ("73df5c55-a510-48cb-9adf-061447d279fe", "Risharyudi Triwibowo"),       # Bupati Buol (all-caps)
+    ("b28e7976-262d-48e7-933e-a2225c480c62", "Muchtar Deluma"),             # Bupati Toli-toli (all-caps)
+    ("50cadae2-ba91-4abb-9ff9-d7d5541389fd", "Hadianto Rasyid"),            # Walikota Palu (incomplete — Rasyid missing)
+    ("73eb9185-cece-41f5-b53c-1325da044a77", "Burhanuddin Anwar"),          # Bupati Bombana (incomplete — Anwar missing)
+    ("eed83cca-b997-401a-b39e-6457df0f6efa", "Amri Jamaluddin"),            # Bupati Kolaka (AMRI. S — all-caps + incomplete)
+    ("bdc309bd-db84-4fc1-9a29-06eda79aeb85", "Nur Rahman Umar"),            # Bupati Kolaka Utara (Drs. H. prefix + MH suffix)
+    # Batch 79
+    ("bfb68aaf-bc9f-4f13-9c97-efcd409f1c78", "Ronald Kandoli"),            # Bupati Minahasa Tenggara (all-caps)
+    ("65d33cfb-81b5-4d1b-bcbc-d8e96e5dee20", "Caroll Joram Azarias Senduk"), # Walikota Tomohon (all-caps)
+    # Batch 80
+    ("b93d7b5f-a158-4e07-b2bf-960cc5a084bd", "Benni Warlis"),              # Bupati Agam (Ir. H. prefix + Dt. gelar adat)
+    ("68f74a41-7ee2-45e0-b8ae-02dafa5f5fb8", "Safni Sikumbang"),           # Bupati Lima Puluh Kota (all-caps + incomplete)
+    # Batch 81
+    ("445203cf-d0ac-414f-9a15-dba12b12e15a", "Joncik Muhammad"),           # Bupati Empat Lawang (all-caps)
+    ("4e5f1925-7f71-4fbe-a139-5f23b2c519b2", "Edison"),                    # Bupati Muara Enim (H. prefix + SH., M.Hum suffix)
+    ("11ee2a4e-e354-4a85-9ac1-6fd11144c0cd", "M. Toha Tohet"),             # Bupati Musi Banyuasin (incomplete — Tohet missing)
+    ("ac3de3fe-86f0-4410-96ad-58b2c5084365", "Ratna Machmud"),             # Bupati Musi Rawas (Hj. prefix)
+    ("9b16ef34-650f-47b7-bfdf-215e36269c0d", "Arlan"),                     # Walikota Prabumulih (H. prefix)
+    ("fe4393b5-4f17-4417-935e-83aa499c5ca8", "Vickner Sinaga"),            # Bupati Dairi (all-caps)
+    # Batch 82
+    ("aeee263d-d841-4df1-921c-f64c3120e365", "Taufik Zainal Abidin"),      # Bupati Asahan (SALAH_ORANG — was Surya/Wagubsu)
+    ("dfcc2c88-e55d-4ec5-8bd9-e0f955db85ef", "Mulyono"),                   # Bupati Labuhan Batu Utara (ST, M.Si suffix)
+    ("b8f1904c-2637-4165-af49-f31f74e765ce", "Saipullah Nasution"),        # Bupati Mandailing Natal (all-caps)
+    ("12536c37-fc8d-4bfe-b712-13e5cd9cfd25", "Putra Mahkota Alam Hasibuan"), # Bupati Padang Lawas (HSB abbreviation)
+    ("e3e87fcf-8c92-4fed-94df-cf0fe8a2b6cb", "Gus Irawan Pasaribu"),       # Bupati Tapanuli Selatan (all-caps)
+    # Batch 83
+    ("b15bc737-f94f-4b0c-b7b0-28a84e2e22b5", "Iman Irdian Saragih"),       # Walikota Tebing Tinggi (all-caps)
+    ("dd934554-0d58-4a48-8fd2-8088d5250681", "Muslem D"),                  # Wakil Bupati Aceh Jaya (trailing period)
+    ("bb619134-e672-4648-8dc5-8b4d0a41794b", "Heri Al Hilal"),             # Wakil Bupati Aceh Tenggara (dr. prefix)
+    ("584a2225-8b10-4ed2-86ae-d9afeabad594", "Teuku Zainal Abidin"),       # Wakil Bupati Aceh Timur (T abbreviation)
+    # Batch 84
+    ("393f5e08-7f6f-4a1e-a9ec-cf735ea5c079", "Razuardi"),                  # Wakil Bupati Bireuen (Ir. prefix + MT suffix)
+    ("00d39377-c494-4d3e-a224-20dbaa1bc6ee", "Maliki"),                    # Wakil Bupati Gayo Lues (H. + all-caps + SE M.AP)
+    ("8c847980-4977-44b2-95f7-e5df26ca4789", "Husaini"),                   # Wakil Walikota Lhokseumawe (all-caps)
+    ("ba7006ba-a54c-43bb-9bf0-8e684e6f19d1", "M. Rasyid Bancin"),          # Wakil Walikota Subulussalam (H.M. prefix)
+    # Batch 85
+    ("cbc32e96-ddaf-4d61-904a-dc0fb5d1102c", "Amir Hamzah"),               # Wakil Bupati Lebak (Ir. H. prefix + M.Si suffix)
+    # Batch 86
+    ("d4065198-9924-47c4-a1a5-6845d04b8136", "Kusmanto"),                  # Wakil Walikota Jakarta Timur (S.Sos., M.Si. suffix)
+    ("801d4abb-5f4d-45e0-bf41-a807ff41a09a", "Tonny S. Junus"),            # Wakil Bupati Gorontalo (all-caps)
+    ("78406697-0ea8-4e50-a5f0-66c4c4f93d58", "Safrudin Dwi Apriyanto"),   # Wakil Bupati Bungo (H. prefix)
+    # Batch 87
+    ("b14019d7-65a2-4378-9ab8-c91c9793d659", "Ammy Amalia Fatma Surya"),   # Wakil Bupati Cilacap (all-caps)
+    ("161c9267-16f6-4164-a3bc-d325a0d7d0d2", "Muhammad Ibnu Hajar"),       # Wakil Bupati Jepara (all-caps)
+    ("19f79c26-4b2a-40a1-b1b5-2d9c86d03ecc", "Benny Karnadi"),             # Wakil Bupati Kendal (all-caps)
+    ("7eb5160b-87ab-4781-810e-0e86709d575a", "Benny Indra Ardhianto"),     # Wakil Bupati Klaten (all-caps)
+    ("a23b7094-6803-4dbd-8590-dacf341fa8cf", "Eko Sapto Purnomo"),         # Wakil Bupati Sukoharjo (all-caps)
+    ("86841b2c-b050-4c07-8d15-3f3aeaf0312f", "Mujiono"),                   # Wakil Bupati Banyuwangi (Ir. H. prefix)
+    ("9302d15e-95a0-41fe-afac-677131f2fbb6", "Nurul Azizah"),              # Wakil Bupati Bojonegoro (all-caps)
+    ("8b3d8730-668d-4936-a1e9-d0fa157896bb", "Purnomo Hadi"),              # Wakil Bupati Madiun (all-caps)
+    ("c89c6002-5aa2-428f-a6fd-a63d780d82f3", "Fahmi Abdul Haq Zaini"),     # Wakil Bupati Probolinggo (AHZ abbreviation)
 ]
 
 def main():

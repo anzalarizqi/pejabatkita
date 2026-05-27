@@ -2,7 +2,12 @@
 """
 Scrape Prabowo cabinet from Wikipedia and upsert into Supabase.
 Re-runnable: upserts by (nama_lengkap, posisi) pair.
-Usage: python scripts/scrape_kabinet.py [--dry-run]
+Usage: python scripts/scrape_kabinet.py [--dry-run] [--debug]
+
+Sources:
+  - Wikipedia Kabinet Merah Putih (party-grouped tables)
+  - Hardcoded supplement for officials Wikipedia omits (confirmed from setkab.go.id)
+  - Reflects post-April 2026 reshuffle state
 """
 import argparse
 import os
@@ -20,6 +25,73 @@ WIKIPEDIA_URL = "https://id.wikipedia.org/wiki/Kabinet_Merah_Putih"
 
 HEADERS = {"apikey": SUPABASE_SERVICE_KEY, "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"}
 
+# Officials confirmed from setkab.go.id that Wikipedia's party tables omit.
+# These are added AFTER the Wikipedia scrape and deduplicated by (nama_lengkap, posisi).
+# Last verified: May 2026 (post-April 2026 reshuffle).
+SUPPLEMENT = [
+    # Presiden & Wapres
+    {"nama_lengkap": "Prabowo Subianto", "posisi": "Presiden", "partai": "Gerindra"},
+    {"nama_lengkap": "Gibran Rakabuming Raka", "posisi": "Wakil Presiden", "partai": None},
+    # Menko absent from Wikipedia party tables
+    {"nama_lengkap": "Pratikno", "posisi": "Menteri Koordinator Bidang Pembangunan Manusia dan Kebudayaan", "partai": None},
+    # Menteri absent from Wikipedia party tables
+    {"nama_lengkap": "Sjafrie Sjamsoeddin", "posisi": "Menteri Pertahanan", "partai": None},
+    {"nama_lengkap": "Muhammad Tito Karnavian", "posisi": "Menteri Dalam Negeri", "partai": None},
+    {"nama_lengkap": "Natalius Pigai", "posisi": "Menteri Hak Asasi Manusia", "partai": None},
+    {"nama_lengkap": "Agus Andrianto", "posisi": "Menteri Imigrasi dan Pemasyarakatan", "partai": None},
+    {"nama_lengkap": "Purbaya Yudhi Sadewa", "posisi": "Menteri Keuangan", "partai": None},
+    {"nama_lengkap": "Rosan Perkasa Roeslani", "posisi": "Menteri Investasi dan Hilirisasi", "partai": None},
+    {"nama_lengkap": "Abdul Mu'ti", "posisi": "Menteri Pendidikan Dasar dan Menengah", "partai": None},
+    {"nama_lengkap": "Brian Yuliarto", "posisi": "Menteri Pendidikan Tinggi, Sains, dan Teknologi", "partai": None},
+    {"nama_lengkap": "Budi Gunadi Sadikin", "posisi": "Menteri Kesehatan", "partai": None},
+    {"nama_lengkap": "Yassierli", "posisi": "Menteri Ketenagakerjaan", "partai": None},
+    {"nama_lengkap": "Amran Sulaiman", "posisi": "Menteri Pertanian", "partai": None},
+    {"nama_lengkap": "Mohammad Jumhur Hidayat", "posisi": "Menteri Lingkungan Hidup", "partai": None},
+    {"nama_lengkap": "Widiyanti Putri", "posisi": "Menteri Pariwisata", "partai": None},
+    {"nama_lengkap": "Arifatul Choiri Fauzi", "posisi": "Menteri Pemberdayaan Perempuan dan Perlindungan Anak", "partai": None},
+    {"nama_lengkap": "Erick Thohir", "posisi": "Menteri Pemuda dan Olahraga", "partai": None},
+    {"nama_lengkap": "Rini Widyantini", "posisi": "Menteri Pendayagunaan Aparatur Negara dan Reformasi Birokrasi", "partai": None},
+    # Pejabat Setingkat Menteri
+    {"nama_lengkap": "Teddy Indra Wijaya", "posisi": "Sekretaris Kabinet", "partai": None},
+    {"nama_lengkap": "Dadan Hindayana", "posisi": "Kepala Badan Gizi Nasional", "partai": None},
+    # Wakil Menteri — sourced from Kompas complete list (post-Sept 2025 reshuffle)
+    # plus Wikipedia tables (already in DB) and Wikipedia supplement
+    {"nama_lengkap": "Otto Hasibuan", "posisi": "Wakil Menteri Koordinator Bidang Hukum, HAM, Imigrasi, dan Pemasyarakatan", "partai": None},
+    {"nama_lengkap": "Bambang Eko Suharyanto", "posisi": "Wakil Menteri Sekretaris Negara", "partai": None},
+    {"nama_lengkap": "Juri Ardiantoro", "posisi": "Wakil Menteri Sekretaris Negara", "partai": None},
+    {"nama_lengkap": "Ribka Haluk", "posisi": "Wakil Menteri Dalam Negeri", "partai": None},
+    {"nama_lengkap": "Akhmad Wiyagus", "posisi": "Wakil Menteri Dalam Negeri", "partai": None},
+    {"nama_lengkap": "Arrmanatha Christiawan Nasir", "posisi": "Wakil Menteri Luar Negeri", "partai": None},
+    {"nama_lengkap": "Arif Havas Oegroseno", "posisi": "Wakil Menteri Luar Negeri", "partai": None},
+    {"nama_lengkap": "Doni Hermawan", "posisi": "Wakil Menteri Pertahanan", "partai": None},
+    {"nama_lengkap": "Edward Omar Sharif Hiariej", "posisi": "Wakil Menteri Hukum", "partai": None},
+    {"nama_lengkap": "Mugiyanto", "posisi": "Wakil Menteri Hak Asasi Manusia", "partai": None},
+    {"nama_lengkap": "Silmy Karim", "posisi": "Wakil Menteri Imigrasi dan Pemasyarakatan", "partai": None},
+    {"nama_lengkap": "Thomas Djiwandono", "posisi": "Wakil Menteri Keuangan", "partai": None},
+    {"nama_lengkap": "Suahasil Nazara", "posisi": "Wakil Menteri Keuangan", "partai": None},
+    {"nama_lengkap": "Anggito Abimanyu", "posisi": "Wakil Menteri Keuangan", "partai": None},
+    {"nama_lengkap": "Fajar Riza Ul Haq", "posisi": "Wakil Menteri Pendidikan Dasar dan Menengah", "partai": None},
+    {"nama_lengkap": "Atip Latipulhayat", "posisi": "Wakil Menteri Pendidikan Dasar dan Menengah", "partai": None},
+    {"nama_lengkap": "Fauzan", "posisi": "Wakil Menteri Pendidikan Tinggi, Sains, dan Teknologi", "partai": None},
+    {"nama_lengkap": "Stella Christie", "posisi": "Wakil Menteri Pendidikan Tinggi, Sains, dan Teknologi", "partai": None},
+    {"nama_lengkap": "Dante Saksono Harbuwono", "posisi": "Wakil Menteri Kesehatan", "partai": None},
+    {"nama_lengkap": "Dzulfikar Ahmad Tawalla", "posisi": "Wakil Menteri Pelindungan Pekerja Migran Indonesia", "partai": None},
+    {"nama_lengkap": "Yuliot", "posisi": "Wakil Menteri Energi dan Sumber Daya Mineral", "partai": None},
+    {"nama_lengkap": "Diana Kusumastuti", "posisi": "Wakil Menteri Pekerjaan Umum", "partai": None},
+    {"nama_lengkap": "Suntana", "posisi": "Wakil Menteri Perhubungan", "partai": None},
+    {"nama_lengkap": "Nezar Patria", "posisi": "Wakil Menteri Komunikasi dan Digital", "partai": None},
+    {"nama_lengkap": "Didit Herdiawan", "posisi": "Wakil Menteri Kelautan dan Perikanan", "partai": None},
+    {"nama_lengkap": "Febrian Alphyanto Ruddyard", "posisi": "Wakil Menteri Perencanaan Pembangunan Nasional", "partai": None},
+    {"nama_lengkap": "Purwadi Arianto", "posisi": "Wakil Menteri Pendayagunaan Aparatur Negara dan Reformasi Birokrasi", "partai": None},
+    {"nama_lengkap": "Kartiko Wirjoatmodjo", "posisi": "Wakil Menteri Badan Usaha Milik Negara", "partai": None},
+    {"nama_lengkap": "Aminuddin Ma'ruf", "posisi": "Wakil Menteri Badan Usaha Milik Negara", "partai": None},
+    {"nama_lengkap": "Dony Oskaria", "posisi": "Wakil Menteri Badan Usaha Milik Negara", "partai": None},
+    {"nama_lengkap": "Todotua Pasaribu", "posisi": "Wakil Menteri Investasi dan Hilirisasi", "partai": None},
+    {"nama_lengkap": "Ni Luh Enik Ernawati", "posisi": "Wakil Menteri Pariwisata", "partai": None},
+    {"nama_lengkap": "Irene Umar", "posisi": "Wakil Menteri Ekonomi Kreatif", "partai": None},
+    {"nama_lengkap": "Dahnil Anzar Simanjuntak", "posisi": "Wakil Menteri Haji dan Umrah", "partai": None},
+]
+
 
 def fetch_wikipedia() -> list[dict]:
     """Fetch and parse the Kabinet Merah Putih Wikipedia page via Jina reader."""
@@ -32,39 +104,66 @@ def fetch_wikipedia() -> list[dict]:
 
 
 def _strip_links(s: str) -> str:
-    """Remove markdown links, keeping display text. Also strip trailing disambiguation text."""
+    """Remove markdown links and image markup, keeping display text."""
     result = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", s).strip()
-    # Remove trailing disambiguation like: Sugiono "Sugiono (politikus)")
+    result = re.sub(r'!\[[^\]]*\]\([^)]+\)', "", result).strip()
     result = re.sub(r'\s*"[^"]*"\)', "", result).strip()
     result = re.sub(r'\s*"[^"]*"$', "", result).strip()
     return result
 
 
-def _parse_section(section: str, posisi_prefix: str) -> list[dict]:
+def _extract_section(text: str, marker: str) -> str:
+    """
+    Extract section from marker until the next markdown heading (## or ###),
+    allowing blank lines between party groups inside the section.
+    """
+    idx = text.find(marker)
+    if idx == -1:
+        return ""
+    after = text[idx + len(marker):]
+    next_heading = re.search(r'\n#{1,3} ', after)
+    if next_heading:
+        return text[idx: idx + len(marker) + next_heading.start()]
+    return text[idx:]
+
+
+def _parse_section(section: str) -> list[dict]:
     """
     Parse a minister/wakil-menteri section.
-    Rows have exactly 2 cells: | [Name] | [Posisi] |
-    Rows with 4+ cells are party group headers — skip them.
+
+    Wikipedia uses a 3-column party-grouped table:
+      - First row per party: | (empty) | Party | Name | Posisi |   → 3 non-empty cells
+      - Subsequent rows:     | Name | Posisi |                     → 2 non-empty cells
     """
     officials = []
     row_pattern = re.compile(r"^\|(.+)\|$", re.MULTILINE)
     for m in row_pattern.finditer(section):
         cells = [c.strip() for c in m.group(1).split("|")]
-        # Skip header/separator rows and party-group rows (more than 2 non-empty cells)
         non_empty = [c for c in cells if c and c != "---"]
-        if len(non_empty) != 2:
+
+        if len(non_empty) == 2:
+            nama_raw, posisi_raw = non_empty[0], non_empty[1]
+        elif len(non_empty) == 3:
+            # Party group first-member row: party | name | posisi
+            _, nama_raw, posisi_raw = non_empty
+        else:
             continue
-        nama_raw, posisi_raw = non_empty[0], non_empty[1]
+
         nama = _strip_links(nama_raw)
         posisi = _strip_links(posisi_raw)
-        # Skip if nama looks like a header or is too short
+
         if not nama or len(nama) < 4:
             continue
-        if re.search(r"^(Partai|Nama|Jabatan|---|Menteri|Wakil)", nama, re.I):
+        if re.search(r"^(Partai|Nama|Jabatan|---|Menteri|Wakil|Setingkat|No\.)", nama, re.I):
             continue
-        # Skip if nama contains image markup
-        if "![" in nama or nama.startswith("[!["):
+        if "![" in nama or nama.startswith("[![") or "**" in nama:
             continue
+        if not posisi or len(posisi) < 4:
+            continue
+
+        # Fix known Wikipedia typos
+        posisi = posisi.replace("Ketenangakerjaan", "Ketenagakerjaan")
+
         officials.append({"nama_lengkap": nama, "posisi": posisi, "partai": None})
     return officials
 
@@ -72,40 +171,39 @@ def _parse_section(section: str, posisi_prefix: str) -> list[dict]:
 def parse_cabinet_text(text: str) -> list[dict]:
     """
     Extract (nama, posisi) pairs from Jina markdown of Wikipedia cabinet page.
-    Finds the '| Partai | Menteri |' and '| Partai | Wakil Menteri |' tables,
-    then parses 2-column rows as (nama, posisi).
+    Handles the party-grouped 3-column Wikipedia table format.
     """
     officials = []
 
-    # Find the two minister tables by their headers
-    menteri_marker = "| Partai | Menteri |"
-    wakil_marker = "| Partai | Wakil Menteri |"
-
-    for marker, prefix in [(menteri_marker, "Menteri"), (wakil_marker, "Wakil Menteri")]:
-        idx = text.find(marker)
-        if idx == -1:
-            continue
-        # Extract section: from marker to next blank line followed by non-table content
-        section_text = text[idx:]
-        # Section ends when we hit two consecutive newlines not followed by a |
-        end_match = re.search(r"\n\n(?!\|)", section_text)
-        if end_match:
-            section_text = section_text[: end_match.start()]
-        officials.extend(_parse_section(section_text, prefix))
-
-    # Also include Presiden and Wakil Presiden from the infobox
-    presiden_match = re.search(
-        r"\|\s*\[Presiden\][^\|]+\|\s*\[([^\]]+)\]\([^)]+\)", text
-    )
-    wapres_match = re.search(
-        r"\|\s*\[Wakil Presiden\][^\|]+\|\s*\[([^\]]+)\]\([^)]+\)", text
-    )
-    if presiden_match:
-        officials.insert(0, {"nama_lengkap": presiden_match.group(1), "posisi": "Presiden", "partai": "Gerindra"})
-    if wapres_match:
-        officials.insert(1, {"nama_lengkap": wapres_match.group(1), "posisi": "Wakil Presiden", "partai": None})
+    for marker in ["| Partai | Menteri |", "| Partai | Wakil Menteri |"]:
+        section_text = _extract_section(text, marker)
+        if section_text:
+            officials.extend(_parse_section(section_text))
 
     return officials
+
+
+def merge_with_supplement(wiki_officials: list[dict]) -> list[dict]:
+    """
+    Merge Wikipedia officials with the hardcoded supplement list.
+    Deduplicates by nama_lengkap (case-insensitive).
+    Supplement entries are inserted at the front (Presiden, Wapres first).
+    """
+    wiki_names = {o["nama_lengkap"].lower() for o in wiki_officials}
+    combined = list(SUPPLEMENT)  # supplement first (Presiden/Wapres at top)
+    for o in wiki_officials:
+        if o["nama_lengkap"].lower() not in {s["nama_lengkap"].lower() for s in SUPPLEMENT}:
+            combined.append(o)
+
+    # Deduplicate by nama_lengkap keeping first occurrence
+    seen = set()
+    unique = []
+    for o in combined:
+        key = o["nama_lengkap"].lower()
+        if key not in seen:
+            seen.add(key)
+            unique.append(o)
+    return unique
 
 
 def get_nasional_wilayah_id(client: httpx.Client) -> str:
@@ -169,15 +267,20 @@ def upsert_jabatan(client: httpx.Client, pejabat_id: str, posisi: str, partai: s
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--debug", action="store_true", help="Print parsed list without DB ops")
     args = parser.parse_args()
 
     print("Fetching Wikipedia cabinet page via Jina...")
-    officials = fetch_wikipedia()
-    print(f"  Parsed {len(officials)} officials")
+    wiki_officials = fetch_wikipedia()
+    print(f"  Wikipedia parsed: {len(wiki_officials)} officials")
 
-    if not officials:
-        print("ERROR: No officials parsed. Check Wikipedia page structure.", file=sys.stderr)
-        sys.exit(1)
+    officials = merge_with_supplement(wiki_officials)
+    print(f"  After supplement merge: {len(officials)} officials total")
+
+    if args.debug:
+        for o in officials:
+            print(f"  {o['nama_lengkap']} — {o['posisi']}")
+        return
 
     with httpx.Client(timeout=30) as client:
         existing = get_existing_pusat(client)

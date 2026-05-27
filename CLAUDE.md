@@ -118,39 +118,15 @@ All modes: inverted polarity (red = bad), consistent legend. `hash01` mock stays
 
 ## Next Session Should Start With
 
-**Where we are (name verification pass, mid-session):**
-- Verifying all ~1,103 pejabat in `C:\Users\anzal\Downloads\semua_pejabat_verified.csv` for name accuracy post-Pilkada 2024 (mass inauguration 20 Feb 2025).
-- **Batches 1–59 complete.** Sequential pass (lines 957–1105) fully done covering Sulbar→Sulsel→Sulteng→Sultra→Sulut→Sumbar→Sumsel→Sumut. Now verifying remaining ~619 unverified rows (Bupati/Gubernur/Walikota scattered through early CSV).
-- Total corrections this session: ~80 across batches 50–59 (many salah orang, all-caps, tidak lengkap).
-- CSV at `C:\Users\anzal\Downloads\semua_pejabat_verified.csv` has `nama_koreksi` + `verifikasi_batch` columns.
-- Push script: `scripts/update_verified_names.py` — update CORRECTIONS list, run `python scripts/update_verified_names.py`.
+### Pejabat Pusat — COMPLETE (111 officials)
 
-### Top priority — Continue name verification (619 rows remaining)
+`scripts/scrape_kabinet.py` imports from Wikipedia + hardcoded supplement (post-April 2026 reshuffle + Kompas Sept 2025 full Wakil Menteri list). DB has 111 pusat pejabat (109 current + 2 predecessors still in DB: Juda Agung, Benjamin Paulus Octavianus). Re-run scraper periodically as Wikipedia catches up — it's idempotent.
 
-**Resume from first unverified row** — use this to find it:
-```python
-import csv
-with open(r'C:\Users\anzal\Downloads\semua_pejabat_verified.csv', encoding='utf-8') as f:
-    rows = list(csv.DictReader(f, delimiter=';'))
-unverified = [(i+2, rows[i]) for i in range(len(rows)) if not rows[i].get('verifikasi_batch','').strip()]
-# unverified[0] is next row
-```
-Remaining rows are non-contiguous (Bupati/Gubernur/Walikota across all provinces). Use `pejabat_id` to mark batch, not row index.
+UI: `KabinetGrid.tsx` + Daerah/Pusat toggle on homepage is wired and working.
 
-**Workflow per batch (20 rows):**
-1. Read 20 rows from CSV
-2. Spawn agent to verify each name via web search (Indonesian sources)
-3. Write `nama_koreksi;batch_number` for any corrections in CSV
-4. Push to Supabase every ~3 batches (~60 rows) via update script
+Minor cleanup (optional): Afriansyah Noor may have 2 jabatan rows (typo + correct posisi). Juda Agung and Benjamin Paulus Octavianus in DB but not in current cabinet — delete via Supabase dashboard if needed.
 
-**Watch for:**
-- Incomplete single names (e.g. "Erwin", "Iin", "Dena") → find full legal name
-- Bupati/Wakil confused (same pejabat_id assigned to wrong role)
-- Nonaktif status on a person who is actually the current 2025 official (scraper put wrong dates)
-- All-caps entries are usually cosmetically wrong, verify the person is correct
-- PSU (vote recount) kabupaten had delayed inauguration (e.g. Pamekasan 19 Mar 2025, Magetan 23 Mei 2025)
-
-### After name verification completes — partai + masa-jabatan enrichment
+### Top priority — partai + masa-jabatan enrichment
 
 1. Visit `/admin/enrichment` → click **Unduh CSV Enrichment** (~1,005 rows where `jabatan.partai IS NULL`).
 2. Send to Claude with the on-page prompt. Likely needs chunking (split by provinsi) for accuracy on long sheets.
