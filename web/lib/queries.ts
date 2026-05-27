@@ -648,7 +648,7 @@ export async function listProvinceKasusCounts(): Promise<ProvinceKasusCount[]> {
   const supabase = await createServerSupabase()
 
   const [kasusRows, jabatanRows, wilayahRows] = await Promise.all([
-    supabase.from('kasus').select('pejabat_id').then(({ data }) =>
+    supabase.from('kasus').select('pejabat_id').neq('verified', false).then(({ data }) =>
       (data ?? []) as Array<{ pejabat_id: string }>
     ),
     fetchAll<Pick<JabatanRow, 'pejabat_id' | 'wilayah_id'>>(
