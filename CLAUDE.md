@@ -152,6 +152,20 @@ python scripts/verify_kasus.py --all
 
 **Known issue:** Map tooltip still clips for some lower provinces (Sulawesi/Papua area) — `overflow: visible` added to container but may need deeper fix in `IndonesiaMap.tsx`.
 
+### UI Decision — Homepage Left Rail
+
+**Current:** Left sidebar shows a scrollable list of 552 officials (search + sort). User finds this not useful on homepage.
+
+**Proposed:** Replace the left rail with a **live news feed** — latest `hotspot_events` from `/pulse`, shown as a compact ticker/card stack with a CTA button "Lihat semua → /pulse". This makes the homepage more dynamic and gives `/pulse` a natural entry point.
+
+**Needs brainstorming before implementing:**
+- How many headlines to show? (3–5 latest)
+- Auto-scroll ticker vs static card stack?
+- Where does the official directory list go — only on `/pejabat`?
+- What shows when `hotspot_events` is empty (before /pulse is built)?
+
+Block: requires `/pulse` + `hotspot_events` data to exist first. Build `/pulse` (Priority 2) before reworking the rail.
+
 ### Priority 2 — Daily Hotspot (`/pulse`)
 
 Full plan at `docs/superpowers/plans/2026-05-26-plan3-daily-hotspot.md` — 8 tasks, all code scaffolded.
