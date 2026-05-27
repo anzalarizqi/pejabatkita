@@ -94,7 +94,7 @@ export default function KabinetGrid({ officials }: Props) {
           <div className="kg-divider">
             <div className="kg-divider-rule" aria-hidden />
             <span className="kg-divider-label">
-              {menteri.length} Kementerian
+              {menteri.length} Pejabat
             </span>
             <div className="kg-divider-rule" aria-hidden />
           </div>
