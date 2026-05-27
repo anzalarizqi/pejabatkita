@@ -11,6 +11,7 @@ Usage:
 """
 import argparse
 import csv
+import io
 import json
 import re
 import sys
@@ -22,7 +23,7 @@ sys.path.insert(0, str(ROOT))
 
 from scraper.pipeline.llm import chat
 
-CHUNK_SIZE = 20  # rows per LLM call — keep output within 2048 token limit
+CHUNK_SIZE = 50  # rows per LLM call — keep output within 2048 token limit
 
 SYSTEM_PROMPT = """Anda adalah peneliti antikorupsi Indonesia. Tugas Anda: skrining nama pejabat publik Indonesia apakah memiliki rekam jejak kasus korupsi (setidaknya berstatus tersangka dari KPK, Kejagung, Kejati, atau Pengadilan Tipikor).
 
@@ -58,9 +59,12 @@ def _parse_llm_json(text: str) -> list[dict]:
 
 
 def screen_chunk(rows: list[dict]) -> list[dict]:
-    csv_text = "pejabat_id,nama_lengkap,jabatan,provinsi\n"
+    buf = io.StringIO()
+    _w = csv.writer(buf)
+    _w.writerow(["pejabat_id", "nama_lengkap", "jabatan", "provinsi"])
     for r in rows:
-        csv_text += f"{r['pejabat_id']},{r['nama_lengkap']},{r['jabatan']},{r['provinsi']}\n"
+        _w.writerow([r["pejabat_id"], r["nama_lengkap"], r["jabatan"], r["provinsi"]])
+    csv_text = buf.getvalue()
 
     messages = [{"role": "user", "content": csv_text}]
     response = chat(messages, system_prompt=SYSTEM_PROMPT)
@@ -124,6 +128,8 @@ def main() -> None:
                     for res in results:
                         pid = res.get("pejabat_id", "")
                         src = input_map.get(pid, {})
+                        if not src:
+                            print(f"    WARN: LLM returned unknown pejabat_id '{pid}' — enrichment skipped", file=sys.stderr)
                         res["nama_lengkap"] = src.get("nama_lengkap", "")
                         res["jabatan"] = src.get("jabatan", "")
                         res["provinsi"] = prov
