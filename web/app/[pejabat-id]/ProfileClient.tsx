@@ -501,15 +501,19 @@ export default function ProfileClient({ pejabat, jabatan, provinsiNama, kasus }:
               ))}
             </div>
 
-            {pejabat.metadata?.confidence && (
-              <div className="conf-bar">
-                <span>Kepercayaan data:</span>
-                <div className="conf-track">
-                  <div className="conf-fill" style={{ width: `${(pejabat.metadata.confidence.score ?? 0) * 100}%` }} />
+            {pejabat.metadata?.confidence && (() => {
+              const raw = pejabat.metadata.confidence
+              const score = typeof raw === 'number' ? raw : (raw?.score ?? 0)
+              return score > 0 ? (
+                <div className="conf-bar">
+                  <span>Kepercayaan data:</span>
+                  <div className="conf-track">
+                    <div className="conf-fill" style={{ width: `${score * 100}%` }} />
+                  </div>
+                  <span>{(score * 100).toFixed(0)}%</span>
                 </div>
-                <span>{((pejabat.metadata.confidence.score ?? 0) * 100).toFixed(0)}%</span>
-              </div>
-            )}
+              ) : null
+            })()}
           </div>
         )}
       </div>
