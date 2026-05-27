@@ -2,13 +2,15 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { PejabatRow, JabatanRow, Wilayah } from '@/lib/types'
+import { PejabatRow, JabatanRow, Wilayah, KasusRow } from '@/lib/types'
 import LaporkanModal from './LaporkanModal'
+import KasusSection from '@/app/_components/KasusSection'
 
 interface Props {
   pejabat: PejabatRow
   jabatan: (JabatanRow & { wilayah?: Pick<Wilayah, 'nama' | 'kode_bps'> })[]
   provinsiNama: string | null
+  kasus: KasusRow[]
 }
 
 const BULAN_ID = [
@@ -42,7 +44,7 @@ function hash01(seed: string): number {
   return ((h >>> 0) % 10000) / 10000
 }
 
-export default function ProfileClient({ pejabat, jabatan, provinsiNama }: Props) {
+export default function ProfileClient({ pejabat, jabatan, provinsiNama, kasus }: Props) {
   const [showModal, setShowModal] = useState(false)
 
   const jabatanAktif = jabatan.filter((j) => j.status === 'aktif')
@@ -478,29 +480,8 @@ export default function ProfileClient({ pejabat, jabatan, provinsiNama }: Props)
           </div>
         </div>
 
-        {/* Rekam Bersih — PRATINJAU until Phase 9C */}
-        <div className="section">
-          <div className="section-title">
-            <span>Rekam Bersih</span>
-            <span className="section-tag">Pratinjau</span>
-          </div>
-          <div className="pratinjau">
-            <div className="pratinjau-stamp">DATA ILUSTRASI · Q2 2026</div>
-            <div className="pratinjau-grid">
-              <div>
-                <div className="pratinjau-stat" style={{ fontSize: 22 }}>{mockBersihLabel}</div>
-                <div style={{ fontSize: 10, letterSpacing: 0.1, textTransform: 'uppercase', color: 'var(--muted)', marginTop: 4 }}>
-                  Status ilustrasi
-                </div>
-              </div>
-              <div className="pratinjau-caption">
-                Bagian ini akan merangkum rekam jejak hukum dari arsip KPK, basis data ICW,
-                dan pemberitaan utama yang relevan dengan tindak pidana korupsi. Hanya
-                sumber resmi atau pemberitaan tepercaya yang akan dimasukkan.
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Rekam Bersih — real data from kasus table */}
+        <KasusSection kasus={kasus} />
 
         {/* Sumber Data */}
         {sources.length > 0 && (

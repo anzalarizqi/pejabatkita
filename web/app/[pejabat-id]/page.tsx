@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation'
 import { Metadata } from 'next'
 import { createServerSupabase } from '@/lib/supabase'
-import { PejabatRow, JabatanRow, Wilayah } from '@/lib/types'
+import { PejabatRow, JabatanRow, Wilayah, KasusRow } from '@/lib/types'
+import { getKasusByPejabat } from '@/lib/queries'
 import ProfileClient from './ProfileClient'
 
 interface Props {
@@ -12,13 +13,14 @@ export const dynamic = 'force-dynamic'
 
 async function loadProfile(id: string) {
   const supabase = await createServerSupabase()
-  const [pejabatRes, jabatanRes] = await Promise.all([
+  const [pejabatRes, jabatanRes, kasus] = await Promise.all([
     supabase.from('pejabat').select('*').eq('id', id).single(),
     supabase
       .from('jabatan')
       .select('*, wilayah:wilayah_id(nama, kode_bps)')
       .eq('pejabat_id', id)
       .order('mulai_jabatan', { ascending: false }),
+    getKasusByPejabat(id),
   ])
   if (pejabatRes.error || !pejabatRes.data) return null
 
@@ -41,7 +43,7 @@ async function loadProfile(id: string) {
     provinsiNama = (provRes.data as { nama: string } | null)?.nama ?? null
   }
 
-  return { pejabat, jabatan, provinsiNama }
+  return { pejabat, jabatan, provinsiNama, kasus }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -64,7 +66,7 @@ export default async function PejabatProfilePage({ params }: Props) {
   const data = await loadProfile(id)
   if (!data) notFound()
 
-  const { pejabat, jabatan, provinsiNama } = data
+  const { pejabat, jabatan, provinsiNama, kasus } = data
   const nama = [pejabat.gelar_depan, pejabat.nama_lengkap, pejabat.gelar_belakang]
     .filter(Boolean).join(' ')
   const aktif = jabatan.find((j) => j.status === 'aktif')
@@ -92,7 +94,7 @@ export default async function PejabatProfilePage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(ldJson) }}
       />
-      <ProfileClient pejabat={pejabat} jabatan={jabatan} provinsiNama={provinsiNama} />
+      <ProfileClient pejabat={pejabat} jabatan={jabatan} provinsiNama={provinsiNama} kasus={kasus} />
     </>
   )
 }
