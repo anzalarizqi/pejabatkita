@@ -63,7 +63,10 @@ def main() -> None:
         if w["level"] == "nasional":
             return "Nasional"
         parent = wilayah_by_id.get(w.get("parent_id") or "")
-        return parent["nama"] if parent else ""
+        if not parent:
+            print(f"  WARN: wilayah {wilayah_id} has no resolvable province parent", file=__import__('sys').stderr)
+            return ""
+        return parent["nama"]
 
     # Use first jabatan per pejabat
     first_jabatan: dict[str, dict] = {}
@@ -90,7 +93,7 @@ def main() -> None:
                 "provinsi": province_name(j.get("wilayah_id")),
             })
 
-    total = sum(1 for _ in open(out_path, encoding="utf-8")) - 1  # subtract header
+    total = out_path.read_text(encoding="utf-8").count("\n") - 1
     print(f"Exported {total} pejabat to {out_path}")
 
 
