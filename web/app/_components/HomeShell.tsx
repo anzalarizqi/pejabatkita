@@ -5,12 +5,14 @@ import { useEffect, useMemo, useState } from 'react'
 import IndonesiaMap from './IndonesiaMap'
 import DisclaimerModal from './DisclaimerModal'
 import MisiKamiModal from './MisiKamiModal'
-import type { LeaderRow, ProvinceCount, SiteStats } from '@/lib/queries'
+import KabinetGrid from './KabinetGrid'
+import type { LeaderRow, PejabatPusatCard, ProvinceCount, SiteStats } from '@/lib/queries'
 
 interface Props {
   provinces: ProvinceCount[]
   stats: SiteStats
   leaders: LeaderRow[]
+  pusatOfficials: PejabatPusatCard[]
 }
 
 type SortKey = 'posisi' | 'nama' | 'provinsi'
@@ -34,8 +36,11 @@ function biased(u: number, centre: number, spread: number): number {
   return Math.max(0, Math.min(1, centre + (u - 0.5) * spread))
 }
 
-export default function PreviewShell({ provinces, stats, leaders }: Props) {
+type ViewMode = 'daerah' | 'pusat'
+
+export default function PreviewShell({ provinces, stats, leaders, pusatOfficials }: Props) {
   const [mode, setMode] = useState<ColorMode>('tercatat')
+  const [viewMode, setViewMode] = useState<ViewMode>('daerah')
 
   const dateLabel = new Date().toLocaleDateString('id-ID', {
     day: '2-digit', month: 'long', year: 'numeric',
@@ -156,21 +161,28 @@ export default function PreviewShell({ provinces, stats, leaders }: Props) {
           </aside>
 
           <section className="pv-stage">
-            <StatStrip stats={stats} lastUpdatedLabel={lastUpdatedLabel} />
-            <ModeToggle mode={mode} setMode={setMode} />
-            <div className="pv-stage-map">
-              {mode !== 'tercatat' && (
-                <div className="pv-mock-stamp">DATA ILUSTRASI · Q2 2026</div>
-              )}
-              <IndonesiaMap
-                provinces={provinces}
-                height={400}
-                colorBy={mapColorBy}
-                tooltip={mapTooltip}
-              />
-            </div>
-            <MapLegend mode={mode} provinces={provinces} />
-            <FeatureStrip />
+            <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
+            {viewMode === 'daerah' ? (
+              <>
+                <StatStrip stats={stats} lastUpdatedLabel={lastUpdatedLabel} />
+                <ModeToggle mode={mode} setMode={setMode} />
+                <div className="pv-stage-map">
+                  {mode !== 'tercatat' && (
+                    <div className="pv-mock-stamp">DATA ILUSTRASI · Q2 2026</div>
+                  )}
+                  <IndonesiaMap
+                    provinces={provinces}
+                    height={400}
+                    colorBy={mapColorBy}
+                    tooltip={mapTooltip}
+                  />
+                </div>
+                <MapLegend mode={mode} provinces={provinces} />
+                <FeatureStrip />
+              </>
+            ) : (
+              <KabinetGrid officials={pusatOfficials} />
+            )}
           </section>
         </main>
 
@@ -180,6 +192,29 @@ export default function PreviewShell({ provinces, stats, leaders }: Props) {
         </footer>
       </div>
     </>
+  )
+}
+
+// ─── View toggle (Daerah / Pusat) ────────────────────────────────────────────
+
+function ViewToggle({ viewMode, setViewMode }: { viewMode: ViewMode; setViewMode: (v: ViewMode) => void }) {
+  return (
+    <div className="pv-view-row">
+      <div className="pv-mode-tabs" role="tablist">
+        {(['daerah', 'pusat'] as ViewMode[]).map((v) => (
+          <button
+            key={v}
+            role="tab"
+            aria-selected={viewMode === v}
+            className={`pv-mode-tab ${viewMode === v ? 'pv-mode-tab-active' : ''}`}
+            onClick={() => setViewMode(v)}
+            suppressHydrationWarning
+          >
+            {v === 'daerah' ? 'Daerah' : 'Pusat · Kabinet'}
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -1149,4 +1184,13 @@ const styles = `
 
   @keyframes pv-fadein { from { opacity: 0; } to { opacity: 1; } }
   @keyframes pv-rise   { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── View toggle row (Daerah / Pusat) ───────────────────────── */
+  .pv-view-row {
+    display: flex; align-items: center; gap: 14px;
+    padding: 0 12px 4px;
+    flex-shrink: 0;
+    border-bottom: 1px dashed var(--rule);
+    margin-bottom: 4px;
+  }
 `
