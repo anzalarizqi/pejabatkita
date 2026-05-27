@@ -20,10 +20,10 @@ type SortKey = 'posisi' | 'nama' | 'provinsi'
 type ColorMode = 'tercatat' | 'pendidikan' | 'lhkpn' | 'bersih'
 
 const COLOR_MODES: { key: ColorMode; label: string; live: boolean; hint: string }[] = [
+  { key: 'bersih',     label: 'Rekam Bersih', live: true,  hint: 'pejabat dengan catatan korupsi' },
   { key: 'tercatat',   label: 'Tercatat',   live: true,  hint: 'pejabat tercatat' },
   { key: 'pendidikan', label: 'Pendidikan', live: false, hint: '% S2/S3 · ilustrasi' },
   { key: 'lhkpn',      label: 'LHKPN',      live: false, hint: '% LHKPN lengkap · ilustrasi' },
-  { key: 'bersih',     label: 'Rekam Bersih', live: true,  hint: 'pejabat dengan catatan korupsi' },
 ]
 
 function hash01(s: string, salt: number): number {
@@ -40,7 +40,7 @@ function biased(u: number, centre: number, spread: number): number {
 type ViewMode = 'daerah' | 'pusat'
 
 export default function PreviewShell({ provinces, stats, leaders, pusatOfficials, kasusCounts }: Props) {
-  const [mode, setMode] = useState<ColorMode>('tercatat')
+  const [mode, setMode] = useState<ColorMode>('bersih')
   const [viewMode, setViewMode] = useState<ViewMode>('daerah')
 
   const kasusMap = useMemo(() => {
@@ -187,7 +187,7 @@ export default function PreviewShell({ provinces, stats, leaders, pusatOfficials
               <>
                 <StatStrip stats={stats} lastUpdatedLabel={lastUpdatedLabel} />
                 <ModeToggle mode={mode} setMode={setMode} />
-                <div className="pv-stage-map">
+                <div className="pv-stage-map" style={{ overflow: 'visible' }}>
                   {mode !== 'tercatat' && mode !== 'bersih' && (
                     <div className="pv-mock-stamp">DATA ILUSTRASI · Q2 2026</div>
                   )}
