@@ -31,9 +31,10 @@ interface Props {
   events7d: HotspotEventWithPejabat[]
   selectedProvince: string | null
   onProvinceClear: () => void
+  onActivate?: () => void
 }
 
-export default function HotspotRail({ events24h, events7d, selectedProvince, onProvinceClear }: Props) {
+export default function HotspotRail({ events24h, events7d, selectedProvince, onProvinceClear, onActivate }: Props) {
   // Fallback ladder: 24h → 7d → empty
   const usingFallback = events24h.length === 0 && events7d.length > 0
   const baseEvents = events24h.length > 0 ? events24h : events7d
@@ -86,7 +87,7 @@ export default function HotspotRail({ events24h, events7d, selectedProvince, onP
                 <li key={e.event_id}>
                   <button
                     className="hsr-card"
-                    onClick={() => setOpenEvent(e)}
+                    onClick={() => { onActivate?.(); setOpenEvent(e) }}
                   >
                     <span className="hsr-index">{String(idx + 1).padStart(2, '0')}</span>
                     <span

@@ -176,16 +176,14 @@ export async function getSiteStats(): Promise<SiteStats> {
     if (!isPlaceholderName(p.nama_lengkap)) realPejabatIds.add(p.id)
   }
 
-  // Count filled jabatan positions (not distinct people) — one person can hold
-  // two roles (e.g., plt), so counting distinct pejabat undercounts coverage.
   const wilayahById = new Map<string, Pick<Wilayah, 'id' | 'level' | 'parent_id' | 'nama'>>()
   for (const w of wilayah) wilayahById.set(w.id, w)
 
-  let realPejabat = 0
+  const filledPejabatIds = new Set<string>()
   const coveredProvNames = new Set<string>()
   for (const j of jabatan) {
     if (!realPejabatIds.has(j.pejabat_id)) continue
-    realPejabat++
+    filledPejabatIds.add(j.pejabat_id)
     const w = wilayahById.get(j.wilayah_id)
     if (!w) continue
     if (w.level === 'provinsi') coveredProvNames.add(w.nama)
@@ -194,6 +192,7 @@ export async function getSiteStats(): Promise<SiteStats> {
       if (parent && parent.level === 'provinsi') coveredProvNames.add(parent.nama)
     }
   }
+  const realPejabat = filledPejabatIds.size
   const provincesCovered = coveredProvNames.size
 
   // Last updated: max last_updated across pejabat

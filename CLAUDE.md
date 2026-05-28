@@ -138,24 +138,23 @@ SELECT cron.unschedule('crawl-hotspot-daily');
 
 **Admin runbook at `/admin/runbook`** — copy-on-click CLI reference for all 3 scripts.
 
+### What shipped this session (2026-05-29)
+
+- **Homepage stat fixed** (`getSiteStats`): was 109.9% because jabatan rows were counted instead of distinct pejabat. Now uses `filledPejabatIds.size`.
+- **Rekam Bersih map → percentage**: color is now normalized to the observed max ratio across provinces so the full 0→red scale is used. Tooltip shows `N / total pejabat · X%`.
+- **Denyut dots capped at 10 per province**: `events.slice(0, MAX_DOTS)` in `hotspotDots` useMemo — DKI was too crowded.
+- **Sidebar click → Denyut tab**: `HotspotRail` now accepts `onActivate` prop; clicking any event card switches the map to Denyut mode.
+- **screen_kasus_llm.py error retry fix**: removed `upsert_screened` call on timeout — errored pejabat no longer written to `kasus_screened`, so `--resume` retries them.
+
 ### Top priorities for next session
 
-**1. Fix homepage stat: 109.9% coverage** (`1,216 / 1,106 kursi`).
-- Location: `getSiteStats` → `HomeShell.tsx` `StatStrip`.
-- Likely root cause: pejabat counted across multiple jabatan rows. Verify with:
-  ```sql
-  SELECT level, COUNT(*) FROM pejabat GROUP BY level;
-  SELECT COUNT(DISTINCT pejabat_id) FROM jabatan;
-  ```
-- Fix in `getSiteStats` query — dedup by pejabat.id.
-
-**2. DPR / DPD / MPR officials backlog.**
+**1. DPR / DPD / MPR officials backlog.**
 - `pejabat.level = 'pusat'` currently only contains ~111 kabinet ministers
 - Need: 580 DPR anggota + ~136 DPD anggota + MPR pimpinan
 - Source: `dpr.go.id/anggota` (best), KPU calon data, Wikipedia
 - New scraper or one-time import script
 
-**3. Optional cleanup of Denyut data.**
+**2. Optional cleanup of Denyut data.**
 - 8 events with null `wilayah_id` (left over from initial loose-prompt crawl) — either backfill to DKI:
   ```sql
   UPDATE hotspot_events
@@ -164,6 +163,12 @@ SELECT cron.unschedule('crawl-hotspot-daily');
   WHERE wilayah_id IS NULL;
   ```
   or `TRUNCATE hotspot_events;` then re-crawl (new prompt routes nasional → DKI automatically).
+
+**3. Rekam Bersih data** — `screen_kasus_llm.py` run for Jawa Timur in progress. Run remaining provinces after verify completes:
+```bash
+python scripts/screen_kasus_llm.py --resume --log
+python scripts/verify_kasus.py
+```
 
 ### Known follow-ups / non-blockers
 

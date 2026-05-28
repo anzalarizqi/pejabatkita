@@ -317,7 +317,6 @@ def main() -> None:
                 if log_path:
                     with open(log_path, "a", encoding="utf-8") as lf:
                         lf.write(json.dumps({"pejabat_id": o["pejabat_id"], "nama": o["nama"], **result}, ensure_ascii=False) + "\n")
-                upsert_screened(db_client, o["pejabat_id"], "error", None, args.dry_run)
                 time.sleep(2)
                 continue
 

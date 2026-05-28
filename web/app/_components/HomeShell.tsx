@@ -42,7 +42,7 @@ const KATEGORI_COLOR: Record<string, string> = {
 }
 
 const COLOR_MODES: { key: ColorMode; label: string; live: boolean; hint: string }[] = [
-  { key: 'bersih',     label: 'Rekam Bersih', live: true,  hint: 'pejabat dengan catatan korupsi' },
+  { key: 'bersih',     label: 'Rekam Bersih', live: true,  hint: '% pejabat dengan catatan korupsi' },
   { key: 'denyut',     label: 'Denyut',     live: true,  hint: 'kejadian publik 7 hari terakhir' },
   { key: 'tercatat',   label: 'Tercatat',   live: true,  hint: 'pejabat tercatat' },
   { key: 'pendidikan', label: 'Pendidikan', live: false, hint: '% S2/S3 · ilustrasi' },
@@ -118,19 +118,21 @@ export default function PreviewShell({
       byProvince.set(e.provinsi_nama, list)
     }
 
+    const MAX_DOTS = 10
     const out: HotspotDot[] = []
     for (const [province, events] of byProvince) {
-      events.forEach((e, i) => {
+      const capped = events.slice(0, MAX_DOTS)
+      capped.forEach((e, i) => {
         out.push({
           provinceName: province,
           id: e.event_id,
           color: KATEGORI_COLOR[e.kategori ?? 'lainnya'] ?? KATEGORI_COLOR.lainnya,
-          size: 0.4,  // uniform small — one event one dot
+          size: 0.4,
           count: 1,
           pulse: events24hIds.has(e.event_id),
           topKategori: e.kategori ?? 'lainnya',
           groupIndex: i,
-          groupTotal: events.length,
+          groupTotal: capped.length,
         })
       })
     }
@@ -155,10 +157,15 @@ export default function PreviewShell({
       }
     }
     if (mode === 'bersih') {
+      const ratios = [...kasusMap.entries()].map(([name, count]) => {
+        const total = Math.max(1, provinceMaps.count.get(name) ?? 1)
+        return count / total
+      })
+      const maxRatio = Math.max(...ratios, 0.001)
       return (name: string) => {
         const count = kasusMap.get(name) ?? 0
         const total = Math.max(1, provinceMaps.count.get(name) ?? 1)
-        return Math.min(1, count / total)
+        return (count / total) / maxRatio
       }
     }
     return (name: string) => {
@@ -198,8 +205,10 @@ export default function PreviewShell({
     if (mode === 'bersih') {
       return (name: string) => {
         const count = kasusMap.get(name) ?? 0
+        const total = provinceMaps.count.get(name) ?? 0
+        const pct = total > 0 ? Math.round((count / total) * 100) : 0
         return count > 0
-          ? `${count} pejabat dengan catatan korupsi`
+          ? `${count} / ${total} pejabat · ${pct}% catatan korupsi`
           : 'Tidak ada catatan korupsi ditemukan'
       }
     }
@@ -299,6 +308,7 @@ export default function PreviewShell({
                 events7d={hotspotEvents7d}
                 selectedProvince={mode === 'denyut' ? selectedProvince : null}
                 onProvinceClear={() => setSelectedProvince(null)}
+                onActivate={() => setMode('denyut')}
               />
             </aside>
           )}
