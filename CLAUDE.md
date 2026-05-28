@@ -118,114 +118,66 @@ All modes: inverted polarity (red = bad), consistent legend. `hash01` mock stays
 
 ## Next Session Should Start With
 
-### Bugs to fix (flagged 2026-05-28)
+### Current state (end of 2026-05-29)
 
-**1. Coverage stat shows 109.9% (1,216 / 1,106 kursi) — over 100%, clearly wrong.**
-- Location: homepage `StatStrip` component in `HomeShell.tsx`
-- Two possible root causes:
-  - The "expected" 1,106 is the wrong denominator (under-counts actual gubernur+wakil+bupati+walikota+wakil seats)
-  - Pejabat are inserted in `pejabat` table tied to multiple `jabatan` rows and being counted multiple times
-- Debug: `SELECT COUNT(*) FROM pejabat WHERE level = 'daerah'` vs expected math: 38 provinsi × 2 (gub+wagub) + 415 kab × 2 + 100 kota × 2 = 1,106
-- Likely fix: dedup pejabat by id when counting, OR adjust `getSiteStats` query
+Denyut Demokrasi pipeline + homepage redesign **shipped** (see archive Session 9 for the journey). What runs:
 
-**2. DPR/MPR/DPD officials not yet seeded.**
-- Currently `pejabat.level = 'pusat'` only contains kabinet ministers (Pusat tab on homepage)
-- Need to add: 580 anggota DPR + ~136 anggota DPD + MPR officials
-- Source: KPU data or DPR official site (`dpr.go.id/anggota`)
-- New scraper or one-time import script needed
-
-### Deploy `/pulse` — code complete, needs Supabase wiring
-
-Session 2026-05-28: All 8 tasks in `docs/superpowers/plans/2026-05-26-plan3-daily-hotspot.md` implemented. `tsc --noEmit` clean.
-
-**Files created this session:**
-- `supabase/functions/crawl-hotspot/{index.ts,llm.ts,resolve.ts}` — edge function (Deno)
-- `supabase/migrations/011_pg_cron_hotspot.sql` — daily 09:00 WIB schedule
-- `web/app/pulse/{page.tsx,PulseShell.tsx}` — public hotspot page
-- `web/app/_components/{HotspotMap,HotspotSidebar,HotspotModal}.tsx`
-- `web/app/api/hotspot/route.ts` — client-side filter API
-- `web/app/admin/hotspot/page.tsx` — manual crawl trigger
-- `web/app/admin/settings/page.tsx` — LLM provider/model/keyword settings
-- `web/app/api/admin/{hotspot/crawl,settings}/route.ts`
-- HomeShell nav: added `Denyut` link
-- AdminLayout NAV: added `Denyut Crawler` + `Pengaturan LLM`
-
-**To deploy (in order):**
-1. Apply migration `010_kasus_screened.sql` if not already (kasus_screened table)
-2. Backfill `kasus_screened` from existing kasus rows (one-time, see SQL in prior session)
-3. Enable `pg_cron` + `pg_net` extensions in Supabase dashboard
-4. Set DB GUCs: `ALTER DATABASE postgres SET app.supabase_url = '...'; app.service_role_key = '...';`
-5. Set Supabase Secret: `supabase secrets set LLM_API_KEY=<key>`
-6. Deploy edge fn: `supabase functions deploy crawl-hotspot`
-7. Apply migration `011_pg_cron_hotspot.sql`
-8. Test: visit `/admin/hotspot` → click "Jalankan Crawl" → check `hotspot_events` table → visit `/pulse`
-
-**Design trade-off worth noting:**
-- Plan called for province dots colored by dominant kategori. I shipped intensity-based red coloring (matches Rekam Bersih aesthetic) with kategori-color badges in sidebar instead. Cleaner visual consistency but loses at-a-glance kategori signal from map. Revisit after first real data lands.
-- `HotspotMap.tsx` intercepts clicks via `aria-label` parsing — brittle but avoids modifying `IndonesiaMap`. Consider adding an `onProvinceClick` prop to IndonesiaMap later.
-
-### Rekam Bersih Pipeline — IN PROGRESS
-
-Full pipeline is built and working. Scripts:
-- `scripts/screen_kasus_llm.py` — Kimi `$web_search` + Keyword B, auto-inserts to `kasus` table
-- `scripts/verify_kasus.py` — Kimi thinking mode, sets `verified=true/false` + `verified_note`
-
-**DB migrations applied:** 007 (kasus table), 008 (kasus RLS anon read), 009 (verified columns)
-
-**Data status as of 2026-05-27:**
-- DKI Jakarta screened — 0 confirmed kasus (Rano Karno rejected: only mentioned in Atut/Wawan trial, never formally charged)
-- Jawa Tengah screening IN PROGRESS (user running now)
-- All other provinces: not yet screened
-
-**Run order for remaining provinces:**
+**Daily crawl — local Python, not Supabase:**
 ```bash
-# Screen all remaining (resume-safe)
-python scripts/screen_kasus_llm.py --resume --log
-
-# Verify all unverified kasus rows
-python scripts/verify_kasus.py
-
-# Re-run verify if errors
-python scripts/verify_kasus.py --all
+python scripts/crawl_hotspot.py            # 8 RSS feeds, last 24h, watchdog gate, ~10–15 events kept
+python scripts/crawl_hotspot.py --keyword "OTT KPK Pati"   # keyword path via Kimi $web_search
+python scripts/crawl_hotspot.py --dry-run  # preview, no DB write
 ```
 
-**Profile page:** KasusSection handles 3 states:
-1. No kasus → green badge only
-2. `verified=false` → green badge + neutral "Pernah disebut" note (combined ringkasan + verified_note)
-3. `verified=true/null` → red kasus card with status badge
+Supabase edge function `crawl-hotspot` and `pg_cron` were abandoned (150s timeout, 503 crashes). Code kept in repo for reference. Run the unschedule when convenient:
+```sql
+SELECT cron.unschedule('crawl-hotspot-daily');
+```
 
-**Map:** Rekam Bersih is now default mode (leftmost). Filters `verified != false` for province counts.
+**Homepage now has 5 mode tabs:** Rekam Bersih (default), **Denyut** (live dots), Tercatat, Pendidikan (mock), LHKPN (mock). Right rail is HotspotRail (officials list moved fully to `/pejabat`).
 
-**Known issue:** Map tooltip still clips for some lower provinces (Sulawesi/Papua area) — `overflow: visible` added to container but may need deeper fix in `IndonesiaMap.tsx`.
+**Admin runbook at `/admin/runbook`** — copy-on-click CLI reference for all 3 scripts.
 
-### UI Decision — Homepage Left Rail
+### Top priorities for next session
 
-**Current:** Left sidebar shows a scrollable list of 552 officials (search + sort). User finds this not useful on homepage.
+**1. Fix homepage stat: 109.9% coverage** (`1,216 / 1,106 kursi`).
+- Location: `getSiteStats` → `HomeShell.tsx` `StatStrip`.
+- Likely root cause: pejabat counted across multiple jabatan rows. Verify with:
+  ```sql
+  SELECT level, COUNT(*) FROM pejabat GROUP BY level;
+  SELECT COUNT(DISTINCT pejabat_id) FROM jabatan;
+  ```
+- Fix in `getSiteStats` query — dedup by pejabat.id.
 
-**Proposed:** Replace the left rail with a **live news feed** — latest `hotspot_events` from `/pulse`, shown as a compact ticker/card stack with a CTA button "Lihat semua → /pulse". This makes the homepage more dynamic and gives `/pulse` a natural entry point.
+**2. DPR / DPD / MPR officials backlog.**
+- `pejabat.level = 'pusat'` currently only contains ~111 kabinet ministers
+- Need: 580 DPR anggota + ~136 DPD anggota + MPR pimpinan
+- Source: `dpr.go.id/anggota` (best), KPU calon data, Wikipedia
+- New scraper or one-time import script
 
-**Needs brainstorming before implementing:**
-- How many headlines to show? (3–5 latest)
-- Auto-scroll ticker vs static card stack?
-- Where does the official directory list go — only on `/pejabat`?
-- What shows when `hotspot_events` is empty (before /pulse is built)?
+**3. Optional cleanup of Denyut data.**
+- 8 events with null `wilayah_id` (left over from initial loose-prompt crawl) — either backfill to DKI:
+  ```sql
+  UPDATE hotspot_events
+  SET wilayah_id = (SELECT id FROM wilayah WHERE nama = 'DKI Jakarta'),
+      lokasi_nama = COALESCE(lokasi_nama, 'DKI Jakarta')
+  WHERE wilayah_id IS NULL;
+  ```
+  or `TRUNCATE hotspot_events;` then re-crawl (new prompt routes nasional → DKI automatically).
 
-Block: requires `/pulse` + `hotspot_events` data to exist first. Build `/pulse` (Priority 2) before reworking the rail.
+### Known follow-ups / non-blockers
 
-### Priority 2 — Daily Hotspot (`/pulse`)
+- **Google News URLs** (Kompas/Tirto/Kumparan via `news.google.com/rss/articles/CBMi…`). Clicks redirect through Google to real article. Acceptable; `sumber_nama` parsed from title suffix so cards show "kompas.com" correctly. Resolving real URL would require an extra HEAD request per article.
+- **Daily schedule for `crawl_hotspot.py`** — can be wired to Windows Task Scheduler. No code work, just config.
+- **Mobile responsiveness pass** on `/pulse` and homepage (rail stacks below map at <920px but not deeply tested).
+- **Pejabat name resolution** is fuzzy `ilike '%name%'` — occasionally hits wrong person if 2 officials share a first name. Out of scope unless it causes a visible bug.
 
-Full plan at `docs/superpowers/plans/2026-05-26-plan3-daily-hotspot.md` — 8 tasks, all code scaffolded.
+### Deferred (still)
 
-Summary: Supabase Edge Function `crawl-hotspot` (Deno) calls Jina search daily at 09:00 WIB, LLM extracts judul/ringkasan/kategori/lokasi, inserts to `hotspot_events`. `/pulse` page shows IndonesiaMap dots per province colored by kategori + searchable sidebar + event modal. Admin `/admin/hotspot` for manual crawl trigger.
-
-Route confirmed: `/pulse`.
-
-### Deferred
-
-- Partai enrichment: `/admin/enrichment` → download CSV → process → upload (~1,005 null rows)
-- Phase 9C — LHKPN (after Rekam Bersih)
-- Phase 9D — Pendidikan (after LHKPN)
-- Mobile responsiveness pass + OG cards / sitemap.xml
+- Partai enrichment: `/admin/enrichment` CSV flow (~1,005 null rows)
+- LHKPN scraper (Phase 9C, after Rekam Bersih runs are done nationwide)
+- Pendidikan enrichment (Phase 9D)
+- OG cards / sitemap.xml
 
 ## Stack Notes (gotchas)
 

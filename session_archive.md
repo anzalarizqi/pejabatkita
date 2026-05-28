@@ -88,3 +88,78 @@ Leader names ~95%+ filled via Gemini CSV workflow. Jabatan cleanup done (171 str
 **Priority order confirmed:** Rekam Bersih (real `kasus` data) → Pulse (`/pulse`) → LHKPN → Pendidikan.
 
 Full implementation plans: `docs/superpowers/plans/2026-05-26-plan2-rekam-jejak-korupsi.md` and `docs/superpowers/plans/2026-05-26-plan3-daily-hotspot.md`.
+
+### Session 8 — 2026-05-27 (Rekam Bersih pipeline + screening)
+
+- Built `scripts/screen_kasus_llm.py` (Kimi `$web_search` + Keyword B) — auto-insert to `kasus`
+- Built `scripts/verify_kasus.py` (Kimi thinking mode) — sets `verified=true/false` + `verified_note`
+- Migrations 007 (kasus table), 008 (RLS anon read), 009 (verified columns)
+- KasusSection on profile page: 3 states (no kasus → green, verified=false → neutral "Pernah disebut", verified=true → red)
+- Map: Rekam Bersih is default mode, filters `verified != false`
+- DKI Jakarta screened — 0 confirmed kasus
+
+### Session 9 — 2026-05-28 / 29 (Denyut Demokrasi end-to-end)
+
+The big session. Pipeline ideated → built → twice rebuilt → shipped.
+
+**1. Suspicious-rejects audit** — `verify_kasus.py --report-suspicious-rejects` flags false-rejects (note says "terverifikasi" but verified=false). Caught Dedy Yon Supriyono (real conviction, wrong lembaga field).
+
+**2. Migration 010** — `kasus_screened` table tracks every screening regardless of outcome. `screen_kasus_llm.py --rescreen-after-days` flag (default 30) prevents re-screening bersih pejabat too often.
+
+**3. Edge function ideation → abandoned.** Built `supabase/functions/crawl-hotspot/` (Deno) per plan3. Multiple production-breaking issues forced pivot:
+- Jina search returned empty (deprecated free tier)
+- Pivoted to Kimi `$web_search` — worked
+- 504 IDLE_TIMEOUT (150s hard limit), parallelized — still timed out
+- 503 function crashed
+- Final verdict: Supabase edge function not suitable for this workload
+
+**4. `scripts/crawl_hotspot.py` — local Python runner.** Same pipeline architecture, no timeout. RSS source path + keyword `$web_search` path.
+
+**5. RSS feeds locked in** (verified working):
+- Detik berita (100 items)
+- CNN Indonesia nasional (100 items)
+- Antara politik / hukum / terkini (20+20+50)
+- Kompas / Tirto / Kumparan via Google News RSS proxy (~150 combined)
+
+Casualties: direct RSS for Kompas/Tirto/Kumparan retired. Google News proxy URLs work but visible URL is `news.google.com/rss/articles/CBMi...` — clicks redirect through Google to source. `sumber_nama` extracted from title suffix (`"X - Kompas.com"`).
+
+**6. LLM editorial gate.** Initial prompt produced too many ceremonial PR results (Idul Adha kurban distribution). Tightened to **watchdog-only**: korupsi, kontroversi/kritik, demonstrasi, pelanggaran HAM, skandal, putusan signifikan, kebijakan kontroversial. Reject ceremonial/press release/dukungan/pencapaian. Pass rate ~7% (vs 34% with loose gate).
+
+**7. National events → DKI Jakarta routing.** Prompt instructs presiden/menteri/DPR/MUI Pusat/Kejagung events to default `lokasi_nama: "DKI Jakarta"`.
+
+**8. Homepage redesign.**
+- New mode tab: **Denyut** (2nd, between Rekam Bersih and Tercatat)
+- **Pulse dots overlay** on `IndonesiaMap`. One dot per event. Multiple events in same province fanned in phyllotaxis (golden-angle sunflower) spiral around centroid.
+- 24h-fresh events animate with concentric halo pulse; 7d-24h-old events render static.
+- Each kategori has its own color (korupsi=red, demonstrasi=orange, pernyataan=yellow, kebijakan=purple, kritik=blue, lainnya=grey).
+- **Officials list (left rail) removed.** Lives only at `/pejabat` now.
+- **Right-side HotspotRail** — editorial card stack, scrollable, click → opens modal with kategori badge + ringkasan + "Baca selengkapnya →".
+- Mobile: rail stacks below map at <920px.
+- Respects `prefers-reduced-motion`.
+
+**9. `/pulse` page** — same dot system; time filter tabs (24h/7d/30d/90d/semua). Anon-read RLS via migration 012.
+
+**10. `/admin/runbook`** — replaced the deprecated `/admin/hotspot` trigger page. Sectioned reference for `screen_kasus_llm.py`, `verify_kasus.py`, `crawl_hotspot.py` — clickable command blocks, troubleshoot accordions, full-pipeline order.
+
+**11. `/admin/settings`** — provider/model/keywords. RLS fixed to use service role; form-field colors fixed for OS dark-mode.
+
+**12. `/admin` index** now redirects to `/admin/dashboard` (was 404).
+
+**Deprecated / removed:**
+- `supabase/functions/crawl-hotspot/*` — still in repo as reference, no longer deployed
+- pg_cron `crawl-hotspot-daily` job — should be unscheduled (kept SQL for reference in migration 011)
+- `/admin/hotspot` page and `/api/admin/hotspot/crawl` route — both deleted
+
+**Key commits this session:**
+- `f21c2a9` /admin redirect
+- `1b8f7fe` form field text color
+- `02108cd` settings service role + Kimi thinking disabled
+- `7430270` hotspot_events anon RLS
+- `7bde268` RSS pipeline (replaced Jina + per-keyword search)
+- `c74a291` watchdog editorial gate
+- `3e94146` local Python crawler
+- `7ba6306` /admin/runbook
+- `ca4e9b5` homepage redesign
+- `488c50b` multi-dot per (province,kategori) + /pulse dot system
+- `73a46e7` Kompas/Tirto/Kumparan via Google News
+- `9f6ec3c` one dot per event with phyllotaxis
