@@ -2,11 +2,20 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import IndonesiaMap from './IndonesiaMap'
+import IndonesiaMap, { type HotspotDot } from './IndonesiaMap'
 import DisclaimerModal from './DisclaimerModal'
 import MisiKamiModal from './MisiKamiModal'
 import KabinetGrid from './KabinetGrid'
-import type { LeaderRow, PejabatPusatCard, ProvinceCount, ProvinceKasusCount, SiteStats } from '@/lib/queries'
+import HotspotRail from './HotspotRail'
+import type {
+  HotspotEventWithPejabat,
+  LeaderRow,
+  PejabatPusatCard,
+  ProvinceCount,
+  ProvinceHotspotCount,
+  ProvinceKasusCount,
+  SiteStats,
+} from '@/lib/queries'
 
 interface Props {
   provinces: ProvinceCount[]
@@ -14,13 +23,27 @@ interface Props {
   leaders: LeaderRow[]
   pusatOfficials: PejabatPusatCard[]
   kasusCounts: ProvinceKasusCount[]
+  hotspotEvents24h: HotspotEventWithPejabat[]
+  hotspotEvents7d: HotspotEventWithPejabat[]
+  provinceHotspot24h: ProvinceHotspotCount[]
+  provinceHotspot7d: ProvinceHotspotCount[]
 }
 
 type SortKey = 'posisi' | 'nama' | 'provinsi'
-type ColorMode = 'tercatat' | 'pendidikan' | 'lhkpn' | 'bersih'
+type ColorMode = 'tercatat' | 'pendidikan' | 'lhkpn' | 'bersih' | 'denyut'
+
+const KATEGORI_COLOR: Record<string, string> = {
+  korupsi: '#c0392b',
+  demonstrasi: '#e67e22',
+  pernyataan: '#f39c12',
+  kebijakan: '#8e44ad',
+  kritik: '#2980b9',
+  lainnya: '#7f8c8d',
+}
 
 const COLOR_MODES: { key: ColorMode; label: string; live: boolean; hint: string }[] = [
   { key: 'bersih',     label: 'Rekam Bersih', live: true,  hint: 'pejabat dengan catatan korupsi' },
+  { key: 'denyut',     label: 'Denyut',     live: true,  hint: 'kejadian publik 7 hari terakhir' },
   { key: 'tercatat',   label: 'Tercatat',   live: true,  hint: 'pejabat tercatat' },
   { key: 'pendidikan', label: 'Pendidikan', live: false, hint: '% S2/S3 · ilustrasi' },
   { key: 'lhkpn',      label: 'LHKPN',      live: false, hint: '% LHKPN lengkap · ilustrasi' },
@@ -39,9 +62,13 @@ function biased(u: number, centre: number, spread: number): number {
 
 type ViewMode = 'daerah' | 'pusat'
 
-export default function PreviewShell({ provinces, stats, leaders, pusatOfficials, kasusCounts }: Props) {
+export default function PreviewShell({
+  provinces, stats, leaders, pusatOfficials, kasusCounts,
+  hotspotEvents24h, hotspotEvents7d, provinceHotspot24h, provinceHotspot7d,
+}: Props) {
   const [mode, setMode] = useState<ColorMode>('bersih')
   const [viewMode, setViewMode] = useState<ViewMode>('daerah')
+  const [selectedProvince, setSelectedProvince] = useState<string | null>(null)
 
   const kasusMap = useMemo(() => {
     const m = new Map<string, number>()
@@ -77,11 +104,33 @@ export default function PreviewShell({ provinces, stats, leaders, pusatOfficials
     return { expected, count }
   }, [provinces])
 
+  // Hotspot dots (7d window) — pulse if also in 24h
+  const hotspotDots: HotspotDot[] = useMemo(() => {
+    if (mode !== 'denyut') return []
+    const max = Math.max(1, ...provinceHotspot7d.map((p) => p.count))
+    const set24h = new Set(provinceHotspot24h.map((p) => p.provinsi_nama))
+    return provinceHotspot7d.map((p) => {
+      const top = Object.entries(p.kategori_counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'lainnya'
+      return {
+        provinceName: p.provinsi_nama,
+        color: KATEGORI_COLOR[top] ?? KATEGORI_COLOR.lainnya,
+        size: Math.sqrt(p.count / max),
+        count: p.count,
+        pulse: set24h.has(p.provinsi_nama),
+        topKategori: top,
+      }
+    })
+  }, [mode, provinceHotspot7d, provinceHotspot24h])
+
   // Each mock mode computes a "safety %" (high = good). Colour intensity is
   // INVERTED so that red = danger / low % across all preview modes, matching
   // the editorial convention (red = alarm). Tercatat shows completion %
   // (count / expected) so the gradient lands on a meaningful 0–100 scale.
   const mapColorBy = useMemo(() => {
+    if (mode === 'denyut') {
+      // Neutral fill — dots carry all the signal
+      return () => null
+    }
     if (mode === 'tercatat') {
       return (name: string) => {
         const e = provinceMaps.expected.get(name)
@@ -106,6 +155,23 @@ export default function PreviewShell({ provinces, stats, leaders, pusatOfficials
   }, [mode, provinceMaps, kasusMap])
 
   const mapTooltip = useMemo(() => {
+    if (mode === 'denyut') {
+      const by7d = new Map(provinceHotspot7d.map((p) => [p.provinsi_nama, p]))
+      const by24h = new Map(provinceHotspot24h.map((p) => [p.provinsi_nama, p]))
+      return (name: string) => {
+        const p7 = by7d.get(name)
+        const p24 = by24h.get(name)
+        if (!p7 && !p24) return 'Tidak ada kejadian 7 hari terakhir'
+        const c24 = p24?.count ?? 0
+        const c7 = p7?.count ?? 0
+        const top = p7 ? Object.entries(p7.kategori_counts).sort((a, b) => b[1] - a[1])[0]?.[0] : null
+        const parts = []
+        if (c24 > 0) parts.push(`${c24} kejadian 24 jam`)
+        else parts.push(`${c7} kejadian 7 hari`)
+        if (top) parts.push(top)
+        return parts.join(' · ')
+      }
+    }
     if (mode === 'tercatat') {
       return (name: string) => {
         const e = provinceMaps.expected.get(name) ?? 0
@@ -176,12 +242,8 @@ export default function PreviewShell({ provinces, stats, leaders, pusatOfficials
           </div>
         </header>
 
-        {/* ── Main: leaders rail | map stage ──────────────────────── */}
+        {/* ── Main: map stage | hotspot rail ──────────────────────── */}
         <main className="pv-main">
-          <aside className="pv-rail">
-            <LeadersRail leaders={leaders} />
-          </aside>
-
           <section className="pv-stage">
             <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
             {viewMode === 'daerah' ? (
@@ -189,23 +251,42 @@ export default function PreviewShell({ provinces, stats, leaders, pusatOfficials
                 <StatStrip stats={stats} lastUpdatedLabel={lastUpdatedLabel} />
                 <ModeToggle mode={mode} setMode={setMode} />
                 <div className="pv-stage-map" style={{ overflow: 'visible' }}>
-                  {mode !== 'tercatat' && mode !== 'bersih' && (
+                  {mode !== 'tercatat' && mode !== 'bersih' && mode !== 'denyut' && (
                     <div className="pv-mock-stamp">DATA ILUSTRASI · Q2 2026</div>
                   )}
                   <IndonesiaMap
                     provinces={provinces}
-                    height={400}
+                    height={460}
                     colorBy={mapColorBy}
                     tooltip={mapTooltip}
+                    dots={mode === 'denyut' ? hotspotDots : undefined}
+                    neutralFill={mode === 'denyut'}
+                    selected={mode === 'denyut' ? selectedProvince : null}
+                    onProvinceClick={
+                      mode === 'denyut'
+                        ? (name) => setSelectedProvince((cur) => cur === name ? null : name)
+                        : undefined
+                    }
                   />
                 </div>
-                <MapLegend mode={mode} provinces={provinces} />
+                {mode !== 'denyut' && <MapLegend mode={mode} provinces={provinces} />}
                 <FeatureStrip />
               </>
             ) : (
               <KabinetGrid officials={pusatOfficials} />
             )}
           </section>
+
+          {viewMode === 'daerah' && (
+            <aside className="pv-hotspot-rail">
+              <HotspotRail
+                events24h={hotspotEvents24h}
+                events7d={hotspotEvents7d}
+                selectedProvince={mode === 'denyut' ? selectedProvince : null}
+                onProvinceClear={() => setSelectedProvince(null)}
+              />
+            </aside>
+          )}
         </main>
 
         {/* ── Bottom ticker ───────────────────────────────────────── */}
@@ -445,11 +526,13 @@ function MapLegend({ mode }: { mode: ColorMode; provinces?: ProvinceCount[] }) {
     )
   }
 
-  const config = {
+  const configMap: Record<Exclude<ColorMode, 'tercatat' | 'denyut'>, { label: string; danger: string; safe: string }> = {
     pendidikan: { label: '% pendidikan ≥ S2 · ilustrasi', danger: 'rendah', safe: 'tinggi' },
     lhkpn:      { label: '% LHKPN lengkap · ilustrasi',   danger: 'belum lengkap', safe: 'lengkap' },
     bersih:     { label: 'pejabat dengan catatan korupsi', danger: 'banyak catatan', safe: 'bersih' },
-  }[mode]
+  }
+  if (mode === 'denyut') return null
+  const config = configMap[mode]
 
   return (
     <div className="pv-legend">
@@ -683,11 +766,27 @@ const styles = `
   /* ── Main grid ───────────────────────────────────────────────── */
   .pv-main {
     display: grid;
-    grid-template-columns: minmax(340px, 30%) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);
     align-items: stretch;
     min-height: 0;
     height: 100%;
     overflow: hidden;
+  }
+
+  /* Hotspot rail (right) */
+  .pv-hotspot-rail {
+    border-left: 1.5px solid var(--ink);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+  .pv-hotspot-rail > aside { height: 100%; }
+
+  @media (max-width: 920px) {
+    .pv-main { grid-template-columns: 1fr; }
+    .pv-hotspot-rail { border-left: none; border-top: 1.5px solid var(--ink); max-height: 60vh; }
   }
 
   /* ── Rail ────────────────────────────────────────────────────── */
