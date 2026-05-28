@@ -119,20 +119,34 @@ export async function extractBatch(
   let rejected = 0
   let parse_failed = 0
 
-  // Process batches sequentially (Kimi rate limits + token budgets favor sequential)
-  // but each batch handles 10 articles in one Kimi call.
+  // Slice into batches and run with concurrency=3 (Moonshot default rate limit)
+  const batches: RawArticle[][] = []
   for (let i = 0; i < articles.length; i += batchSize) {
-    const batch = articles.slice(i, i + batchSize)
-    let results: LlmResult[] = []
-    try {
-      results = await callKimiOnce(batch, apiKey, model)
-    } catch {
-      // If a whole batch fails, mark all as parse_failed and continue
+    batches.push(articles.slice(i, i + batchSize))
+  }
+
+  const CONCURRENCY = 3
+  type BatchOut = { batch: RawArticle[]; results: LlmResult[] | null }
+  const batchOuts: BatchOut[] = []
+
+  for (let i = 0; i < batches.length; i += CONCURRENCY) {
+    const slice = batches.slice(i, i + CONCURRENCY)
+    const settled = await Promise.allSettled(
+      slice.map((b) => callKimiOnce(b, apiKey, model)),
+    )
+    settled.forEach((s, j) => {
+      batchOuts.push({
+        batch: slice[j],
+        results: s.status === 'fulfilled' ? s.value : null,
+      })
+    })
+  }
+
+  for (const { batch, results } of batchOuts) {
+    if (results === null) {
       parse_failed += batch.length
       continue
     }
-
-    // Match results back to input by URL
     const byUrl = new Map(results.map((r) => [r.url, r]))
     for (const article of batch) {
       const r = byUrl.get(article.url)
