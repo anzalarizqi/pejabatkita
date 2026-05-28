@@ -118,6 +118,22 @@ All modes: inverted polarity (red = bad), consistent legend. `hash01` mock stays
 
 ## Next Session Should Start With
 
+### Bugs to fix (flagged 2026-05-28)
+
+**1. Coverage stat shows 109.9% (1,216 / 1,106 kursi) — over 100%, clearly wrong.**
+- Location: homepage `StatStrip` component in `HomeShell.tsx`
+- Two possible root causes:
+  - The "expected" 1,106 is the wrong denominator (under-counts actual gubernur+wakil+bupati+walikota+wakil seats)
+  - Pejabat are inserted in `pejabat` table tied to multiple `jabatan` rows and being counted multiple times
+- Debug: `SELECT COUNT(*) FROM pejabat WHERE level = 'daerah'` vs expected math: 38 provinsi × 2 (gub+wagub) + 415 kab × 2 + 100 kota × 2 = 1,106
+- Likely fix: dedup pejabat by id when counting, OR adjust `getSiteStats` query
+
+**2. DPR/MPR/DPD officials not yet seeded.**
+- Currently `pejabat.level = 'pusat'` only contains kabinet ministers (Pusat tab on homepage)
+- Need to add: 580 anggota DPR + ~136 anggota DPD + MPR officials
+- Source: KPU data or DPR official site (`dpr.go.id/anggota`)
+- New scraper or one-time import script needed
+
 ### Deploy `/pulse` — code complete, needs Supabase wiring
 
 Session 2026-05-28: All 8 tasks in `docs/superpowers/plans/2026-05-26-plan3-daily-hotspot.md` implemented. `tsc --noEmit` clean.
