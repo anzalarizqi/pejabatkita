@@ -96,7 +96,7 @@ const styles = `
 .hot-lede { font-size: 12px; color: var(--muted); margin-bottom: 24px; max-width: 60ch; line-height: 1.6; }
 .hot-card { background: #fbf7ee; border: 1px solid var(--rule); padding: 20px; margin-bottom: 16px; border-radius: 4px; }
 .hot-label { display: block; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
-.hot-input { width: 100%; padding: 8px 10px; font-family: 'DM Mono', monospace; font-size: 13px; border: 1px solid var(--rule); background: #fff; margin-bottom: 12px; }
+.hot-input { width: 100%; padding: 8px 10px; font-family: 'DM Mono', monospace; font-size: 13px; border: 1px solid var(--rule); background: #fff; color: var(--ink); margin-bottom: 12px; }
 .hot-btn { padding: 10px 20px; background: var(--ink); color: var(--paper); border: none; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; }
 .hot-btn:hover:not(:disabled) { background: var(--accent); }
 .hot-btn:disabled { opacity: 0.5; cursor: wait; }

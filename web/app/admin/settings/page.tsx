@@ -97,7 +97,7 @@ const styles = `
 .set-card { background: #fbf7ee; border: 1px solid var(--rule); padding: 24px; border-radius: 4px; }
 .set-field { margin-bottom: 20px; }
 .set-field label { display: block; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
-.set-field input, .set-field select, .set-field textarea { width: 100%; padding: 8px 10px; font-family: 'DM Mono', monospace; font-size: 13px; border: 1px solid var(--rule); background: #fff; }
+.set-field input, .set-field select, .set-field textarea { width: 100%; padding: 8px 10px; font-family: 'DM Mono', monospace; font-size: 13px; border: 1px solid var(--rule); background: #fff; color: var(--ink); }
 .set-field textarea { resize: vertical; min-height: 80px; }
 .set-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
 .set-btn { padding: 10px 20px; background: var(--ink); color: var(--paper); border: none; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; }
