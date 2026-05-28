@@ -118,6 +118,36 @@ All modes: inverted polarity (red = bad), consistent legend. `hash01` mock stays
 
 ## Next Session Should Start With
 
+### Deploy `/pulse` — code complete, needs Supabase wiring
+
+Session 2026-05-28: All 8 tasks in `docs/superpowers/plans/2026-05-26-plan3-daily-hotspot.md` implemented. `tsc --noEmit` clean.
+
+**Files created this session:**
+- `supabase/functions/crawl-hotspot/{index.ts,llm.ts,resolve.ts}` — edge function (Deno)
+- `supabase/migrations/011_pg_cron_hotspot.sql` — daily 09:00 WIB schedule
+- `web/app/pulse/{page.tsx,PulseShell.tsx}` — public hotspot page
+- `web/app/_components/{HotspotMap,HotspotSidebar,HotspotModal}.tsx`
+- `web/app/api/hotspot/route.ts` — client-side filter API
+- `web/app/admin/hotspot/page.tsx` — manual crawl trigger
+- `web/app/admin/settings/page.tsx` — LLM provider/model/keyword settings
+- `web/app/api/admin/{hotspot/crawl,settings}/route.ts`
+- HomeShell nav: added `Denyut` link
+- AdminLayout NAV: added `Denyut Crawler` + `Pengaturan LLM`
+
+**To deploy (in order):**
+1. Apply migration `010_kasus_screened.sql` if not already (kasus_screened table)
+2. Backfill `kasus_screened` from existing kasus rows (one-time, see SQL in prior session)
+3. Enable `pg_cron` + `pg_net` extensions in Supabase dashboard
+4. Set DB GUCs: `ALTER DATABASE postgres SET app.supabase_url = '...'; app.service_role_key = '...';`
+5. Set Supabase Secret: `supabase secrets set LLM_API_KEY=<key>`
+6. Deploy edge fn: `supabase functions deploy crawl-hotspot`
+7. Apply migration `011_pg_cron_hotspot.sql`
+8. Test: visit `/admin/hotspot` → click "Jalankan Crawl" → check `hotspot_events` table → visit `/pulse`
+
+**Design trade-off worth noting:**
+- Plan called for province dots colored by dominant kategori. I shipped intensity-based red coloring (matches Rekam Bersih aesthetic) with kategori-color badges in sidebar instead. Cleaner visual consistency but loses at-a-glance kategori signal from map. Revisit after first real data lands.
+- `HotspotMap.tsx` intercepts clicks via `aria-label` parsing — brittle but avoids modifying `IndonesiaMap`. Consider adding an `onProvinceClick` prop to IndonesiaMap later.
+
 ### Rekam Bersih Pipeline — IN PROGRESS
 
 Full pipeline is built and working. Scripts:

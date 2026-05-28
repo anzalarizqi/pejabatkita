@@ -8,6 +8,10 @@ Usage:
   python scripts/verify_kasus.py              # all unverified rows
   python scripts/verify_kasus.py --dry-run    # print verdicts without writing
   python scripts/verify_kasus.py --all        # re-verify all rows (incl. already verified)
+  python scripts/verify_kasus.py --report-suspicious-rejects
+                                              # audit-only: list rejected rows whose
+                                              # note suggests the kasus is actually real
+                                              # (likely a field mismatch like wrong lembaga)
 
 Cost: ~$0.03-0.05 per call (thinking mode) × number of kasus rows.
 """
@@ -201,13 +205,58 @@ def update_kasus(client: httpx.Client, kasus_id: str, patch: dict, dry_run: bool
     print(f"    DB ERROR {resp.status_code}: {resp.text[:200]}", file=sys.stderr)
     return False
 
+# ─── Suspicious-rejects audit ─────────────────────────────────────────────────
+
+# Words that, when found in verified_note of a rejected row, suggest the verifier
+# actually confirmed the kasus but rejected on a field mismatch (lembaga/tahun/jabatan).
+AFFIRMATIVE_KEYWORDS = (
+    "terverifikasi", "terbukti", "terkonfirmasi",
+    "secara resmi", "resmi ditetapkan",
+    "confirmed", "divonis", "terpidana",
+)
+
+
+def report_suspicious_rejects() -> None:
+    """List verified=false rows whose note contains affirmative language or a real URL."""
+    with httpx.Client(timeout=30) as client:
+        rejected = fetch_all(client, "kasus", "*", {"verified": "is.false"})
+        pejabat_all = fetch_all(client, "pejabat", "id,nama_lengkap")
+    name_map = {p["id"]: p["nama_lengkap"] for p in pejabat_all}
+
+    suspicious = []
+    for row in rejected:
+        note = (row.get("verified_note") or "").lower()
+        if any(kw in note for kw in AFFIRMATIVE_KEYWORDS):
+            suspicious.append(row)
+
+    print(f"Rejected rows: {len(rejected)}  |  Suspicious (note contains affirmative language): {len(suspicious)}\n")
+    if not suspicious:
+        print("Nothing to review.")
+        return
+
+    for row in suspicious:
+        nama = name_map.get(row["pejabat_id"], row["pejabat_id"])
+        print(f"[{row['kasus_id']}]  {nama}")
+        print(f"  status={row.get('status')}  lembaga={row.get('lembaga')}  tahun={row.get('tahun')}")
+        print(f"  note: {(row.get('verified_note') or '')[:300]}")
+        print()
+    print("If a row looks like a real kasus rejected on field mismatch, fix with:")
+    print("  UPDATE kasus SET lembaga='...', verified=true, verified_note='...' WHERE kasus_id='...';")
+
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true", help="Print verdicts without writing to DB")
     parser.add_argument("--all",     action="store_true", help="Re-verify all rows, not just unverified")
+    parser.add_argument("--report-suspicious-rejects", action="store_true",
+                        help="Audit-only: list verified=false rows whose note suggests the kasus is real")
     args = parser.parse_args()
+
+    if args.report_suspicious_rejects:
+        report_suspicious_rejects()
+        return
 
     base_url, model, api_key = _kimi_creds()
     if not api_key:

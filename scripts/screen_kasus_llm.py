@@ -6,7 +6,8 @@ Auto-upserts confirmed cases directly to Supabase kasus table — no manual CSV 
 Usage:
   python scripts/screen_kasus_llm.py                     # all pejabat
   python scripts/screen_kasus_llm.py --provinsi "Aceh"   # single province
-  python scripts/screen_kasus_llm.py --resume             # skip pejabat already in kasus table
+  python scripts/screen_kasus_llm.py --resume             # skip pejabat with kasus + recently screened (≤30 days)
+  python scripts/screen_kasus_llm.py --resume --rescreen-after-days 60  # custom freshness window
   python scripts/screen_kasus_llm.py --dry-run            # print only, no DB writes
   python scripts/screen_kasus_llm.py --log                # append results to kasus_screen.log
 
@@ -185,13 +186,35 @@ def insert_kasus(client: httpx.Client, row: dict, dry_run: bool) -> bool:
     print(f"    DB ERROR {resp.status_code}: {resp.text[:200]}", file=sys.stderr)
     return False
 
+
+def upsert_screened(client: httpx.Client, pejabat_id: str, result: str, keyakinan: str | None, dry_run: bool) -> None:
+    """Record that this pejabat was screened — used for resume logic."""
+    if dry_run:
+        return
+    row = {
+        "pejabat_id": pejabat_id,
+        "last_screened_at": "now()",
+        "last_result": result,
+        "last_keyakinan": keyakinan,
+    }
+    resp = client.post(
+        f"{SUPABASE_URL}/rest/v1/kasus_screened",
+        params={"on_conflict": "pejabat_id"},
+        json=row,
+        headers={**SB_HEADERS, "Prefer": "return=minimal,resolution=merge-duplicates"},
+    )
+    if resp.status_code not in (200, 201, 204):
+        print(f"    SCREENED LOG ERROR {resp.status_code}: {resp.text[:200]}", file=sys.stderr)
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--provinsi", help="Filter to a single province")
     parser.add_argument("--resume",   action="store_true",
-                        help="Skip pejabat_id already in kasus table")
+                        help="Skip pejabat screened within --rescreen-after-days; always skip pejabat with confirmed kasus")
+    parser.add_argument("--rescreen-after-days", type=int, default=30,
+                        help="When --resume is set, re-screen pejabat last screened more than N days ago (default: 30)")
     parser.add_argument("--dry-run",  action="store_true",
                         help="Print findings without writing to DB")
     parser.add_argument("--log",      action="store_true",
@@ -210,12 +233,27 @@ def main() -> None:
         jabatan_rows = fetch_all(client, "jabatan", "pejabat_id,posisi,wilayah_id")
         wilayah_rows = fetch_all(client, "wilayah", "id,nama,level,parent_id")
 
-        # Resume: load pejabat_ids already in kasus table
+        # Resume: skip pejabat with confirmed kasus, AND pejabat screened within freshness window
         existing_ids: set[str] = set()
         if args.resume:
+            # Always skip anyone with a confirmed kasus row
             kasus_rows = fetch_all(client, "kasus", "pejabat_id")
             existing_ids = {r["pejabat_id"] for r in kasus_rows}
-            print(f"Resume: {len(existing_ids)} pejabat already in kasus table — will skip")
+
+            # Also skip anyone screened recently (regardless of outcome)
+            from datetime import datetime, timedelta, timezone
+            cutoff = datetime.now(timezone.utc) - timedelta(days=args.rescreen_after_days)
+            screened_rows = fetch_all(client, "kasus_screened", "pejabat_id,last_screened_at")
+            fresh_screened = {
+                r["pejabat_id"] for r in screened_rows
+                if datetime.fromisoformat(r["last_screened_at"].replace("Z", "+00:00")) >= cutoff
+            }
+            existing_ids |= fresh_screened
+            print(
+                f"Resume: {len(kasus_rows)} pejabat with kasus + "
+                f"{len(fresh_screened)} screened in last {args.rescreen_after_days} days — will skip "
+                f"({len(existing_ids)} unique)"
+            )
 
     # Build lookup structures
     wilayah_by_id = {w["id"]: w for w in wilayah_rows}
@@ -279,6 +317,7 @@ def main() -> None:
                 if log_path:
                     with open(log_path, "a", encoding="utf-8") as lf:
                         lf.write(json.dumps({"pejabat_id": o["pejabat_id"], "nama": o["nama"], **result}, ensure_ascii=False) + "\n")
+                upsert_screened(db_client, o["pejabat_id"], "error", None, args.dry_run)
                 time.sleep(2)
                 continue
 
@@ -293,6 +332,7 @@ def main() -> None:
             if not has_record or not result.get("status"):
                 label = "bersih" if not has_record else "tidak terbukti (no status)"
                 print(f"{label} ({keyakinan})")
+                upsert_screened(db_client, o["pejabat_id"], "bersih", keyakinan, args.dry_run)
                 time.sleep(2)
                 continue
 
@@ -310,6 +350,7 @@ def main() -> None:
             kasus_row = {k: v for k, v in kasus_row.items() if v is not None}
 
             ok = insert_kasus(db_client, kasus_row, args.dry_run)
+            upsert_screened(db_client, o["pejabat_id"], "found", keyakinan, args.dry_run)
             marker = "FOUND" + (" (dry)" if args.dry_run else "")
             lbg    = result.get("lembaga") or "-"
             status = result.get("status") or "-"

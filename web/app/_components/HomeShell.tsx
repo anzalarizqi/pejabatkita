@@ -160,6 +160,7 @@ export default function PreviewShell({ provinces, stats, leaders, pusatOfficials
           <nav className="pv-nav" aria-label="Navigasi utama">
             <Link href="/" className="pv-nav-link pv-nav-active">Beranda</Link>
             <Link href="/pejabat" className="pv-nav-link">Direktori</Link>
+            <Link href="/pulse" className="pv-nav-link">Denyut</Link>
             <button
               type="button"
               className="pv-nav-link pv-nav-btn"

@@ -10,6 +10,8 @@ const NAV = [
   { href: '/admin/enrichment', label: 'Partai & Masa Jabatan', icon: '⊞' },
   { href: '/admin/import', label: 'Impor Scraper', icon: '⊕' },
   { href: '/admin/review', label: 'Koreksi Warga', icon: '⚑' },
+  { href: '/admin/hotspot', label: 'Denyut Crawler', icon: '◈' },
+  { href: '/admin/settings', label: 'Pengaturan LLM', icon: '⚙' },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

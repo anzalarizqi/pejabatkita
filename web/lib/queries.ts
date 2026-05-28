@@ -1,5 +1,5 @@
 import { createServerSupabase } from './supabase'
-import type { Wilayah, JabatanRow, PejabatRow, KasusRow } from './types'
+import type { Wilayah, JabatanRow, PejabatRow, KasusRow, HotspotEvent } from './types'
 
 // ─── Placeholder filtering ────────────────────────────────────────────────────
 // Pejabat with these name patterns are scraper artifacts, not real people.
@@ -686,5 +686,92 @@ export async function listProvinceKasusCounts(): Promise<ProvinceKasusCount[]> {
   return Array.from(counts.entries()).map(([provinsi_nama, kasus_count]) => ({
     provinsi_nama,
     kasus_count,
+  }))
+}
+
+// ─── Hotspot events ──────────────────────────────────────────────────────────
+
+export type HotspotTimeFilter = '24h' | '7d' | '30d' | '90d' | 'all'
+
+function hotspotSince(filter: HotspotTimeFilter): string | null {
+  if (filter === 'all') return null
+  const ms = { '24h': 86400000, '7d': 604800000, '30d': 2592000000, '90d': 7776000000 }[filter]
+  return new Date(Date.now() - ms).toISOString()
+}
+
+export interface HotspotEventWithPejabat extends HotspotEvent {
+  pejabat_nama: string | null
+  provinsi_nama: string | null
+}
+
+export async function listHotspotEvents(
+  filter: HotspotTimeFilter = '24h',
+): Promise<HotspotEventWithPejabat[]> {
+  const supabase = await createServerSupabase()
+  const since = hotspotSince(filter)
+
+  let q = supabase
+    .from('hotspot_events')
+    .select('*')
+    .order('crawled_at', { ascending: false })
+    .limit(500)
+
+  if (since) q = q.gte('crawled_at', since)
+
+  const { data: events } = await q
+  const rows = (events ?? []) as HotspotEvent[]
+
+  if (rows.length === 0) return []
+
+  const pejabatIds = [...new Set(rows.map((r) => r.pejabat_id).filter(Boolean))] as string[]
+  const wilayahIds = [...new Set(rows.map((r) => r.wilayah_id).filter(Boolean))] as string[]
+
+  const [pejabatRows, wilayahRows] = await Promise.all([
+    pejabatIds.length
+      ? supabase.from('pejabat').select('id, nama_lengkap').in('id', pejabatIds)
+          .then(({ data }) => data ?? [])
+      : Promise.resolve([]),
+    wilayahIds.length
+      ? supabase.from('wilayah').select('id, nama').in('id', wilayahIds)
+          .then(({ data }) => data ?? [])
+      : Promise.resolve([]),
+  ])
+
+  const pejabatMap = new Map((pejabatRows as Array<{ id: string; nama_lengkap: string }>).map((p) => [p.id, p.nama_lengkap]))
+  const wilayahMap = new Map((wilayahRows as Array<{ id: string; nama: string }>).map((w) => [w.id, w.nama]))
+
+  return rows.map((r) => ({
+    ...r,
+    pejabat_nama: r.pejabat_id ? (pejabatMap.get(r.pejabat_id) ?? null) : null,
+    provinsi_nama: r.wilayah_id ? (wilayahMap.get(r.wilayah_id) ?? null) : null,
+  }))
+}
+
+export interface ProvinceHotspotCount {
+  wilayah_id: string
+  provinsi_nama: string
+  count: number
+  kategori_counts: Record<string, number>
+}
+
+export async function listProvinceHotspotCounts(
+  filter: HotspotTimeFilter = '24h',
+): Promise<ProvinceHotspotCount[]> {
+  const events = await listHotspotEvents(filter)
+  const byWilayah = new Map<string, { nama: string; count: number; kategori: Record<string, number> }>()
+
+  for (const e of events) {
+    if (!e.wilayah_id || !e.provinsi_nama) continue
+    const cur = byWilayah.get(e.wilayah_id) ?? { nama: e.provinsi_nama, count: 0, kategori: {} }
+    cur.count++
+    cur.kategori[e.kategori ?? 'lainnya'] = (cur.kategori[e.kategori ?? 'lainnya'] ?? 0) + 1
+    byWilayah.set(e.wilayah_id, cur)
+  }
+
+  return Array.from(byWilayah.entries()).map(([wilayah_id, v]) => ({
+    wilayah_id,
+    provinsi_nama: v.nama,
+    count: v.count,
+    kategori_counts: v.kategori,
   }))
 }
