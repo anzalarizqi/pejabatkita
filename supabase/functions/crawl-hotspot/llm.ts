@@ -1,5 +1,8 @@
 // supabase/functions/crawl-hotspot/llm.ts
-// Kimi $web_search: searches the web AND extracts structured events in one call.
+// Batch relevance gate + structured extraction.
+// One Kimi call per batch — no $web_search, content is already in RawArticle.
+
+import type { RawArticle } from './rss.ts'
 
 export interface ExtractedEvent {
   judul: string
@@ -8,98 +11,148 @@ export interface ExtractedEvent {
   lokasi_nama: string | null
   pejabat_nama: string | null
   url_sumber: string
+  pubDate: string | null
+  source: string
 }
 
-const SYSTEM_PROMPT = `Kamu adalah analis berita Indonesia. Pakai web search untuk mencari berita terkini sesuai kueri pengguna, lalu ekstrak SEMUA kejadian penting yang melibatkan pejabat publik Indonesia (gubernur, bupati, walikota, menteri, anggota DPR, dll).
+const SYSTEM_PROMPT = `Kamu adalah analis berita Indonesia untuk platform yang memantau pejabat publik dan demokrasi.
 
-Untuk setiap kejadian, ekstrak:
-- judul: judul singkat (maks 120 karakter)
-- ringkasan: 2-3 kalimat dalam bahasa Indonesia
-- kategori: korupsi | pernyataan | demonstrasi | kebijakan | kritik | lainnya
-- lokasi_nama: nama provinsi/kota relevan (null jika tidak ada)
-- pejabat_nama: nama lengkap pejabat utama (null jika tidak ada)
-- url_sumber: URL artikel asli (WAJIB ada, jangan kosong)
+Untuk SETIAP artikel di input, putuskan apakah RELEVAN dengan tema platform:
+- Pejabat publik Indonesia (presiden, menteri, gubernur, bupati, walikota, anggota DPR/DPD/MPR, hakim, jaksa, kapolri, panglima)
+- Kebijakan pemerintah, regulasi, RUU, perpres, perppu, undang-undang
+- Korupsi, suap, gratifikasi, pelanggaran etik, pelanggaran hukum oleh pejabat
+- Demokrasi, pemilu, pilkada, partai politik
+- Hak Asasi Manusia, putusan pengadilan signifikan
+- Keamanan nasional, pertahanan, hubungan luar negeri terkait pemerintah
+- Kontroversi atau kritik publik konkret terhadap pejabat tertentu
 
-Jawab HANYA dengan JSON array murni, tanpa teks lain:
-[{"judul":"...","ringkasan":"...","kategori":"...","lokasi_nama":"...","pejabat_nama":"...","url_sumber":"..."}]
+TOLAK artikel tentang: olahraga, hiburan/selebriti non-pejabat, lifestyle, ekonomi/bisnis murni tanpa intervensi pejabat, kriminal biasa non-pejabat, ramalan cuaca, gosip, opini umum tanpa peristiwa konkret, bencana alam tanpa konteks pejabat.
 
-Jika tidak ada kejadian relevan, jawab dengan: []`
+Gunakan penilaian — jika ada istilah/skema baru yang JELAS terkait pejabat/kebijakan/korupsi, terima walau tidak persis di daftar.
 
-interface ChatMessage {
-  role: string
-  content: string | null
-  tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }>
-  tool_call_id?: string
-  name?: string
+Untuk artikel RELEVAN, kembalikan objek:
+{
+  "url": "<url asli dari input>",
+  "judul": "<judul ringkas, maks 120 karakter>",
+  "ringkasan": "<2-3 kalimat bahasa Indonesia>",
+  "kategori": "korupsi" | "pernyataan" | "demonstrasi" | "kebijakan" | "kritik" | "lainnya",
+  "lokasi_nama": "<provinsi/kota relevan>" | null,
+  "pejabat_nama": "<nama lengkap pejabat utama>" | null
 }
 
-export async function kimiSearchAndExtract(
-  query: string,
+Untuk artikel TIDAK relevan, kembalikan:
+{ "url": "<url asli>", "skip": true, "reason": "<alasan singkat>" }
+
+Output: JSON array dengan satu objek per artikel input, urutan sama dengan input. Tanpa teks lain di luar array.`
+
+interface LlmResult {
+  url: string
+  judul?: string
+  ringkasan?: string
+  kategori?: string
+  lokasi_nama?: string | null
+  pejabat_nama?: string | null
+  skip?: boolean
+  reason?: string
+}
+
+const VALID_KATEGORI = ['korupsi', 'pernyataan', 'demonstrasi', 'kebijakan', 'kritik', 'lainnya'] as const
+
+async function callKimiOnce(
+  articles: RawArticle[],
   apiKey: string,
   model: string,
-): Promise<ExtractedEvent[]> {
-  const messages: ChatMessage[] = [
-    { role: 'system', content: SYSTEM_PROMPT },
-    { role: 'user', content: `Cari berita terkini: ${query}` },
-  ]
-  const tools = [{ type: 'builtin_function', function: { name: '$web_search' } }]
+): Promise<LlmResult[]> {
+  // Build a compact input — title + description + url is enough for relevance + extraction
+  const input = articles.map((a, i) => ({
+    idx: i,
+    url: a.url,
+    title: a.title,
+    description: a.description.slice(0, 600),
+    source: a.source,
+  }))
 
-  for (let round = 0; round < 6; round++) {
-    const resp = await fetch('https://api.moonshot.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model,
-        messages,
-        tools,
-        temperature: 0.6,
-        thinking: { type: 'disabled' },
-      }),
-    })
+  const resp = await fetch('https://api.moonshot.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: `Artikel input (${articles.length} buah):\n\n${JSON.stringify(input, null, 2)}` },
+      ],
+      temperature: 0.6,
+      thinking: { type: 'disabled' },
+    }),
+  })
 
-    if (!resp.ok) {
-      throw new Error(`HTTP ${resp.status}: ${(await resp.text()).slice(0, 300)}`)
-    }
+  if (!resp.ok) {
+    throw new Error(`HTTP ${resp.status}: ${(await resp.text()).slice(0, 300)}`)
+  }
 
-    const data = await resp.json()
-    const choice = data.choices?.[0]
-    const message = choice?.message
-    if (!choice || !message) throw new Error('Empty response')
+  const data = await resp.json()
+  const raw = String(data.choices?.[0]?.message?.content ?? '').trim()
+  const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
 
-    if (choice.finish_reason === 'tool_calls') {
-      messages.push(message)
-      for (const tc of message.tool_calls ?? []) {
-        messages.push({
-          role: 'tool',
-          tool_call_id: tc.id,
-          name: tc.function.name,
-          content: tc.function.arguments,
-        })
-      }
+  try {
+    const parsed = JSON.parse(cleaned)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((x): x is LlmResult => !!x && typeof x === 'object' && typeof x.url === 'string')
+  } catch {
+    return []
+  }
+}
+
+export interface BatchExtractResult {
+  events: ExtractedEvent[]
+  rejected: number
+  parse_failed: number
+}
+
+export async function extractBatch(
+  articles: RawArticle[],
+  apiKey: string,
+  model: string,
+  batchSize = 10,
+): Promise<BatchExtractResult> {
+  const events: ExtractedEvent[] = []
+  let rejected = 0
+  let parse_failed = 0
+
+  // Process batches sequentially (Kimi rate limits + token budgets favor sequential)
+  // but each batch handles 10 articles in one Kimi call.
+  for (let i = 0; i < articles.length; i += batchSize) {
+    const batch = articles.slice(i, i + batchSize)
+    let results: LlmResult[] = []
+    try {
+      results = await callKimiOnce(batch, apiKey, model)
+    } catch {
+      // If a whole batch fails, mark all as parse_failed and continue
+      parse_failed += batch.length
       continue
     }
 
-    // Final answer
-    const raw = (message.content ?? '').trim()
-    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
-    try {
-      const parsed = JSON.parse(cleaned)
-      if (!Array.isArray(parsed)) return []
-      return parsed
-        .filter((e): e is ExtractedEvent => e && typeof e === 'object' && !!e.judul && !!e.url_sumber)
-        .map((e) => ({
-          judul: String(e.judul).slice(0, 120),
-          ringkasan: String(e.ringkasan ?? ''),
-          kategori: (['korupsi','pernyataan','demonstrasi','kebijakan','kritik','lainnya'].includes(e.kategori)
-            ? e.kategori : 'lainnya') as ExtractedEvent['kategori'],
-          lokasi_nama: e.lokasi_nama ?? null,
-          pejabat_nama: e.pejabat_nama ?? null,
-          url_sumber: String(e.url_sumber),
-        }))
-    } catch {
-      return []
+    // Match results back to input by URL
+    const byUrl = new Map(results.map((r) => [r.url, r]))
+    for (const article of batch) {
+      const r = byUrl.get(article.url)
+      if (!r) { parse_failed++; continue }
+      if (r.skip || !r.judul) { rejected++; continue }
+      const kategori = (VALID_KATEGORI as readonly string[]).includes(r.kategori ?? '')
+        ? (r.kategori as ExtractedEvent['kategori'])
+        : 'lainnya'
+      events.push({
+        judul: r.judul.slice(0, 120),
+        ringkasan: r.ringkasan ?? '',
+        kategori,
+        lokasi_nama: r.lokasi_nama ?? null,
+        pejabat_nama: r.pejabat_nama ?? null,
+        url_sumber: article.url,
+        pubDate: article.pubDate,
+        source: article.source,
+      })
     }
   }
 
-  return []
+  return { events, rejected, parse_failed }
 }
