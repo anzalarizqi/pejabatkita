@@ -1,4 +1,4 @@
-import { listPejabat, listProvinceCounts, listWilayahCounts } from '@/lib/queries'
+import { listPejabat, listProvinceCounts, listWilayahCounts, listProvinceKasusCounts, listWilayahKasusCounts } from '@/lib/queries'
 import PejabatBrowse from './PejabatBrowse'
 
 interface SearchParams {
@@ -21,10 +21,12 @@ export default async function PejabatPage({
   const search = sp.q?.trim() || undefined
   const page = sp.page ? Math.max(1, parseInt(sp.page, 10)) : 1
 
-  const [list, provinceCounts, wilayahCounts] = await Promise.all([
+  const [list, provinceCounts, wilayahCounts, kasusCounts, wilayahKasusCounts] = await Promise.all([
     listPejabat({ provinsi, wilayah, search, page, pageSize: 24 }),
     listProvinceCounts(),
     provinsi ? listWilayahCounts(provinsi) : Promise.resolve([]),
+    listProvinceKasusCounts(),
+    provinsi ? listWilayahKasusCounts(provinsi) : Promise.resolve([]),
   ])
 
   return (
@@ -36,6 +38,8 @@ export default async function PejabatPage({
       list={list}
       provinces={provinceCounts}
       wilayahCounts={wilayahCounts}
+      kasusCounts={kasusCounts}
+      wilayahKasusCounts={wilayahKasusCounts}
     />
   )
 }

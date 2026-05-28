@@ -312,6 +312,7 @@ export interface PejabatCard {
   provinsi_nama: string | null
   status: string | null
   confidence: number | null
+  has_kasus: boolean
 }
 
 export interface ListPejabatOptions {
@@ -485,6 +486,14 @@ export async function listPejabat(opts: ListPejabatOptions = {}): Promise<ListPe
 
   // Pull jabatan for ONLY this page's pejabat ids
   const pageIds = visiblePejabat.map((p) => p.id)
+
+  const { data: kasusForPage } = await supabase
+    .from('kasus')
+    .select('pejabat_id')
+    .in('pejabat_id', pageIds)
+    .neq('verified', false)
+  const kasusSet = new Set((kasusForPage ?? []).map((k) => k.pejabat_id as string))
+
   let jabQuery = supabase
     .from('jabatan')
     .select('pejabat_id, wilayah_id, posisi, status, mulai_jabatan')
@@ -565,6 +574,7 @@ export async function listPejabat(opts: ListPejabatOptions = {}): Promise<ListPe
       provinsi_nama: j ? provNameOf(j.wilayah_id) : null,
       status: j?.status ?? null,
       confidence: meta.confidence?.score ?? null,
+      has_kasus: kasusSet.has(p.id),
     }
   })
 
@@ -686,6 +696,44 @@ export async function listProvinceKasusCounts(): Promise<ProvinceKasusCount[]> {
     provinsi_nama,
     kasus_count,
   }))
+}
+
+export interface WilayahKasusCount {
+  wilayah_nama: string
+  kasus_count: number
+}
+
+export async function listWilayahKasusCounts(provinsi: string): Promise<WilayahKasusCount[]> {
+  const supabase = await createServerSupabase()
+
+  const { data: prov } = await supabase
+    .from('wilayah').select('id').eq('level', 'provinsi').eq('nama', provinsi).limit(1).maybeSingle()
+  if (!prov) return []
+
+  const { data: kids } = await supabase.from('wilayah').select('id, nama').eq('parent_id', prov.id)
+  const kabkotaById = new Map((kids ?? []).map((k) => [k.id as string, k.nama as string]))
+  if (kabkotaById.size === 0) return []
+
+  const { data: kasusRows } = await supabase.from('kasus').select('pejabat_id').neq('verified', false)
+  const kasusSet = new Set((kasusRows ?? []).map((k) => k.pejabat_id as string))
+  if (kasusSet.size === 0) return []
+
+  const { data: jabRows } = await supabase
+    .from('jabatan').select('pejabat_id, wilayah_id').in('wilayah_id', Array.from(kabkotaById.keys()))
+
+  const counted = new Set<string>()
+  const counts = new Map<string, number>()
+  for (const j of jabRows ?? []) {
+    if (!kasusSet.has(j.pejabat_id as string)) continue
+    const nama = kabkotaById.get(j.wilayah_id as string)
+    if (!nama) continue
+    const key = `${j.pejabat_id}::${nama}`
+    if (counted.has(key)) continue
+    counted.add(key)
+    counts.set(nama, (counts.get(nama) ?? 0) + 1)
+  }
+
+  return Array.from(counts.entries()).map(([wilayah_nama, kasus_count]) => ({ wilayah_nama, kasus_count }))
 }
 
 // ─── Hotspot events ──────────────────────────────────────────────────────────

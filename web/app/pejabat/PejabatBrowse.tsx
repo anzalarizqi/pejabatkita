@@ -8,6 +8,8 @@ import KabKotaMap from '../_components/KabKotaMap'
 import type {
   PejabatCard,
   ProvinceCount,
+  ProvinceKasusCount,
+  WilayahKasusCount,
   ListPejabatResult,
   WilayahCount,
 } from '@/lib/queries'
@@ -20,6 +22,8 @@ interface Props {
   list: ListPejabatResult
   provinces: ProvinceCount[]
   wilayahCounts: WilayahCount[]
+  kasusCounts: ProvinceKasusCount[]
+  wilayahKasusCounts: WilayahKasusCount[]
 }
 
 function provSlug(name: string): string {
@@ -34,6 +38,8 @@ export default function PejabatBrowse({
   list,
   provinces,
   wilayahCounts,
+  kasusCounts,
+  wilayahKasusCounts,
 }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -52,6 +58,21 @@ export default function PejabatBrowse({
     e.preventDefault()
     updateParam('q', searchInput)
   }
+
+  // Rekam Bersih coloring: normalize kasus% against observed max
+  const provinceColorBy = (() => {
+    const kasusMap = new Map(kasusCounts.map((k) => [k.provinsi_nama, k.kasus_count]))
+    const countMap = new Map(provinces.map((p) => [p.nama, p.count]))
+    const ratios = kasusCounts.map((k) => k.kasus_count / Math.max(1, countMap.get(k.provinsi_nama) ?? 1))
+    const maxRatio = Math.max(...ratios, 0.001)
+    return (name: string) => {
+      const kasus = kasusMap.get(name) ?? 0
+      const total = Math.max(1, countMap.get(name) ?? 1)
+      return (kasus / total) / maxRatio
+    }
+  })()
+
+  const wilayahKasusMap = new Map(wilayahKasusCounts.map((w) => [w.wilayah_nama, w.kasus_count]))
 
   const totalReal = provinces.reduce((acc, p) => acc + p.count, 0)
 
@@ -84,11 +105,24 @@ export default function PejabatBrowse({
               provinsi={provinsi}
               provinsiSlug={provSlug(provinsi)}
               wilayahCounts={wilayahCounts}
+              kasusMap={wilayahKasusMap}
               selected={wilayah}
               height={420}
             />
           ) : (
-            <IndonesiaMap provinces={provinces} selected={provinsi} height={420} />
+            <IndonesiaMap
+              provinces={provinces}
+              selected={provinsi}
+              height={420}
+              colorBy={provinceColorBy}
+              tooltip={(name) => {
+                const k = kasusCounts.find((c) => c.provinsi_nama === name)
+                const total = provinces.find((p) => p.nama === name)?.count ?? 0
+                if (!k || k.kasus_count === 0) return 'Tidak ada catatan korupsi'
+                const pct = total > 0 ? Math.round((k.kasus_count / total) * 100) : 0
+                return `${k.kasus_count} / ${total} pejabat · ${pct}% catatan korupsi`
+              }}
+            />
           )}
         </section>
 
@@ -239,12 +273,13 @@ function Card({ pejabat: p }: { pejabat: PejabatCard }) {
     .join(' ')
 
   return (
-    <Link href={`/${p.id}`} className="card">
+    <Link href={`/${p.id}`} className={`card${p.has_kasus ? ' card--kasus' : ''}`}>
       <div className="card-eyebrow">
         {p.posisi ?? '—'}
         {p.status && p.status !== 'aktif' ? (
           <span className="card-status">· {p.status}</span>
         ) : null}
+        {p.has_kasus && <span className="card-kasus-badge">● KASUS</span>}
       </div>
       <h3 className="card-name">{fullName}</h3>
       <div className="card-meta">
@@ -460,14 +495,34 @@ const styles = `
   }
   .card:hover::before { transform: scaleX(1); }
 
+  .card--kasus {
+    border-color: rgba(192, 57, 43, 0.35);
+    background: rgba(192, 57, 43, 0.04);
+  }
+  .card--kasus:hover { border-color: var(--accent); }
+  .card--kasus::before { background: var(--accent); }
+
   .card-eyebrow {
     font-size: 9px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--accent);
     margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
   }
-  .card-status { color: var(--muted); margin-left: 6px; }
+  .card-status { color: var(--muted); }
+  .card-kasus-badge {
+    margin-left: auto;
+    background: var(--accent);
+    color: var(--paper);
+    font-size: 8px;
+    letter-spacing: 0.18em;
+    padding: 2px 6px;
+    font-family: 'DM Mono', monospace;
+  }
   .card-name {
     font-family: 'Fraunces', serif;
     font-weight: 300;

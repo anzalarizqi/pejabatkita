@@ -9,6 +9,7 @@ interface Props {
   provinsi: string
   provinsiSlug: string
   wilayahCounts: WilayahCount[]
+  kasusMap?: Map<string, number>
   selected?: string | null
   height?: number
 }
@@ -28,6 +29,7 @@ export default function KabKotaMap({
   provinsi,
   provinsiSlug,
   wilayahCounts,
+  kasusMap,
   selected = null,
   height = 420,
 }: Props) {
@@ -84,7 +86,27 @@ export default function KabKotaMap({
     return { paths: out }
   }, [data, size.w, size.h])
 
+  const maxKasusRatio = useMemo(() => {
+    if (!kasusMap || kasusMap.size === 0) return 1
+    let max = 0.001
+    for (const [name, kasus] of kasusMap) {
+      const total = Math.max(1, countByName.get(name) ?? 1)
+      max = Math.max(max, kasus / total)
+    }
+    return max
+  }, [kasusMap, countByName])
+
   function colorFor(name: string): string {
+    if (kasusMap) {
+      const kasus = kasusMap.get(name) ?? 0
+      if (kasus === 0) return '#ece7dc'
+      const total = Math.max(1, countByName.get(name) ?? 1)
+      const t = Math.sqrt((kasus / total) / maxKasusRatio)
+      const r = lerp(245, 192, t)
+      const g = lerp(241, 57, t)
+      const b = lerp(234, 43, t)
+      return `rgb(${r | 0}, ${g | 0}, ${b | 0})`
+    }
     const c = countByName.get(name) ?? 0
     if (c === 0) return '#ece7dc'
     const t = Math.sqrt(c / maxCount)
@@ -149,7 +171,18 @@ export default function KabKotaMap({
       {hover && (
         <div className="kk-tip" style={{ left: hover.x + 12, top: hover.y + 12 }}>
           <div className="tip-name">{hover.name}</div>
-          <div className="tip-count">{hover.count.toLocaleString('id-ID')} pejabat</div>
+          {kasusMap ? (
+            (() => {
+              const k = kasusMap.get(hover.name) ?? 0
+              const total = hover.count
+              const pct = total > 0 ? Math.round((k / total) * 100) : 0
+              return k > 0
+                ? <div className="tip-count">{k} / {total} pejabat · {pct}% kasus</div>
+                : <div className="tip-count">Tidak ada catatan korupsi</div>
+            })()
+          ) : (
+            <div className="tip-count">{hover.count.toLocaleString('id-ID')} pejabat</div>
+          )}
         </div>
       )}
 

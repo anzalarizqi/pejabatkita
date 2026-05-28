@@ -294,7 +294,6 @@ export default function PreviewShell({
                   />
                 </div>
                 {mode !== 'denyut' && <MapLegend mode={mode} provinces={provinces} />}
-                <FeatureStrip />
               </>
             ) : (
               <KabinetGrid officials={pusatOfficials} />
