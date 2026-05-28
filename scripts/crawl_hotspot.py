@@ -50,6 +50,10 @@ FEEDS = [
     {"name": "Antara politik",        "url": "https://www.antaranews.com/rss/politik.xml"},
     {"name": "Antara hukum",          "url": "https://www.antaranews.com/rss/hukum.xml"},
     {"name": "Antara terkini",        "url": "https://www.antaranews.com/rss/terkini.xml"},
+    # Google News proxy for outlets without public RSS
+    {"name": "Kompas (via GN)",  "url": "https://news.google.com/rss/search?q=site:kompas.com+(pejabat+OR+korupsi+OR+DPR+OR+menteri+OR+presiden)&hl=id&gl=ID&ceid=ID:id"},
+    {"name": "Tirto (via GN)",   "url": "https://news.google.com/rss/search?q=site:tirto.id+(pejabat+OR+korupsi+OR+DPR+OR+menteri+OR+presiden)&hl=id&gl=ID&ceid=ID:id"},
+    {"name": "Kumparan (via GN)", "url": "https://news.google.com/rss/search?q=site:kumparan.com+(pejabat+OR+korupsi+OR+DPR+OR+menteri+OR+presiden)&hl=id&gl=ID&ceid=ID:id"},
 ]
 
 VALID_KATEGORI = {"korupsi", "pernyataan", "demonstrasi", "kebijakan", "kritik", "lainnya"}
@@ -436,7 +440,13 @@ def main() -> None:
             pejabat_id = resolve_pejabat_id(db_client, pejabat_nama)
 
             try:
-                sumber_nama = urlparse(article["url"]).hostname.replace("www.", "")
+                host = urlparse(article["url"]).hostname or ""
+                sumber_nama = host.replace("www.", "")
+                # Google News proxy: extract real outlet from title suffix "... - Outlet"
+                if "news.google.com" in host:
+                    m = re.search(r"\s[-–]\s([A-Za-z0-9.\s]+)\s*$", article.get("title", ""))
+                    if m:
+                        sumber_nama = m.group(1).strip().lower()
             except Exception:
                 sumber_nama = article["source"]
 
