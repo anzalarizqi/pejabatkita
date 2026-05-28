@@ -205,8 +205,8 @@ export default function IndonesiaMap({
           {renderableDots.length > 0 && (
             <g className="dot-layer">
               {renderableDots.map((d) => {
-                const baseR = 5
-                const r = baseR + d.size * 7  // 5..12
+                const baseR = 1.6
+                const r = baseR + d.size * 2.0  // 1.6..3.6 (70% smaller)
                 return (
                   <g
                     key={d.provinceName}
@@ -218,15 +218,15 @@ export default function IndonesiaMap({
                   >
                     {d.pulse && (
                       <>
-                        <circle r={r * 1.8} fill={d.color} className="dot-halo dot-halo-1" opacity="0" />
-                        <circle r={r * 1.8} fill={d.color} className="dot-halo dot-halo-2" opacity="0" />
+                        <circle r={r} fill={d.color} className="dot-halo dot-halo-1" opacity="0" />
+                        <circle r={r} fill={d.color} className="dot-halo dot-halo-2" opacity="0" />
                       </>
                     )}
                     <circle
                       r={r}
                       fill={d.color}
                       stroke="#fbf7ee"
-                      strokeWidth={1.4}
+                      strokeWidth={0.7}
                       className="dot-core"
                     />
                   </g>
@@ -352,18 +352,14 @@ const styles = `
   .hotspot-dot:hover .dot-core { stroke-width: 2; r: attr(r); }
   .dot-core { transition: stroke-width 0.15s; filter: drop-shadow(0 1px 1.5px rgba(15,17,23,0.35)); }
 
-  /* Halo rings ripple outward, two phased waves for hypnotic rhythm */
-  .dot-halo {
-    transform-origin: 0 0;
-    transform-box: fill-box;
-  }
+  /* Halo rings ripple outward symmetrically — animate r so origin is dot center */
   .dot-halo-1 { animation: pulse-ring 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
   .dot-halo-2 { animation: pulse-ring 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite; animation-delay: 1.2s; }
 
   @keyframes pulse-ring {
-    0%   { transform: scale(0.35); opacity: 0.75; }
-    70%  { transform: scale(1.6);  opacity: 0.05; }
-    100% { transform: scale(1.65); opacity: 0; }
+    0%   { r: 0;   opacity: 0.85; }
+    70%  { r: 14;  opacity: 0.04; }
+    100% { r: 14;  opacity: 0; }
   }
 
   @media (prefers-reduced-motion: reduce) {

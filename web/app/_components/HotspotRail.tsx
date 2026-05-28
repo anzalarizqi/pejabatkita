@@ -43,7 +43,7 @@ export default function HotspotRail({ events24h, events7d, selectedProvince, onP
     return baseEvents.filter((e) => e.provinsi_nama === selectedProvince)
   }, [baseEvents, selectedProvince])
 
-  const visible = filtered.slice(0, selectedProvince ? 30 : 6)
+  const visible = filtered // render all; .hsr-list scrolls
   const [openEvent, setOpenEvent] = useState<HotspotEventWithPejabat | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
 
@@ -108,10 +108,6 @@ export default function HotspotRail({ events24h, events7d, selectedProvince, onP
             </ol>
           )}
         </div>
-
-        {filtered.length > visible.length && (
-          <div className="hsr-more-note">{filtered.length - visible.length} lagi…</div>
-        )}
 
         <footer className="hsr-footer">
           <Link href="/pulse" className="hsr-cta">
