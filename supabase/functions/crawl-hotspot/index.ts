@@ -62,16 +62,30 @@ Deno.serve(async (req) => {
   let skipped = 0
   const errors: string[] = []
 
-  for (const query of queries) {
-    let events: ExtractedEvent[] = []
-    try {
-      events = await kimiSearchAndExtract(query, llmApiKey, settings.llm_model)
-    } catch (e) {
-      errors.push(`Search/extract failed for "${query}": ${e instanceof Error ? e.message : String(e)}`)
-      continue
-    }
+  // Run all Kimi search+extract calls in parallel (each takes ~20-40s)
+  const results = await Promise.allSettled(
+    queries.map((q) => kimiSearchAndExtract(q, llmApiKey, settings.llm_model)),
+  )
 
-    for (const ev of events) {
+  const allEvents: ExtractedEvent[] = []
+  results.forEach((r, i) => {
+    if (r.status === 'fulfilled') {
+      allEvents.push(...r.value)
+    } else {
+      errors.push(`Search/extract failed for "${queries[i]}": ${r.reason instanceof Error ? r.reason.message : String(r.reason)}`)
+    }
+  })
+
+  // Dedupe events within this batch by URL
+  const seenInBatch = new Set<string>()
+  const uniqueEvents = allEvents.filter((e) => {
+    if (!e.url_sumber || seenInBatch.has(e.url_sumber)) return false
+    seenInBatch.add(e.url_sumber)
+    return true
+  })
+
+  {
+    for (const ev of uniqueEvents) {
       if (!ev.url_sumber || !ev.judul) { skipped++; continue }
       if (existingUrls.has(ev.url_sumber)) { skipped++; continue }
 
