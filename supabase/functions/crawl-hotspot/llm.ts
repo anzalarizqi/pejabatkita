@@ -52,7 +52,7 @@ export async function kimiSearchAndExtract(
         model,
         messages,
         tools,
-        temperature: 1,
+        temperature: 0.6,
         thinking: { type: 'disabled' },
       }),
     })
