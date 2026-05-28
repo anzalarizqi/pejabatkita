@@ -78,8 +78,9 @@ export default function PulseShell({ initialEvents, initialProvinceCounts, allPr
       <div className="pulse-body">
         <main className="pulse-map">
           <HotspotMap
+            events={events}
+            events24h={timeFilter === '24h' ? events : initialEvents}
             provinceCounts={provinceCounts}
-            provinceCounts24h={timeFilter === '24h' ? provinceCounts : initialProvinceCounts}
             allProvinces={allProvinces}
             onProvinceClick={(p) => setSelectedProvince(p === selectedProvince ? null : p)}
             selected={selectedProvince}

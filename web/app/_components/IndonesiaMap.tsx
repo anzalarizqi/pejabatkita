@@ -176,11 +176,12 @@ export default function IndonesiaMap({
       let cx = c[0]
       let cy = c[1]
       if (d.groupTotal > 1) {
-        // Fan dots in a small ring around centroid
-        const angle = (d.groupIndex / d.groupTotal) * Math.PI * 2 - Math.PI / 2
-        const ringR = 4.5  // pixels offset
-        cx += Math.cos(angle) * ringR
-        cy += Math.sin(angle) * ringR
+        // Phyllotaxis (sunflower) spiral: handles 2..50+ dots cleanly without overlap
+        const GOLDEN = Math.PI * (3 - Math.sqrt(5))
+        const angle = d.groupIndex * GOLDEN
+        const radius = 1.8 * Math.sqrt(d.groupIndex + 0.5)
+        cx += Math.cos(angle) * radius
+        cy += Math.sin(angle) * radius
       }
       out.push({ ...d, cx, cy })
     }

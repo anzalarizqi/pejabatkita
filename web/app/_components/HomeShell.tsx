@@ -104,37 +104,38 @@ export default function PreviewShell({
     return { expected, count }
   }, [provinces])
 
-  // Hotspot dots — one per (province, kategori). Multiple kategori in same
-  // province = multiple dots fanned around centroid. Pulse if that specific
-  // (province, kategori) has a 24h event.
+  // Hotspot dots — one per event. Events in same province are fanned in
+  // a phyllotaxis spiral around the centroid. Pulse if event is in 24h list.
   const hotspotDots: HotspotDot[] = useMemo(() => {
     if (mode !== 'denyut') return []
-    const allCounts = provinceHotspot7d.flatMap((p) => Object.values(p.kategori_counts))
-    const max = Math.max(1, ...allCounts)
-    const by24h = new Map(provinceHotspot24h.map((p) => [p.provinsi_nama, p.kategori_counts]))
+    const events24hIds = new Set(hotspotEvents24h.map((e) => e.event_id))
+
+    const byProvince = new Map<string, HotspotEventWithPejabat[]>()
+    for (const e of hotspotEvents7d) {
+      if (!e.provinsi_nama) continue
+      const list = byProvince.get(e.provinsi_nama) ?? []
+      list.push(e)
+      byProvince.set(e.provinsi_nama, list)
+    }
 
     const out: HotspotDot[] = []
-    for (const p of provinceHotspot7d) {
-      const kats = Object.entries(p.kategori_counts)
-        .filter(([, c]) => c > 0)
-        .sort((a, b) => b[1] - a[1])
-      kats.forEach(([kat, count], i) => {
-        const kat24h = by24h.get(p.provinsi_nama)?.[kat] ?? 0
+    for (const [province, events] of byProvince) {
+      events.forEach((e, i) => {
         out.push({
-          provinceName: p.provinsi_nama,
-          id: `${p.provinsi_nama}::${kat}`,
-          color: KATEGORI_COLOR[kat] ?? KATEGORI_COLOR.lainnya,
-          size: Math.sqrt(count / max),
-          count,
-          pulse: kat24h > 0,
-          topKategori: kat,
+          provinceName: province,
+          id: e.event_id,
+          color: KATEGORI_COLOR[e.kategori ?? 'lainnya'] ?? KATEGORI_COLOR.lainnya,
+          size: 0.4,  // uniform small — one event one dot
+          count: 1,
+          pulse: events24hIds.has(e.event_id),
+          topKategori: e.kategori ?? 'lainnya',
           groupIndex: i,
-          groupTotal: kats.length,
+          groupTotal: events.length,
         })
       })
     }
     return out
-  }, [mode, provinceHotspot7d, provinceHotspot24h])
+  }, [mode, hotspotEvents7d, hotspotEvents24h])
 
   // Each mock mode computes a "safety %" (high = good). Colour intensity is
   // INVERTED so that red = danger / low % across all preview modes, matching

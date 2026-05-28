@@ -1,7 +1,7 @@
 'use client'
 
 import IndonesiaMap, { type HotspotDot } from './IndonesiaMap'
-import type { ProvinceHotspotCount, ProvinceCount } from '@/lib/queries'
+import type { HotspotEventWithPejabat, ProvinceHotspotCount, ProvinceCount } from '@/lib/queries'
 
 const KATEGORI_COLOR: Record<string, string> = {
   korupsi: '#c0392b',
@@ -13,43 +13,48 @@ const KATEGORI_COLOR: Record<string, string> = {
 }
 
 interface Props {
-  /** All events within current filter window (e.g., 7d) */
-  provinceCounts: ProvinceHotspotCount[]
+  /** All events within current filter window — one dot per event */
+  events: HotspotEventWithPejabat[]
   /** 24h subset — used to decide which dots pulse */
-  provinceCounts24h: ProvinceHotspotCount[]
+  events24h: HotspotEventWithPejabat[]
+  /** Aggregated counts for tooltip hover */
+  provinceCounts: ProvinceHotspotCount[]
   allProvinces: ProvinceCount[]
   onProvinceClick: (provinsi: string) => void
   selected: string | null
 }
 
 export default function HotspotMap({
+  events,
+  events24h,
   provinceCounts,
-  provinceCounts24h,
   allProvinces,
   onProvinceClick,
   selected,
 }: Props) {
-  const allCounts = provinceCounts.flatMap((p) => Object.values(p.kategori_counts))
-  const max = Math.max(1, ...allCounts)
-  const by24h = new Map(provinceCounts24h.map((p) => [p.provinsi_nama, p.kategori_counts]))
+  const ids24h = new Set(events24h.map((e) => e.event_id))
+
+  const byProvince = new Map<string, HotspotEventWithPejabat[]>()
+  for (const e of events) {
+    if (!e.provinsi_nama) continue
+    const list = byProvince.get(e.provinsi_nama) ?? []
+    list.push(e)
+    byProvince.set(e.provinsi_nama, list)
+  }
 
   const dots: HotspotDot[] = []
-  for (const p of provinceCounts) {
-    const kats = Object.entries(p.kategori_counts)
-      .filter(([, c]) => c > 0)
-      .sort((a, b) => b[1] - a[1])
-    kats.forEach(([kat, count], i) => {
-      const kat24h = by24h.get(p.provinsi_nama)?.[kat] ?? 0
+  for (const [province, evs] of byProvince) {
+    evs.forEach((e, i) => {
       dots.push({
-        provinceName: p.provinsi_nama,
-        id: `${p.provinsi_nama}::${kat}`,
-        color: KATEGORI_COLOR[kat] ?? KATEGORI_COLOR.lainnya,
-        size: Math.sqrt(count / max),
-        count,
-        pulse: kat24h > 0,
-        topKategori: kat,
+        provinceName: province,
+        id: e.event_id,
+        color: KATEGORI_COLOR[e.kategori ?? 'lainnya'] ?? KATEGORI_COLOR.lainnya,
+        size: 0.4,
+        count: 1,
+        pulse: ids24h.has(e.event_id),
+        topKategori: e.kategori ?? 'lainnya',
         groupIndex: i,
-        groupTotal: kats.length,
+        groupTotal: evs.length,
       })
     })
   }
