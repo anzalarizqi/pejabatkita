@@ -185,6 +185,11 @@ Ujian sederhana: "Apakah ini akan dikutip warga ketika mempertanyakan kinerja/in
 Untuk artikel TERIMA, kembalikan objek:
 { "url": "<url asli dari input>", "judul": "<judul ringkas, maks 120 karakter>", "ringkasan": "<2-3 kalimat yang menjelaskan KENAPA ini buruk/kontroversial>", "kategori": "korupsi|pernyataan|demonstrasi|kebijakan|kritik|lainnya", "lokasi_nama": "<provinsi/kota>" | null, "pejabat_nama": "<nama lengkap>" | null }
 
+ATURAN LOKASI:
+- Untuk peristiwa SKALA NASIONAL (presiden, menteri, kementerian, DPR/DPD/MPR, KPK Pusat, MUI Pusat, Kejagung, lembaga negara di pusat) — SELALU gunakan "lokasi_nama": "DKI Jakarta".
+- Untuk peristiwa di provinsi/kota tertentu, gunakan nama provinsi yang tepat ("DKI Jakarta", "Jawa Barat", "DI Yogyakarta", dll).
+- Hanya gunakan null jika benar-benar tidak ada konteks lokasi.
+
 Untuk artikel TOLAK:
 { "url": "<url asli>", "skip": true, "reason": "<alasan singkat>" }
 

@@ -104,22 +104,36 @@ export default function PreviewShell({
     return { expected, count }
   }, [provinces])
 
-  // Hotspot dots (7d window) — pulse if also in 24h
+  // Hotspot dots — one per (province, kategori). Multiple kategori in same
+  // province = multiple dots fanned around centroid. Pulse if that specific
+  // (province, kategori) has a 24h event.
   const hotspotDots: HotspotDot[] = useMemo(() => {
     if (mode !== 'denyut') return []
-    const max = Math.max(1, ...provinceHotspot7d.map((p) => p.count))
-    const set24h = new Set(provinceHotspot24h.map((p) => p.provinsi_nama))
-    return provinceHotspot7d.map((p) => {
-      const top = Object.entries(p.kategori_counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'lainnya'
-      return {
-        provinceName: p.provinsi_nama,
-        color: KATEGORI_COLOR[top] ?? KATEGORI_COLOR.lainnya,
-        size: Math.sqrt(p.count / max),
-        count: p.count,
-        pulse: set24h.has(p.provinsi_nama),
-        topKategori: top,
-      }
-    })
+    const allCounts = provinceHotspot7d.flatMap((p) => Object.values(p.kategori_counts))
+    const max = Math.max(1, ...allCounts)
+    const by24h = new Map(provinceHotspot24h.map((p) => [p.provinsi_nama, p.kategori_counts]))
+
+    const out: HotspotDot[] = []
+    for (const p of provinceHotspot7d) {
+      const kats = Object.entries(p.kategori_counts)
+        .filter(([, c]) => c > 0)
+        .sort((a, b) => b[1] - a[1])
+      kats.forEach(([kat, count], i) => {
+        const kat24h = by24h.get(p.provinsi_nama)?.[kat] ?? 0
+        out.push({
+          provinceName: p.provinsi_nama,
+          id: `${p.provinsi_nama}::${kat}`,
+          color: KATEGORI_COLOR[kat] ?? KATEGORI_COLOR.lainnya,
+          size: Math.sqrt(count / max),
+          count,
+          pulse: kat24h > 0,
+          topKategori: kat,
+          groupIndex: i,
+          groupTotal: kats.length,
+        })
+      })
+    }
+    return out
   }, [mode, provinceHotspot7d, provinceHotspot24h])
 
   // Each mock mode computes a "safety %" (high = good). Colour intensity is

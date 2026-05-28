@@ -7,12 +7,17 @@ import type { ProvinceCount } from '@/lib/queries'
 
 export interface HotspotDot {
   provinceName: string
+  /** unique id for React key when multiple dots share a province */
+  id: string
   color: string
   /** size factor 0..1, multiplied by base radius */
   size: number
   count: number
   pulse: boolean
   topKategori: string
+  /** dot index within province (0..groupTotal-1) — used to fan around centroid */
+  groupIndex: number
+  groupTotal: number
 }
 
 interface Props {
@@ -162,13 +167,22 @@ export default function IndonesiaMap({
     })
   }
 
-  // Compose dot list with computed centroid
+  // Compose dot list with computed centroid + fan offset for multi-kategori provinces
   const renderableDots = useMemo(() => {
     const out: Array<HotspotDot & { cx: number; cy: number }> = []
     for (const d of dots ?? []) {
       const c = centroids.get(d.provinceName)
       if (!c) continue
-      out.push({ ...d, cx: c[0], cy: c[1] })
+      let cx = c[0]
+      let cy = c[1]
+      if (d.groupTotal > 1) {
+        // Fan dots in a small ring around centroid
+        const angle = (d.groupIndex / d.groupTotal) * Math.PI * 2 - Math.PI / 2
+        const ringR = 4.5  // pixels offset
+        cx += Math.cos(angle) * ringR
+        cy += Math.sin(angle) * ringR
+      }
+      out.push({ ...d, cx, cy })
     }
     return out
   }, [dots, centroids])
@@ -209,7 +223,7 @@ export default function IndonesiaMap({
                 const r = baseR + d.size * 2.0  // 1.6..3.6 (70% smaller)
                 return (
                   <g
-                    key={d.provinceName}
+                    key={d.id}
                     transform={`translate(${d.cx}, ${d.cy})`}
                     className={`hotspot-dot ${d.pulse ? 'pulsing' : 'static-dot'}`}
                     onMouseMove={(e) => onProvinceHover(d.provinceName, e)}
