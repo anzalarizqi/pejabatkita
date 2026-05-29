@@ -654,7 +654,7 @@ export interface ProvinceKasusCount {
 }
 
 export async function listProvinceKasusCounts(): Promise<ProvinceKasusCount[]> {
-  const supabase = await createServerSupabase()
+  const supabase = await createServerSupabase(true)  // service role — kasus_screened has no public RLS policy
 
   const [kasusRows, screenedRows, jabatanRows, wilayahRows] = await Promise.all([
     supabase.from('kasus').select('pejabat_id').neq('verified', false).then(({ data }) =>
