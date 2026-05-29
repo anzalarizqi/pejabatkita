@@ -249,8 +249,8 @@ def report_province_progress() -> None:
     for prov, pids in sorted(prov_total.items()):
         total    = len(pids)
         found    = sum(1 for p in pids if p in kasus_set)
-        # bersih excludes pejabat who later got a kasus row (re-run changed outcome)
-        bersih   = sum(1 for p in pids if p in screened_map and screened_map[p]["last_result"] == "bersih" and p not in kasus_set)
+        # bersih: any clean result (incl. bersih_glm from old experiments), exclude those later found
+        bersih   = sum(1 for p in pids if p in screened_map and screened_map[p]["last_result"].startswith("bersih") and p not in kasus_set)
         errors   = sum(1 for p in pids if p in screened_map and screened_map[p]["last_result"] == "error" and p not in kasus_set)
         screened = found + bersih + errors
         pct      = round(screened / total * 100) if total else 0
