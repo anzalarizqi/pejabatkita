@@ -10,7 +10,9 @@ function parseCsv(text: string): Record<string, string>[] {
   const lines = text.split(/\r?\n/).filter(l => l.trim())
   if (lines.length < 2) return []
 
-  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''))
+  const sample = text.slice(0, 2048)
+  const delimiter = sample.split(';').length > sample.split(',').length ? ';' : ','
+  const headers = lines[0].split(delimiter).map(h => h.trim().replace(/^"|"$/g, ''))
   const rows: Record<string, string>[] = []
 
   for (const line of lines.slice(1)) {
@@ -22,7 +24,7 @@ function parseCsv(text: string): Record<string, string>[] {
       if (ch === '"') {
         if (inQuote && line[i + 1] === '"') { cur += '"'; i++ }
         else inQuote = !inQuote
-      } else if (ch === ',' && !inQuote) {
+      } else if (ch === delimiter && !inQuote) {
         vals.push(cur.trim()); cur = ''
       } else {
         cur += ch
@@ -112,11 +114,12 @@ export async function POST(req: NextRequest) {
       if (!status || !VALID_STATUS.has(status)) {
         // mirrors "tidak terbukti (no status)" branch in screen_kasus_llm.py
         errors.push(`${displayName}: kasus_found=1 tapi status kosong/tidak valid ("${status}") — dicatat sebagai bersih`)
-        await supabase.from('kasus_screened').upsert(
+        const { error: screenedBersihError } = await supabase.from('kasus_screened').upsert(
           { pejabat_id, last_screened_at: now, last_result: 'bersih', last_keyakinan: keyakinan },
           { onConflict: 'pejabat_id' }
         )
-        bersih++
+        if (screenedBersihError) errors.push(`${displayName}: ${screenedBersihError.message}`)
+        else bersih++
         continue
       }
 
@@ -130,7 +133,7 @@ export async function POST(req: NextRequest) {
       const kasusRow: Record<string, unknown> = { pejabat_id, status }
       if (jenis && VALID_JENIS.has(jenis)) kasusRow.jenis = jenis
       if (lembaga) kasusRow.lembaga = lembaga
-      if (tahun && !isNaN(tahun)) kasusRow.tahun = tahun
+      if (tahun !== null && !isNaN(tahun)) kasusRow.tahun = tahun
       if (ringkasan) kasusRow.ringkasan = ringkasan
       if (url_sumber) kasusRow.url_sumber = url_sumber
       // verified intentionally omitted → NULL → verify_kasus.py picks it up
