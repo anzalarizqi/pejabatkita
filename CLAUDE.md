@@ -145,6 +145,11 @@ SELECT cron.unschedule('crawl-hotspot-daily');
 - **Denyut dots capped at 10 per province**: `events.slice(0, MAX_DOTS)` in `hotspotDots` useMemo — DKI was too crowded.
 - **Sidebar click → Denyut tab**: `HotspotRail` now accepts `onActivate` prop; clicking any event card switches the map to Denyut mode.
 - **screen_kasus_llm.py error retry fix**: removed `upsert_screened` call on timeout — errored pejabat no longer written to `kasus_screened`, so `--resume` retries them.
+- **Homepage FeatureStrip removed**: was overlapping map bottom edge; showed stale mock data anyway.
+- **`/pejabat` map → Rekam Bersih**: IndonesiaMap + KabKotaMap now color by kasus %, not completeness. New `listWilayahKasusCounts(provinsi)` query added.
+- **Pejabat cards**: `has_kasus` badge (`● KASUS`) shown for confirmed cases. Joined server-side per page.
+- **Coverage stat fix (for real)**: excluded `nasional`-level jabatan from regional count — kabinet ministers were inflating `realPejabat` but not `expectedTotal`.
+- **`screen_kasus_glm.py`**: new cheap first-pass screener using `glm-4.7-flash` (free) + `search_pro_jina`. High-recall design — flags suspicious cases, `verify_kasus.py` does quality gate.
 
 ### Top priorities for next session
 
@@ -164,11 +169,20 @@ SELECT cron.unschedule('crawl-hotspot-daily');
   ```
   or `TRUNCATE hotspot_events;` then re-crawl (new prompt routes nasional → DKI automatically).
 
-**3. Rekam Bersih data** — `screen_kasus_llm.py` run for Jawa Timur in progress. Run remaining provinces after verify completes:
+**3. Rekam Bersih data** — two-tier pipeline now available:
 ```bash
-python scripts/screen_kasus_llm.py --resume --log
+# Tier 1: cheap GLM first-pass (free, high-recall)
+python scripts/screen_kasus_glm.py --resume --log
+
+# Tier 2: verify only GLM-found cases (Kimi thinking)
 python scripts/verify_kasus.py
+
+# Alt: Kimi full screener (authoritative, ~$0.005/pejabat)
+python scripts/screen_kasus_llm.py --resume --log
 ```
+GLM screener writes `bersih_glm` to `kasus_screened`; FOUND cases go straight to `kasus` (verified=null) for `verify_kasus.py` to pick up.
+
+**4. Map zoom/pan** — still pending. Add D3 zoom to `IndonesiaMap` + `KabKotaMap` with recenter button.
 
 ### Known follow-ups / non-blockers
 
