@@ -25,8 +25,10 @@ const SECTIONS: Section[] = [
     when: 'Saat ingin scan provinsi baru, atau setelah 30 hari untuk re-screen yang bersih.',
     cost: '~$0.005/pejabat × ~1.215 = ~$6 sekali jalan penuh.',
     commands: [
-      { cmd: 'python scripts/screen_kasus_llm.py --resume --log', note: 'Semua provinsi, skip yang sudah di-screen ≤30 hari + punya kasus.' },
-      { cmd: 'python scripts/screen_kasus_llm.py --provinsi "Jawa Timur" --log' },
+      { cmd: 'python scripts/screen_kasus_llm.py --report', note: 'Lihat progress per provinsi — screened/total/found/last run.' },
+      { cmd: 'python scripts/screen_kasus_llm.py --provinsi "Jawa Timur" --log', note: 'Pertama kali screen provinsi baru.' },
+      { cmd: 'python scripts/screen_kasus_llm.py --provinsi "Jawa Timur" --resume --log', note: 'Re-run provinsi yang sudah pernah di-screen — skip yang sudah done, retry yang error/baru.' },
+      { cmd: 'python scripts/screen_kasus_llm.py --resume --log', note: 'Semua provinsi sekaligus, resumable jika mati di tengah jalan.' },
       { cmd: 'python scripts/screen_kasus_llm.py --resume --rescreen-after-days 60 --log', note: 'Custom freshness window.' },
       { cmd: 'python scripts/screen_kasus_llm.py --provinsi "Aceh" --dry-run', note: 'Preview tanpa insert.' },
     ],
