@@ -208,6 +208,86 @@ def upsert_screened(client: httpx.Client, pejabat_id: str, result: str, keyakina
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
+def report_province_progress() -> None:
+    """Print per-province screening progress table."""
+    with httpx.Client(timeout=60) as client:
+        pejabat_rows  = fetch_all(client, "pejabat",        "id,nama_lengkap")
+        jabatan_rows  = fetch_all(client, "jabatan",        "pejabat_id,wilayah_id")
+        wilayah_rows  = fetch_all(client, "wilayah",        "id,nama,level,parent_id")
+        screened_rows = fetch_all(client, "kasus_screened", "pejabat_id,last_result,last_screened_at")
+        kasus_rows    = fetch_all(client, "kasus",          "pejabat_id")
+
+    wilayah_by_id = {w["id"]: w for w in wilayah_rows}
+    real_ids = {p["id"] for p in pejabat_rows if not isPlaceholder(p["nama_lengkap"])}
+
+    def province_of(wilayah_id: str) -> str | None:
+        w = wilayah_by_id.get(wilayah_id)
+        if not w: return None
+        if w["level"] == "provinsi": return w["nama"]
+        if w["level"] == "nasional": return None
+        parent = wilayah_by_id.get(w.get("parent_id") or "")
+        return parent["nama"] if parent and parent["level"] == "provinsi" else None
+
+    # province → set of real pejabat_ids
+    prov_total: dict[str, set] = {}
+    first_jab: dict[str, str] = {}
+    for j in jabatan_rows:
+        pid = j["pejabat_id"]
+        if pid not in real_ids: continue
+        if pid in first_jab: continue
+        first_jab[pid] = j["wilayah_id"]
+    for pid, wid in first_jab.items():
+        prov = province_of(wid)
+        if not prov: continue
+        prov_total.setdefault(prov, set()).add(pid)
+
+    screened_map = {r["pejabat_id"]: r for r in screened_rows}
+    kasus_set    = {r["pejabat_id"] for r in kasus_rows}
+
+    # Build per-province stats
+    rows = []
+    for prov, pids in sorted(prov_total.items()):
+        total    = len(pids)
+        screened = sum(1 for p in pids if p in screened_map or p in kasus_set)
+        found    = sum(1 for p in pids if p in kasus_set)
+        bersih   = sum(1 for p in pids if p in screened_map and screened_map[p]["last_result"] == "bersih")
+        errors   = sum(1 for p in pids if p in screened_map and screened_map[p]["last_result"] == "error")
+        pct      = round(screened / total * 100) if total else 0
+        last_run = max(
+            (screened_map[p]["last_screened_at"] for p in pids if p in screened_map),
+            default=None,
+        )
+        last_str = last_run[:10] if last_run else "—"
+        rows.append((prov, total, screened, pct, found, bersih, errors, last_str))
+
+    total_all    = sum(r[1] for r in rows)
+    screened_all = sum(r[2] for r in rows)
+    found_all    = sum(r[4] for r in rows)
+
+    col_w = max(len(r[0]) for r in rows) + 2
+    header = f"{'PROVINSI':<{col_w}} {'TOTAL':>6} {'SCREENED':>9} {'PCT':>5} {'FOUND':>6} {'BERSIH':>7} {'ERR':>4} {'LAST RUN':>10}"
+    print(header)
+    print("─" * len(header))
+    for prov, total, screened, pct, found, bersih, errors, last_str in rows:
+        bar    = "█" * (pct // 10) + "░" * (10 - pct // 10)
+        status = "✓" if pct == 100 else " "
+        print(f"{status} {prov:<{col_w-2}} {total:>6} {screened:>9} {pct:>4}% {found:>6} {bersih:>7} {errors:>4} {last_str:>10}  {bar}")
+    print("─" * len(header))
+    print(f"  {'TOTAL':<{col_w-2}} {total_all:>6} {screened_all:>9} {round(screened_all/total_all*100) if total_all else 0:>4}% {found_all:>6}")
+
+
+def isPlaceholder(name: str) -> bool:
+    """Mirrors the scraper placeholder detection."""
+    trimmed = (name or "").strip()
+    if not trimmed: return True
+    if trimmed.startswith("[LLM Error]"): return True
+    import re
+    return bool(re.match(
+        r'^(Bupati|Walikota|Wali Kota|Wakil Bupati|Wakil Walikota|Wakil Wali Kota|Gubernur|Wakil Gubernur|Penjabat|Pj\.?)\s+\S',
+        trimmed, re.IGNORECASE,
+    ))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--provinsi", help="Filter to a single province")
@@ -219,7 +299,13 @@ def main() -> None:
                         help="Print findings without writing to DB")
     parser.add_argument("--log",      action="store_true",
                         help="Append JSON results to scripts/kasus_screen.log")
+    parser.add_argument("--report",   action="store_true",
+                        help="Print per-province screening progress and exit")
     args = parser.parse_args()
+
+    if args.report:
+        report_province_progress()
+        return
 
     base_url, model, api_key = _kimi_creds()
     if not api_key:
