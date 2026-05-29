@@ -19,48 +19,64 @@ interface Section {
 
 const SECTIONS: Section[] = [
   {
-    id: 'screen-kasus',
-    title: '1. Screen Kasus Korupsi',
-    purpose: 'Cari catatan korupsi setiap pejabat via Kimi $web_search. Hasil di-insert ke kasus table dengan verified=null.',
-    when: 'Saat ingin scan provinsi baru, atau setelah 30 hari untuk re-screen yang bersih.',
+    id: 'screen-kasus-glm',
+    title: '1. Screen Kasus — GLM First-Pass (Gratis)',
+    purpose: 'First-pass murah pakai glm-4.7-flash (GRATIS) + search_pro_jina. High-recall: sengaja agresif flagging — false positive oke, verify_kasus.py yang saring. FOUND → insert kasus (verified=null). BERSIH → catat di kasus_screened (bersih_glm).',
+    when: 'Jalankan dulu sebelum Kimi screener. Cover semua provinsi dengan biaya ~$0.',
+    cost: 'GRATIS (glm-4.7-flash free tier).',
+    commands: [
+      { cmd: 'python scripts/screen_kasus_glm.py --resume --log', note: 'Semua provinsi, skip yang sudah di-screen ≤30 hari + punya kasus.' },
+      { cmd: 'python scripts/screen_kasus_glm.py --provinsi "Jawa Tengah" --log' },
+      { cmd: 'python scripts/screen_kasus_glm.py --provinsi "Aceh" --dry-run', note: 'Preview output tanpa insert.' },
+    ],
+    troubleshoot: [
+      { issue: 'ERROR: request timed out', fix: 'Re-run dengan --resume; error tidak di-log ke kasus_screened sehingga otomatis di-retry.' },
+      { issue: 'Terlalu banyak false positive FOUND', fix: 'Normal untuk screener awal — verify_kasus.py akan reject yang tidak valid.' },
+    ],
+  },
+  {
+    id: 'screen-kasus-kimi',
+    title: '2. Screen Kasus — Kimi Full Screener (Akurat)',
+    purpose: 'Screener lengkap pakai Kimi k2.6 + $web_search builtin. Lebih akurat, lebih mahal. Gunakan sebagai alternatif atau untuk provinsi prioritas. FOUND → insert kasus (verified=null). BERSIH → catat di kasus_screened.',
+    when: 'Untuk provinsi prioritas, atau sebagai quality-check setelah GLM screener.',
     cost: '~$0.005/pejabat × ~1.215 = ~$6 sekali jalan penuh.',
     commands: [
-      { cmd: 'python scripts/screen_kasus_llm.py --resume --log', note: 'Default: semua provinsi, skip yang sudah di-screen ≤30 hari + yang punya kasus.' },
-      { cmd: 'python scripts/screen_kasus_llm.py --provinsi "Jawa Tengah" --log' },
+      { cmd: 'python scripts/screen_kasus_llm.py --resume --log', note: 'Skip yang sudah di-screen (termasuk bersih_glm dari GLM pass).' },
+      { cmd: 'python scripts/screen_kasus_llm.py --provinsi "Jawa Timur" --log' },
       { cmd: 'python scripts/screen_kasus_llm.py --resume --rescreen-after-days 60 --log', note: 'Custom freshness window.' },
       { cmd: 'python scripts/screen_kasus_llm.py --provinsi "Aceh" --dry-run', note: 'Preview tanpa insert.' },
     ],
     troubleshoot: [
-      { issue: 'ERROR: request timed out', fix: 'Pejabat itu di-skip. Run ulang dengan --resume; resume akan re-screen yang error.' },
+      { issue: 'ERROR: request timed out', fix: 'Re-run dengan --resume; error tidak di-log sehingga otomatis di-retry.' },
       { issue: 'FOUND tapi data salah lembaga/tahun', fix: 'Verifier akan tangkap di tahap berikutnya — biarkan dulu.' },
     ],
   },
   {
     id: 'verify-kasus',
-    title: '2. Verify Kasus',
-    purpose: 'Kimi thinking-mode cek tiap kasus apakah benar-benar ada. Set verified=true atau verified=false + note.',
-    when: 'Setelah screen-kasus selesai untuk provinsi tertentu, atau setelah `--all` untuk re-verify.',
+    title: '3. Verify Kasus',
+    purpose: 'Kimi thinking-mode cek tiap kasus apakah benar-benar ada. Set verified=true atau verified=false + note. Proses semua row verified=null — baik dari GLM maupun Kimi screener.',
+    when: 'Setelah screen selesai untuk satu provinsi, atau batch setelah GLM jalan semua.',
     cost: '~$0.03-0.05 per kasus × jumlah unverified.',
     commands: [
       { cmd: 'python scripts/verify_kasus.py', note: 'Default: hanya unverified rows (verified IS NULL).' },
       { cmd: 'python scripts/verify_kasus.py --all', note: 'Re-verify semua, termasuk yang sudah confirmed/rejected.' },
       { cmd: 'python scripts/verify_kasus.py --dry-run', note: 'Print verdict tanpa update DB.' },
-      { cmd: 'python scripts/verify_kasus.py --report-suspicious-rejects', note: 'Audit-only: list baris verified=false yang note-nya terdengar afirmatif (kemungkinan false-reject pada field mismatch — lihat dan fix manual via SQL).' },
+      { cmd: 'python scripts/verify_kasus.py --report-suspicious-rejects', note: 'Audit: list verified=false yang note-nya terdengar afirmatif (kemungkinan field mismatch — fix manual via SQL).' },
     ],
     troubleshoot: [
-      { issue: 'REJECTED tapi note menyebut "terverifikasi"', fix: 'Jalankan --report-suspicious-rejects untuk list semua. Fix per row di SQL editor.' },
-      { issue: 'ERROR: request timed out', fix: 'Re-run; default mode (no --all) hanya proses yang masih unverified.' },
+      { issue: 'REJECTED tapi note menyebut "terverifikasi"', fix: 'Jalankan --report-suspicious-rejects. Fix per row di SQL editor.' },
+      { issue: 'ERROR: request timed out', fix: 'Re-run; default mode hanya proses yang masih unverified.' },
     ],
   },
   {
     id: 'crawl-hotspot',
-    title: '3. Crawl Hotspot (Denyut Demokrasi)',
+    title: '4. Crawl Hotspot (Denyut Demokrasi)',
     purpose: 'Pull RSS Detik/CNN/Antara 24h terakhir, filter via LLM relevance gate, extract & insert ke hotspot_events. Hasil tampil di /pulse.',
     when: 'Idealnya tiap hari pagi (manual atau via Windows Task Scheduler).',
     cost: '~$0.05-0.10 per crawl × 30 hari = ~$2/bulan.',
     commands: [
-      { cmd: 'python scripts/crawl_hotspot.py', note: 'Default: 5 RSS feeds, last 24h.' },
-      { cmd: 'python scripts/crawl_hotspot.py --keyword "OTT KPK 2026"', note: 'Manual keyword via Kimi $web_search (bypass RSS, gunakan untuk breaking event yang belum di-index).' },
+      { cmd: 'python scripts/crawl_hotspot.py', note: 'Default: 8 RSS feeds, last 24h.' },
+      { cmd: 'python scripts/crawl_hotspot.py --keyword "OTT KPK 2026"', note: 'Manual keyword via Kimi $web_search (bypass RSS, untuk breaking event yang belum di-index).' },
       { cmd: 'python scripts/crawl_hotspot.py --max-age-hours 48', note: 'Window 48 jam (kalau cron skip 1 hari).' },
       { cmd: 'python scripts/crawl_hotspot.py --dry-run', note: 'Lihat apa yang akan di-insert tanpa write DB.' },
       { cmd: 'python scripts/crawl_hotspot.py --batch-size 5 --concurrency 2', note: 'Lebih kecil & lambat — jika hit rate limit Kimi.' },
@@ -73,18 +89,19 @@ const SECTIONS: Section[] = [
   },
   {
     id: 'rekam-bersih-pipeline',
-    title: '4. Pipeline Lengkap (provinsi baru)',
-    purpose: 'Urutan run untuk provinsi yang belum di-screen.',
+    title: '5. Pipeline Lengkap (provinsi baru)',
+    purpose: 'Urutan optimal untuk provinsi yang belum di-screen. GLM dulu (gratis), Kimi verify FOUND-nya.',
     when: 'Sekali per provinsi baru.',
-    cost: 'Lihat per command di atas.',
+    cost: 'GLM gratis + ~$0.03-0.05 per kasus yang di-verify.',
     commands: [
-      { cmd: '# 1. Screen — find kasus candidates', note: '' },
-      { cmd: 'python scripts/screen_kasus_llm.py --provinsi "<Nama>" --log' },
-      { cmd: '# 2. Verify — confirm or reject each', note: '' },
+      { cmd: '# 1. GLM first-pass — gratis, high-recall', note: '' },
+      { cmd: 'python scripts/screen_kasus_glm.py --provinsi "<Nama>" --log' },
+      { cmd: '# 2. Verify GLM-found cases (Kimi thinking)', note: '' },
       { cmd: 'python scripts/verify_kasus.py' },
-      { cmd: '# 3. Audit — check for false rejects', note: '' },
+      { cmd: '# 3. Audit false-rejects', note: '' },
       { cmd: 'python scripts/verify_kasus.py --report-suspicious-rejects' },
-      { cmd: '# 4. Re-run verify jika ada timeout', note: '' },
+      { cmd: '# Opsional: Kimi full-screen untuk provinsi prioritas', note: '' },
+      { cmd: 'python scripts/screen_kasus_llm.py --provinsi "<Nama>" --log' },
       { cmd: 'python scripts/verify_kasus.py' },
     ],
   },
@@ -165,8 +182,8 @@ export default function AdminRunbookPage() {
       <section className="rb-footer">
         <h3>Catatan umum</h3>
         <ul>
-          <li>Semua script baca <code>.env</code> dari root project — pastikan <code>MOONSHOT_API_KEY</code>, <code>SUPABASE_URL</code>, <code>SUPABASE_SERVICE_ROLE_KEY</code> terisi.</li>
-          <li>Provider LLM diatur di <code>config.yaml</code> (default: moonshot/kimi-k2.6).</li>
+          <li>Semua script baca <code>.env</code> dari root project — pastikan <code>MOONSHOT_API_KEY</code>, <code>ZHIPUAI_API_KEY</code>, <code>SUPABASE_URL</code>, <code>SUPABASE_SERVICE_ROLE_KEY</code> terisi.</li>
+          <li>Provider LLM diatur di <code>config.yaml</code>. Kimi screener: moonshot/kimi-k2.6. GLM screener: zhipu/glm-4.7-flash (free).</li>
           <li>Override sementara: <code>ACTIVE_LLM_PROVIDER=zhipu python scripts/...</code> (untuk script yang support).</li>
           <li>Idle terminal saat script jalan boleh; semua progres tercetak realtime.</li>
         </ul>
