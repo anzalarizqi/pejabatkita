@@ -248,8 +248,8 @@ def report_province_progress() -> None:
     rows = []
     for prov, pids in sorted(prov_total.items()):
         total    = len(pids)
-        found    = sum(1 for p in pids if p in kasus_set)
-        # bersih: any clean result (incl. bersih_glm from old experiments), exclude those later found
+        found    = sum(1 for p in pids if p in kasus_set or (p in screened_map and screened_map[p]["last_result"] == "found"))
+        # bersih: any clean result (incl. bersih_glm from old experiments), exclude those found
         bersih   = sum(1 for p in pids if p in screened_map and screened_map[p]["last_result"].startswith("bersih") and p not in kasus_set)
         errors   = sum(1 for p in pids if p in screened_map and screened_map[p]["last_result"] == "error" and p not in kasus_set)
         screened = found + bersih + errors
