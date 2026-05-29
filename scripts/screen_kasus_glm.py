@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Cheap first-pass corruption screener: GLM-4.7-Flash + Zhipu web-search (Option A).
+Cheap first-pass corruption screener: DDG via Jina search + GLM-4.7-Flash extraction.
 
-Flow:
-  1. Send chat completion with web_search tool enabled
-  2. When GLM requests a search → we execute the Zhipu web-search REST API ourselves
-  3. Pass real search results back as tool content → GLM reads real articles, not training data
-  4. GLM outputs structured JSON based on actual search results
+Flow (no tool calling, no paid search API):
+  1. Search DDG via Jina (free, same stack as scraper) → real URLs + snippets
+  2. If no results → mark bersih immediately (zero LLM cost)
+  3. Pass real snippets to GLM-4.7-Flash → extract structured JSON
+     GLM only reads, never searches → no hallucination
 
 Pipeline:
   screen_kasus_glm.py  →  FOUND → inserts kasus (verified=null)
@@ -16,7 +16,7 @@ Pipeline:
 Usage:
   python scripts/screen_kasus_glm.py                     # all pejabat
   python scripts/screen_kasus_glm.py --provinsi "Aceh"   # single province
-  python scripts/screen_kasus_glm.py --resume             # skip recently screened + pejabat with kasus
+  python scripts/screen_kasus_glm.py --resume             # skip recently screened
   python scripts/screen_kasus_glm.py --dry-run            # no DB writes
   python scripts/screen_kasus_glm.py --log                # append to kasus_screen_glm.log
 """
@@ -27,6 +27,7 @@ import re
 import sys
 import time
 from pathlib import Path
+from urllib.parse import quote, unquote
 
 import httpx
 import yaml
@@ -50,10 +51,9 @@ SB_HEADERS = {
     "Content-Type": "application/json",
 }
 
-# ─── GLM / Zhipu config ──────────────────────────────────────────────────────
+# ─── GLM config ──────────────────────────────────────────────────────────────
 
-GLM_MODEL     = "glm-4.7-flash"
-WEBSEARCH_URL = "https://api.z.ai/api/paas/v4/web_search"
+GLM_MODEL = "glm-4.7-flash"
 
 def _zhipu_creds() -> tuple[str, str]:
     with open(ROOT / "config.yaml", encoding="utf-8") as f:
@@ -65,19 +65,65 @@ def _zhipu_creds() -> tuple[str, str]:
             return base_url, api_key
     raise RuntimeError("zhipu provider not found in config.yaml")
 
-# ─── Prompts ─────────────────────────────────────────────────────────────────
+# ─── DDG via Jina search (sync, mirrors scraper/pipeline/websearch.py) ───────
 
-SYSTEM_PROMPT = """\
-Kamu adalah asisten riset antikorupsi Indonesia.
-Tugasmu: gunakan web search untuk mencari apakah pejabat yang disebutkan terlibat kasus
-korupsi, suap, gratifikasi, atau tipikor.
+_TITLE_RE = re.compile(
+    r'^\[([^\]!][^\]]*)\]\(https://duckduckgo\.com/l/\?uddg=([^&)\s]+)[^)]*\)\s*$',
+    re.MULTILINE,
+)
+_SNIPPET_RE = re.compile(r'\[([^\]]*\s[^\]]{15,})\]\(https://duckduckgo\.com/l/[^)]+\)')
 
-Aturan:
-- HARUS gunakan web search terlebih dahulu.
-- has_record = true hanya jika hasil web search menyebut nama pejabat secara eksplisit
-  sebagai tersangka/terdakwa/terpidana/diselidiki.
-- url_sumber HARUS diambil dari URL yang muncul di hasil pencarian — jangan karang.
-- Jika hasil pencarian tidak relevan atau tidak menyebut nama pejabat, set has_record=false.
+
+def _parse_ddg_markdown(markdown: str, max_results: int = 6) -> list[dict]:
+    results: list[dict] = []
+    seen: set[str] = set()
+    for m in _TITLE_RE.finditer(markdown):
+        if len(results) >= max_results:
+            break
+        title = m.group(1).replace("**", "").strip()
+        try:
+            url = unquote(m.group(2))
+        except Exception:
+            continue
+        if not url.startswith("http") or url in seen:
+            continue
+        seen.add(url)
+        snippet = ""
+        after = markdown[m.end(): m.end() + 1200]
+        for sm in _SNIPPET_RE.finditer(after):
+            candidate = sm.group(1).replace("**", "").strip()
+            if " " in candidate and not candidate.startswith("http"):
+                snippet = candidate
+                break
+        results.append({"title": title, "url": url, "snippet": snippet})
+    return results
+
+
+def ddg_search(query: str, max_results: int = 6) -> list[dict]:
+    """Search DDG via Jina reader. Returns list of {title, url, snippet}."""
+    ddg_url  = f"https://html.duckduckgo.com/html/?q={quote(query)}"
+    jina_url = f"https://r.jina.ai/{ddg_url}"
+    try:
+        resp = httpx.get(jina_url, headers={"Accept": "application/json"}, timeout=20)
+        if resp.status_code != 200:
+            return []
+        markdown = resp.json().get("data", {}).get("content") or ""
+        return _parse_ddg_markdown(markdown, max_results)
+    except Exception:
+        return []
+
+# ─── GLM extraction (no tools — just reads snippets we give it) ───────────────
+
+SYSTEM_EXTRACT = """\
+Kamu adalah ekstractor data antikorupsi Indonesia.
+Kamu diberikan hasil pencarian web (judul + cuplikan artikel) tentang seorang pejabat.
+Baca hasil pencarian dan tentukan apakah ada bukti kasus korupsi/tipikor.
+
+Aturan KETAT:
+- has_record = true HANYA jika ada artikel yang secara eksplisit menyebut nama pejabat
+  sebagai tersangka/terdakwa/terpidana dalam kasus korupsi.
+- url_sumber HARUS diambil dari field URL artikel yang relevan — jangan karang URL.
+- Jika tidak ada artikel yang relevan atau nama tidak cocok → has_record = false.
 - Kembalikan JSON murni saja, tanpa teks lain.
 
 Format output:
@@ -87,133 +133,60 @@ Format output:
   "jenis": "korupsi" | "suap" | "gratifikasi" | "pencucian_uang" | "lainnya" | null,
   "lembaga": "KPK" | "Kejagung" | "Kejati" | "Polda" | "lainnya" | null,
   "tahun": <integer> | null,
-  "ringkasan": "<1-2 kalimat dari hasil pencarian>" | null,
-  "url_sumber": "<URL dari hasil pencarian — wajib jika has_record=true>" | null,
+  "ringkasan": "<1-2 kalimat dari artikel>" | null,
+  "url_sumber": "<URL artikel — wajib jika has_record=true, ambil dari hasil pencarian>" | null,
   "keyakinan": "tinggi" | "sedang" | "rendah"
 }\
 """
 
-USER_PROMPT_TEMPLATE = (
-    'Cari rekam jejak korupsi {nama}, {jabatan} di {provinsi}. '
-    'Apakah ada kasus korupsi, suap, atau tipikor yang melibatkan beliau?'
-)
 
-# ─── Web search execution ─────────────────────────────────────────────────────
-
-def execute_websearch(api_key: str, query: str, count: int = 8) -> str:
-    """Call Zhipu web-search REST API. Returns formatted string of results for tool content."""
+def glm_extract(base_url: str, api_key: str, nama: str, results: list[dict]) -> dict:
+    """Plain GLM call — no tool calling. Reads real search snippets, outputs JSON."""
+    snippets = "\n\n---\n\n".join(
+        f"[{i+1}] {r['title']}\nURL: {r['url']}\nCuplikan: {r['snippet']}"
+        for i, r in enumerate(results)
+    )
+    user_msg = (
+        f"Nama pejabat: {nama}\n\n"
+        f"Hasil pencarian web:\n{snippets}\n\n"
+        f"Apakah ada bukti kasus korupsi/tipikor yang melibatkan {nama}?"
+    )
     try:
         resp = httpx.post(
-            WEBSEARCH_URL,
-            json={"search_engine": "search-prime", "search_query": query, "count": count},
-            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            timeout=30,
-        )
-        if resp.status_code != 200:
-            return f"[search error: HTTP {resp.status_code}]"
-        results = resp.json().get("search_result", [])
-        if not results:
-            return "[no results found]"
-        lines = []
-        for r in results:
-            lines.append(
-                f"Title: {r.get('title','')}\n"
-                f"URL: {r.get('link','')}\n"
-                f"Date: {r.get('publish_date','')}\n"
-                f"Summary: {r.get('content','')}"
-            )
-        return "\n\n---\n\n".join(lines)
-    except Exception as e:
-        return f"[search error: {e}]"
-
-# ─── GLM screen call with real tool execution ─────────────────────────────────
-
-def glm_screen(base_url: str, api_key: str, nama: str, jabatan: str, provinsi: str, timeout: int = 90) -> dict:
-    """GLM chat with web_search tool. When GLM requests a search, we execute it for real."""
-    prompt = USER_PROMPT_TEMPLATE.format(nama=nama, jabatan=jabatan, provinsi=provinsi)
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user",   "content": prompt},
-    ]
-    # Declare web_search as a function tool — GLM will call it with a search_query argument
-    tools = [{
-        "type": "function",
-        "function": {
-            "name": "web_search",
-            "description": "Search the web for information about Indonesian government officials and corruption cases.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "search_query": {
-                        "type": "string",
-                        "description": "The search query to look up",
-                    }
-                },
-                "required": ["search_query"],
+            f"{base_url}/chat/completions",
+            json={
+                "model":    GLM_MODEL,
+                "messages": [
+                    {"role": "system", "content": SYSTEM_EXTRACT},
+                    {"role": "user",   "content": user_msg},
+                ],
+                "thinking": {"type": "disabled"},
             },
-        },
-    }]
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            timeout=60,
+        )
+    except httpx.TimeoutException:
+        return {"error": "request timed out"}
+    if resp.status_code != 200:
+        return {"error": f"HTTP {resp.status_code}: {resp.text[:200]}"}
 
-    with httpx.Client(timeout=timeout) as client:
-        for _ in range(8):
-            try:
-                resp = client.post(
-                    f"{base_url}/chat/completions",
-                    json={
-                        "model":    GLM_MODEL,
-                        "messages": messages,
-                        "tools":    tools,
-                        "thinking": {"type": "disabled"},
-                    },
-                    headers={
-                        "Authorization": f"Bearer {api_key}",
-                        "Content-Type":  "application/json",
-                    },
-                )
-            except httpx.TimeoutException:
-                return {"error": "request timed out"}
-            if resp.status_code != 200:
-                return {"error": f"HTTP {resp.status_code}: {resp.text[:200]}"}
+    content = (resp.json()["choices"][0]["message"].get("content") or "").strip()
+    content = re.sub(r"^```[a-z]*\n?", "", content)
+    content = re.sub(r"\n?```$", "", content.strip())
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        return {"error": f"JSON parse failed: {content[:120]}"}
 
-            data    = resp.json()
-            choice  = data["choices"][0]
-            message = choice["message"]
 
-            if choice["finish_reason"] == "tool_calls":
-                messages.append(message)
-                for tc in message.get("tool_calls", []):
-                    fn_name = tc["function"]["name"]
-                    try:
-                        args = json.loads(tc["function"]["arguments"])
-                    except Exception:
-                        args = {}
-
-                    if fn_name == "web_search":
-                        query = args.get("search_query", f"korupsi tipikor {nama} {jabatan} {provinsi}")
-                        search_results = execute_websearch(api_key, query)
-                    else:
-                        search_results = "[unknown tool]"
-
-                    messages.append({
-                        "role":         "tool",
-                        "tool_call_id": tc["id"],
-                        "name":         fn_name,
-                        "content":      search_results,
-                    })
-            else:
-                content = (message.get("content") or "").strip()
-                content = re.sub(r"^```[a-z]*\n?", "", content)
-                content = re.sub(r"\n?```$", "", content.strip())
-                try:
-                    return json.loads(content)
-                except json.JSONDecodeError:
-                    messages.append(message)
-                    messages.append({
-                        "role":    "user",
-                        "content": "Kembalikan HANYA JSON murni sesuai format, tanpa teks lain.",
-                    })
-
-    return {"error": "max rounds exceeded"}
+def screen(base_url: str, api_key: str, nama: str, jabatan: str, provinsi: str) -> dict:
+    results = ddg_search(f'korupsi tipikor "{nama}" {jabatan} {provinsi}')
+    if not results:
+        # Try without quotes — common names may need broader search
+        results = ddg_search(f"korupsi tipikor {nama} {jabatan}")
+    if not results:
+        return {"has_record": False, "keyakinan": "tinggi", "_no_results": True}
+    return glm_extract(base_url, api_key, nama, results)
 
 # ─── Supabase helpers ─────────────────────────────────────────────────────────
 
@@ -346,7 +319,7 @@ def main() -> None:
     work       = [o for o in officials if o["pejabat_id"] not in existing_ids]
     skip_count = len(officials) - len(work)
 
-    print(f"Model: {GLM_MODEL}  |  Search: Zhipu web-search API (executed by script)")
+    print(f"Model: {GLM_MODEL} (extraction only)  |  Search: DDG via Jina (free)")
     print(f"Officials: {len(officials)} total, {skip_count} skipped, {len(work)} to screen")
     if args.dry_run:
         print("DRY RUN — no DB writes")
@@ -358,7 +331,7 @@ def main() -> None:
         for i, o in enumerate(work, 1):
             print(f"[{i}/{len(work)}] {o['nama']} ({o['jabatan']}, {o['provinsi']})", end=" ... ", flush=True)
 
-            result = glm_screen(base_url, api_key, o["nama"], o["jabatan"], o["provinsi"])
+            result = screen(base_url, api_key, o["nama"], o["jabatan"], o["provinsi"])
 
             if "error" in result:
                 print(f"ERROR: {result['error']}")
@@ -371,6 +344,7 @@ def main() -> None:
 
             has_record = result.get("has_record", False)
             keyakinan  = result.get("keyakinan", "rendah")
+            no_results = result.get("_no_results", False)
 
             if log_path:
                 with open(log_path, "a", encoding="utf-8") as lf:
@@ -384,13 +358,13 @@ def main() -> None:
                 continue
 
             if not has_record or not result.get("status"):
-                label = "bersih" if not has_record else "tidak terbukti (no status)"
-                print(f"{label} ({keyakinan})")
+                suffix = " [no search results]" if no_results else f" ({keyakinan})"
+                print(f"bersih{suffix}")
                 upsert_screened(db_client, o["pejabat_id"], "bersih_glm", keyakinan, args.dry_run)
                 time.sleep(1)
                 continue
 
-            kasus_row = {
+            kasus_row = {k: v for k, v in {
                 "pejabat_id": o["pejabat_id"],
                 "status":     result.get("status"),
                 "jenis":      result.get("jenis"),
@@ -398,15 +372,13 @@ def main() -> None:
                 "tahun":      result.get("tahun"),
                 "ringkasan":  result.get("ringkasan"),
                 "url_sumber": result.get("url_sumber"),
-            }
-            kasus_row = {k: v for k, v in kasus_row.items() if v is not None}
+            }.items() if v is not None}
 
             ok = insert_kasus(db_client, kasus_row, args.dry_run)
             marker = "FOUND" + (" (dry)" if args.dry_run else "")
             print(f"{marker}  [{keyakinan}]  {result.get('lembaga','-')} {result.get('status','-')} {result.get('tahun','-')}")
-            ring = (result.get("ringkasan") or "")[:80]
-            if ring:
-                print(f"    {ring}")
+            if result.get("ringkasan"):
+                print(f"    {result['ringkasan'][:80]}")
             if result.get("url_sumber"):
                 print(f"    {result['url_sumber'][:90]}")
             if ok:
