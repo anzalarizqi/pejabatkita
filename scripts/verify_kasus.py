@@ -84,12 +84,15 @@ Kembalikan JSON murni saja:
 USER_PROMPT_TEMPLATE = """\
 Verifikasi kasus ini:
 - Nama: {nama}
+- Jabatan: {jabatan}
 - Status diklaim: {status}
 - Lembaga diklaim: {lembaga}
 - Tahun diklaim: {tahun}
 - Ringkasan: {ringkasan}
 
-Cari bukti konkret bahwa {nama} BENAR-BENAR ditetapkan sebagai {status} \
+PENTING: Kamu memverifikasi {nama} yang menjabat sebagai {jabatan}, BUKAN orang lain \
+yang kebetulan memiliki nama yang sama. Cari bukti konkret bahwa {nama} ({jabatan}) \
+BENAR-BENAR ditetapkan sebagai {status} \
 (bukan sekadar dituduh atau disebut) dalam kasus korupsi oleh {lembaga}.\
 """
 
@@ -97,12 +100,13 @@ Cari bukti konkret bahwa {nama} BENAR-BENAR ditetapkan sebagai {status} \
 
 def kimi_verify(
     base_url: str, model: str, api_key: str,
-    nama: str, status: str, lembaga: str, tahun: int | None, ringkasan: str | None,
+    nama: str, jabatan: str, status: str, lembaga: str, tahun: int | None, ringkasan: str | None,
     timeout: int = 180,
 ) -> dict:
     """Call Kimi with thinking + web search to verify a single kasus. Returns parsed JSON or {"error": ...}."""
     prompt = USER_PROMPT_TEMPLATE.format(
         nama=nama,
+        jabatan=jabatan or "pejabat",
         status=status or "tersangka",
         lembaga=lembaga or "KPK/Kejagung",
         tahun=tahun or "tidak diketahui",
@@ -267,10 +271,36 @@ def main() -> None:
         filters = {} if args.all else {"verified": "is.null"}
         kasus_rows = fetch_all(client, "kasus", "*", filters)
 
-        # Fetch pejabat names for display
-        pejabat_ids = list({r["pejabat_id"] for r in kasus_rows})
-        pejabat_all = fetch_all(client, "pejabat", "id,nama_lengkap")
-        pejabat_map = {p["id"]: p["nama_lengkap"] for p in pejabat_all}
+        # Fetch pejabat names + jabatan context (posisi + provinsi) to disambiguate common names
+        pejabat_all  = fetch_all(client, "pejabat", "id,nama_lengkap,gelar_depan,gelar_belakang")
+        jabatan_all  = fetch_all(client, "jabatan", "pejabat_id,posisi,wilayah_id")
+        wilayah_all  = fetch_all(client, "wilayah", "id,nama,level,parent_id")
+
+        pejabat_map: dict[str, str] = {}
+        for p in pejabat_all:
+            gelar_depan   = (p.get("gelar_depan") or "").strip()
+            gelar_belakang = (p.get("gelar_belakang") or "").strip()
+            pejabat_map[p["id"]] = " ".join(filter(None, [gelar_depan, p["nama_lengkap"].strip(), gelar_belakang]))
+
+        wilayah_by_id = {w["id"]: w for w in wilayah_all}
+
+        def province_of(wilayah_id: str) -> str:
+            w = wilayah_by_id.get(wilayah_id)
+            if not w:
+                return ""
+            if w["level"] == "provinsi":
+                return w["nama"]
+            parent = wilayah_by_id.get(w.get("parent_id") or "")
+            return parent["nama"] if parent and parent["level"] == "provinsi" else ""
+
+        # First jabatan per pejabat → "Wakil Bupati Sragen, Jawa Tengah"
+        jabatan_map: dict[str, str] = {}
+        for j in jabatan_all:
+            pid = j["pejabat_id"]
+            if pid in jabatan_map:
+                continue
+            prov = province_of(j["wilayah_id"])
+            jabatan_map[pid] = ", ".join(filter(None, [j.get("posisi") or "", prov]))
 
     print(f"Model: {model} (thinking enabled)  |  base: {base_url}")
     print(f"Rows to verify: {len(kasus_rows)}")
@@ -282,15 +312,16 @@ def main() -> None:
 
     with httpx.Client(timeout=30) as db_client:
         for i, row in enumerate(kasus_rows, 1):
-            nama   = pejabat_map.get(row["pejabat_id"], row["pejabat_id"])
-            status = row.get("status") or "tersangka"
-            lbg    = row.get("lembaga") or "KPK"
-            tahun  = row.get("tahun")
-            ring   = row.get("ringkasan")
+            nama    = pejabat_map.get(row["pejabat_id"], row["pejabat_id"])
+            jabatan = jabatan_map.get(row["pejabat_id"], "")
+            status  = row.get("status") or "tersangka"
+            lbg     = row.get("lembaga") or "KPK"
+            tahun   = row.get("tahun")
+            ring    = row.get("ringkasan")
 
-            print(f"[{i}/{len(kasus_rows)}] {nama}  ({status}, {lbg}, {tahun})", end=" ... ", flush=True)
+            print(f"[{i}/{len(kasus_rows)}] {nama}  ({jabatan})  ({status}, {lbg}, {tahun})", end=" ... ", flush=True)
 
-            result = kimi_verify(base_url, model, api_key, nama, status, lbg, tahun, ring)
+            result = kimi_verify(base_url, model, api_key, nama, jabatan, status, lbg, tahun, ring)
 
             if "error" in result:
                 print(f"ERROR: {result['error']}")
