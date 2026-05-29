@@ -650,13 +650,17 @@ export async function getKasusByPejabat(pejabatId: string): Promise<KasusRow[]> 
 export interface ProvinceKasusCount {
   provinsi_nama: string
   kasus_count: number
+  screened_count: number  // union of pejabat in kasus table + kasus_screened table
 }
 
 export async function listProvinceKasusCounts(): Promise<ProvinceKasusCount[]> {
   const supabase = await createServerSupabase()
 
-  const [kasusRows, jabatanRows, wilayahRows] = await Promise.all([
+  const [kasusRows, screenedRows, jabatanRows, wilayahRows] = await Promise.all([
     supabase.from('kasus').select('pejabat_id').neq('verified', false).then(({ data }) =>
+      (data ?? []) as Array<{ pejabat_id: string }>
+    ),
+    supabase.from('kasus_screened').select('pejabat_id').then(({ data }) =>
       (data ?? []) as Array<{ pejabat_id: string }>
     ),
     fetchAll<Pick<JabatanRow, 'pejabat_id' | 'wilayah_id'>>(
@@ -671,6 +675,11 @@ export async function listProvinceKasusCounts(): Promise<ProvinceKasusCount[]> {
   for (const w of wilayahRows) wilayahById.set(w.id, w)
 
   const pejabatWithKasus = new Set(kasusRows.map((k) => k.pejabat_id))
+  // Union: anyone in kasus table OR kasus_screened counts as screened
+  const pejabatScreened = new Set<string>([
+    ...kasusRows.map((k) => k.pejabat_id),
+    ...screenedRows.map((s) => s.pejabat_id),
+  ])
 
   function provinceNamaOf(wilayahId: string): string | null {
     const w = wilayahById.get(wilayahId)
@@ -681,20 +690,37 @@ export async function listProvinceKasusCounts(): Promise<ProvinceKasusCount[]> {
   }
 
   const counted = new Set<string>()
+  const countedScreened = new Set<string>()
   const counts = new Map<string, number>()
+  const screenedCounts = new Map<string, number>()
+
   for (const j of jabatanRows) {
-    if (!pejabatWithKasus.has(j.pejabat_id)) continue
     const prov = provinceNamaOf(j.wilayah_id)
     if (!prov) continue
-    const key = `${j.pejabat_id}::${prov}`
-    if (counted.has(key)) continue
-    counted.add(key)
-    counts.set(prov, (counts.get(prov) ?? 0) + 1)
+
+    if (pejabatWithKasus.has(j.pejabat_id)) {
+      const key = `${j.pejabat_id}::${prov}`
+      if (!counted.has(key)) {
+        counted.add(key)
+        counts.set(prov, (counts.get(prov) ?? 0) + 1)
+      }
+    }
+
+    if (pejabatScreened.has(j.pejabat_id)) {
+      const key = `${j.pejabat_id}::${prov}`
+      if (!countedScreened.has(key)) {
+        countedScreened.add(key)
+        screenedCounts.set(prov, (screenedCounts.get(prov) ?? 0) + 1)
+      }
+    }
   }
 
-  return Array.from(counts.entries()).map(([provinsi_nama, kasus_count]) => ({
+  // Return all provinces that have any screened pejabat, plus any with kasus
+  const allProvs = new Set([...counts.keys(), ...screenedCounts.keys()])
+  return Array.from(allProvs).map((provinsi_nama) => ({
     provinsi_nama,
-    kasus_count,
+    kasus_count: counts.get(provinsi_nama) ?? 0,
+    screened_count: screenedCounts.get(provinsi_nama) ?? 0,
   }))
 }
 

@@ -76,6 +76,12 @@ export default function PreviewShell({
     return m
   }, [kasusCounts])
 
+  const screenedMap = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const k of kasusCounts) m.set(k.provinsi_nama, k.screened_count)
+    return m
+  }, [kasusCounts])
+
   const dateLabel = new Date().toLocaleDateString('id-ID', {
     day: '2-digit', month: 'long', year: 'numeric',
   })
@@ -204,12 +210,17 @@ export default function PreviewShell({
     }
     if (mode === 'bersih') {
       return (name: string) => {
-        const count = kasusMap.get(name) ?? 0
-        const total = provinceMaps.count.get(name) ?? 0
-        const pct = total > 0 ? Math.round((count / total) * 100) : 0
-        return count > 0
-          ? `${count} / ${total} pejabat · ${pct}% catatan korupsi`
-          : 'Tidak ada catatan korupsi ditemukan'
+        const count    = kasusMap.get(name) ?? 0
+        const screened = screenedMap.get(name) ?? 0
+        const total    = provinceMaps.count.get(name) ?? 0
+        if (count > 0) {
+          const pct = total > 0 ? Math.round((count / total) * 100) : 0
+          return `${count} / ${total} pejabat memiliki catatan korupsi (${pct}%)`
+        }
+        if (screened >= total && total > 0) {
+          return `${total} pejabat · bersih ✓`
+        }
+        return `${screened} / ${total} pejabat terskrining`
       }
     }
     return (name: string) => {
