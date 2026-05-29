@@ -149,7 +149,7 @@ SELECT cron.unschedule('crawl-hotspot-daily');
 - **`/pejabat` map → Rekam Bersih**: IndonesiaMap + KabKotaMap now color by kasus %, not completeness. New `listWilayahKasusCounts(provinsi)` query added.
 - **Pejabat cards**: `has_kasus` badge (`● KASUS`) shown for confirmed cases. Joined server-side per page.
 - **Coverage stat fix (for real)**: excluded `nasional`-level jabatan from regional count — kabinet ministers were inflating `realPejabat` but not `expectedTotal`.
-- **`screen_kasus_glm.py`**: new cheap first-pass screener using `glm-4.7-flash` (free) + `search_pro_jina`. High-recall design — flags suspicious cases, `verify_kasus.py` does quality gate.
+- **GLM screener attempt — abandoned**: tried building a cheap first-pass screener using GLM-4.7-flash. Three approaches failed: (1) builtin `search_pro_jina` — 429, not included in coding plan; (2) Zhipu web-search REST API — 429, separate paid subscription; (3) DDG via Jina + GLM extraction — unstable, 429s on GLM chat endpoint under load. Kimi (`screen_kasus_llm.py`) remains the only reliable screener at ~$0.005/pejabat.
 
 ### Top priorities for next session
 
