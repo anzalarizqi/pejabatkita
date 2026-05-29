@@ -140,49 +140,70 @@ SELECT cron.unschedule('crawl-hotspot-daily');
 
 ### What shipped this session (2026-05-29)
 
-- **Homepage stat fixed** (`getSiteStats`): was 109.9% because jabatan rows were counted instead of distinct pejabat. Now uses `filledPejabatIds.size`.
-- **Rekam Bersih map → percentage**: color is now normalized to the observed max ratio across provinces so the full 0→red scale is used. Tooltip shows `N / total pejabat · X%`.
-- **Denyut dots capped at 10 per province**: `events.slice(0, MAX_DOTS)` in `hotspotDots` useMemo — DKI was too crowded.
-- **Sidebar click → Denyut tab**: `HotspotRail` now accepts `onActivate` prop; clicking any event card switches the map to Denyut mode.
-- **screen_kasus_llm.py error retry fix**: removed `upsert_screened` call on timeout — errored pejabat no longer written to `kasus_screened`, so `--resume` retries them.
-- **Homepage FeatureStrip removed**: was overlapping map bottom edge; showed stale mock data anyway.
-- **`/pejabat` map → Rekam Bersih**: IndonesiaMap + KabKotaMap now color by kasus %, not completeness. New `listWilayahKasusCounts(provinsi)` query added.
-- **Pejabat cards**: `has_kasus` badge (`● KASUS`) shown for confirmed cases. Joined server-side per page.
-- **Coverage stat fix (for real)**: excluded `nasional`-level jabatan from regional count — kabinet ministers were inflating `realPejabat` but not `expectedTotal`.
-- **GLM screener attempt — abandoned**: tried building a cheap first-pass screener using GLM-4.7-flash. Three approaches failed: (1) builtin `search_pro_jina` — 429, not included in coding plan; (2) Zhipu web-search REST API — 429, separate paid subscription; (3) DDG via Jina + GLM extraction — unstable, 429s on GLM chat endpoint under load. Kimi (`screen_kasus_llm.py`) remains the only reliable screener at ~$0.005/pejabat.
+**Web (Next.js):**
+- Homepage coverage stat fixed: `getSiteStats` now counts distinct pejabat (not jabatan rows) and excludes `nasional`-level jabatan — was showing 109.9%
+- Rekam Bersih map → percentage coloring, normalized to observed max ratio, full 0→red scale
+- Denyut dots capped at 10 per province (DKI was overcrowded)
+- Sidebar card click → switches map to Denyut tab (`onActivate` prop on `HotspotRail`)
+- Homepage FeatureStrip removed (was overlapping map, showed stale mock data)
+- `/pejabat` IndonesiaMap + KabKotaMap color by kasus %, not completeness. New `listWilayahKasusCounts(provinsi)` query
+- Pejabat cards: `● KASUS` badge for pejabat with confirmed kasus. `has_kasus` joined server-side per page
 
-### Top priorities for next session
+**Scripts:**
+- `screen_kasus_llm.py --report`: per-province screening progress table with progress bar
+- `screen_kasus_llm.py`: error no longer written to `kasus_screened` — `--resume` retries timeouts automatically
+- GLM screener attempt abandoned: all 3 approaches (builtin search_pro_jina, Zhipu REST API, DDG+GLM) hit 429s or hallucinated. Kimi at ~$0.005/pejabat is the only reliable option.
+- Deleted 6 duplicate kasus rows from double-running screener without `--resume`
 
-**1. DPR / DPD / MPR officials backlog.**
-- `pejabat.level = 'pusat'` currently only contains ~111 kabinet ministers
+**Kasus screening progress (end of session):**
+```
+✓ Aceh          48/48   9 found
+✓ Jawa Barat    56/56   7 found
+  Jawa Tengah   15/72  12 found  ← incomplete, needs full run
+✓ Jawa Timur    78/78  16 found
+✓ Kalimantan Tengah 30/30  2 found
+✓ Kalimantan Timur  22/22  1 found
+✓ Sulawesi Tengah   28/28  7 found
+✓ Sumatera Selatan  36/36  4 found
+✓ Sumatera Utara    68/68 23 found
+  DKI Jakarta    1/14   1 found  ← incomplete
+  (28 provinces at 0%)
+```
+
+### Next Session Should Start With
+
+**1. Complete Rekam Bersih screening:**
+```bash
+# Check progress
+python scripts/screen_kasus_llm.py --report
+
+# Complete Jawa Tengah (was 15/72 last session)
+python scripts/screen_kasus_llm.py --provinsi "Jawa Tengah" --resume --log
+
+# Complete DKI Jakarta
+python scripts/screen_kasus_llm.py --provinsi "DKI Jakarta" --resume --log
+
+# All remaining provinces (resumable)
+python scripts/screen_kasus_llm.py --resume --log
+
+# After all provinces screened, verify found cases
+python scripts/verify_kasus.py
+```
+
+**2. Map zoom/pan** — pending. Add D3 zoom to `IndonesiaMap` + `KabKotaMap` with recenter button. Approach: apply `d3-zoom` to SVG `<g>` element, expose +/- and recenter buttons.
+
+**3. DPR / DPD / MPR officials backlog.**
+- `pejabat.level = 'pusat'` currently only ~111 kabinet ministers
 - Need: 580 DPR anggota + ~136 DPD anggota + MPR pimpinan
 - Source: `dpr.go.id/anggota` (best), KPU calon data, Wikipedia
-- New scraper or one-time import script
 
-**2. Optional cleanup of Denyut data.**
-- 8 events with null `wilayah_id` (left over from initial loose-prompt crawl) — either backfill to DKI:
-  ```sql
-  UPDATE hotspot_events
-  SET wilayah_id = (SELECT id FROM wilayah WHERE nama = 'DKI Jakarta'),
-      lokasi_nama = COALESCE(lokasi_nama, 'DKI Jakarta')
-  WHERE wilayah_id IS NULL;
-  ```
-  or `TRUNCATE hotspot_events;` then re-crawl (new prompt routes nasional → DKI automatically).
-
-**3. Rekam Bersih data** — two-tier pipeline now available:
-```bash
-# Tier 1: cheap GLM first-pass (free, high-recall)
-python scripts/screen_kasus_glm.py --resume --log
-
-# Tier 2: verify only GLM-found cases (Kimi thinking)
-python scripts/verify_kasus.py
-
-# Alt: Kimi full screener (authoritative, ~$0.005/pejabat)
-python scripts/screen_kasus_llm.py --resume --log
+**4. Optional: cleanup 8 Denyut events with null `wilayah_id`:**
+```sql
+UPDATE hotspot_events
+SET wilayah_id = (SELECT id FROM wilayah WHERE nama = 'DKI Jakarta'),
+    lokasi_nama = COALESCE(lokasi_nama, 'DKI Jakarta')
+WHERE wilayah_id IS NULL;
 ```
-GLM screener writes `bersih_glm` to `kasus_screened`; FOUND cases go straight to `kasus` (verified=null) for `verify_kasus.py` to pick up.
-
-**4. Map zoom/pan** — still pending. Add D3 zoom to `IndonesiaMap` + `KabKotaMap` with recenter button.
 
 ### Known follow-ups / non-blockers
 
