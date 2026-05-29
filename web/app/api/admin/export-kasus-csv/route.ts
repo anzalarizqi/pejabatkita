@@ -89,14 +89,14 @@ export async function GET(req: NextRequest) {
   }
 
   // 2. Collect all wilayah ids for this province (province itself + all kabkota)
-  const { data: kabkotaRows } = await supabase
-    .from('wilayah')
-    .select('id')
-    .eq('parent_id', (provRow as { id: string }).id)
+  const provId = (provRow as { id: string }).id
+  const kabkotaRows = await fetchAll<{ id: string }>(
+    supabase, 'wilayah', 'id', { parent_id: provId }
+  )
 
   const wilayahIds = [
-    (provRow as { id: string }).id,
-    ...((kabkotaRows ?? []) as Array<{ id: string }>).map(w => w.id),
+    provId,
+    ...kabkotaRows.map(w => w.id),
   ]
 
   // 3. Fetch pejabat_ids to exclude
