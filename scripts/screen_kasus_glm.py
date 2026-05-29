@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-Cheap first-pass corruption screener: Zhipu web-search API + GLM-4.7-Flash extraction.
+Cheap first-pass corruption screener: GLM-4.7-Flash + Zhipu web-search (Option A).
 
-Flow (Option B — no tool calling):
-  1. Call Zhipu web-search REST API directly → get real URLs + summaries
-  2. If no relevant results → mark bersih immediately (no LLM cost)
-  3. Pass real snippets to GLM-4.7-Flash → extract structured JSON (no search, no hallucination)
+Flow:
+  1. Send chat completion with web_search tool enabled
+  2. When GLM requests a search → we execute the Zhipu web-search REST API ourselves
+  3. Pass real search results back as tool content → GLM reads real articles, not training data
+  4. GLM outputs structured JSON based on actual search results
 
 Pipeline:
   screen_kasus_glm.py  →  FOUND → inserts kasus (verified=null)
@@ -51,8 +52,8 @@ SB_HEADERS = {
 
 # ─── GLM / Zhipu config ──────────────────────────────────────────────────────
 
-GLM_MODEL       = "glm-4.7-flash"
-WEBSEARCH_URL   = "https://api.z.ai/api/paas/v4/web_search"
+GLM_MODEL     = "glm-4.7-flash"
+WEBSEARCH_URL = "https://api.z.ai/api/paas/v4/web_search"
 
 def _zhipu_creds() -> tuple[str, str]:
     with open(ROOT / "config.yaml", encoding="utf-8") as f:
@@ -64,25 +65,43 @@ def _zhipu_creds() -> tuple[str, str]:
             return base_url, api_key
     raise RuntimeError("zhipu provider not found in config.yaml")
 
-# ─── Keywords that make a snippet relevant ────────────────────────────────────
+# ─── Prompts ─────────────────────────────────────────────────────────────────
 
-CORRUPTION_KEYWORDS = {
-    "korupsi", "tipikor", "tersangka", "terdakwa", "terpidana",
-    "suap", "gratifikasi", "kpk", "kejati", "kejagung", "ott",
-    "penyidikan", "penuntutan", "vonis", "dakwaan", "pidana",
-}
+SYSTEM_PROMPT = """\
+Kamu adalah asisten riset antikorupsi Indonesia.
+Tugasmu: gunakan web search untuk mencari apakah pejabat yang disebutkan terlibat kasus
+korupsi, suap, gratifikasi, atau tipikor.
 
-def is_relevant(snippet: str, nama_keywords: set[str]) -> bool:
-    """True if snippet mentions the person AND a corruption keyword."""
-    lower = snippet.lower()
-    has_corruption = any(kw in lower for kw in CORRUPTION_KEYWORDS)
-    has_name = any(kw in lower for kw in nama_keywords)
-    return has_corruption and has_name
+Aturan:
+- HARUS gunakan web search terlebih dahulu.
+- has_record = true hanya jika hasil web search menyebut nama pejabat secara eksplisit
+  sebagai tersangka/terdakwa/terpidana/diselidiki.
+- url_sumber HARUS diambil dari URL yang muncul di hasil pencarian — jangan karang.
+- Jika hasil pencarian tidak relevan atau tidak menyebut nama pejabat, set has_record=false.
+- Kembalikan JSON murni saja, tanpa teks lain.
 
-# ─── Step 1: Web search ───────────────────────────────────────────────────────
+Format output:
+{
+  "has_record": true | false,
+  "status": "tersangka" | "terdakwa" | "terpidana" | "diselidiki" | null,
+  "jenis": "korupsi" | "suap" | "gratifikasi" | "pencucian_uang" | "lainnya" | null,
+  "lembaga": "KPK" | "Kejagung" | "Kejati" | "Polda" | "lainnya" | null,
+  "tahun": <integer> | null,
+  "ringkasan": "<1-2 kalimat dari hasil pencarian>" | null,
+  "url_sumber": "<URL dari hasil pencarian — wajib jika has_record=true>" | null,
+  "keyakinan": "tinggi" | "sedang" | "rendah"
+}\
+"""
 
-def web_search(api_key: str, query: str, count: int = 8) -> list[dict]:
-    """Call Zhipu web-search REST API. Returns list of {title, content, link, publish_date}."""
+USER_PROMPT_TEMPLATE = (
+    'Cari rekam jejak korupsi {nama}, {jabatan} di {provinsi}. '
+    'Apakah ada kasus korupsi, suap, atau tipikor yang melibatkan beliau?'
+)
+
+# ─── Web search execution ─────────────────────────────────────────────────────
+
+def execute_websearch(api_key: str, query: str, count: int = 8) -> str:
+    """Call Zhipu web-search REST API. Returns formatted string of results for tool content."""
     try:
         resp = httpx.post(
             WEBSEARCH_URL,
@@ -91,98 +110,110 @@ def web_search(api_key: str, query: str, count: int = 8) -> list[dict]:
             timeout=30,
         )
         if resp.status_code != 200:
-            return []
-        return resp.json().get("search_result", [])
-    except Exception:
-        return []
+            return f"[search error: HTTP {resp.status_code}]"
+        results = resp.json().get("search_result", [])
+        if not results:
+            return "[no results found]"
+        lines = []
+        for r in results:
+            lines.append(
+                f"Title: {r.get('title','')}\n"
+                f"URL: {r.get('link','')}\n"
+                f"Date: {r.get('publish_date','')}\n"
+                f"Summary: {r.get('content','')}"
+            )
+        return "\n\n---\n\n".join(lines)
+    except Exception as e:
+        return f"[search error: {e}]"
 
-# ─── Step 2: GLM extraction from real snippets ───────────────────────────────
+# ─── GLM screen call with real tool execution ─────────────────────────────────
 
-SYSTEM_EXTRACT = """\
-Kamu adalah ekstractor data antikorupsi Indonesia.
-Kamu akan diberikan hasil pencarian web (judul + ringkasan artikel) tentang seorang pejabat.
-Tugasmu: baca hasil pencarian dan tentukan apakah pejabat tersebut terlibat kasus korupsi/tipikor.
-
-Aturan KETAT:
-- Hanya laporkan berdasarkan isi artikel yang diberikan — JANGAN menambah informasi sendiri.
-- has_record = true HANYA jika artikel secara eksplisit menyebut nama pejabat sebagai
-  tersangka/terdakwa/terpidana dalam kasus korupsi.
-- url_sumber HARUS diambil dari field "link" di artikel yang relevan — jangan karang.
-- Kembalikan JSON murni saja, tanpa teks lain.\
-"""
-
-def glm_extract(base_url: str, api_key: str, nama: str, snippets: list[dict]) -> dict:
-    """Ask GLM to extract corruption record from real search snippets. No tool calling."""
-    articles_text = "\n\n".join(
-        f"[{i+1}] {s.get('title','')}\nLink: {s.get('link','')}\n"
-        f"Tanggal: {s.get('publish_date','')}\nRingkasan: {s.get('content','')}"
-        for i, s in enumerate(snippets)
-    )
-
-    user_msg = (
-        f"Nama pejabat yang dicari: {nama}\n\n"
-        f"Hasil pencarian web:\n{articles_text}\n\n"
-        "Berdasarkan hasil pencarian di atas, apakah ada bukti kasus korupsi/tipikor "
-        f"yang melibatkan {nama}? Kembalikan JSON sesuai format."
-    )
-
-    schema = """{
-  "has_record": true | false,
-  "status": "tersangka" | "terdakwa" | "terpidana" | "diselidiki" | null,
-  "jenis": "korupsi" | "suap" | "gratifikasi" | "pencucian_uang" | "lainnya" | null,
-  "lembaga": "KPK" | "Kejagung" | "Kejati" | "Polda" | "lainnya" | null,
-  "tahun": <integer> | null,
-  "ringkasan": "<1-2 kalimat dari artikel>" | null,
-  "url_sumber": "<link dari artikel relevan — WAJIB jika has_record=true>" | null,
-  "keyakinan": "tinggi" | "sedang" | "rendah"
-}"""
-
+def glm_screen(base_url: str, api_key: str, nama: str, jabatan: str, provinsi: str, timeout: int = 90) -> dict:
+    """GLM chat with web_search tool. When GLM requests a search, we execute it for real."""
+    prompt = USER_PROMPT_TEMPLATE.format(nama=nama, jabatan=jabatan, provinsi=provinsi)
     messages = [
-        {"role": "system", "content": SYSTEM_EXTRACT + f"\n\nFormat output:\n{schema}"},
-        {"role": "user",   "content": user_msg},
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user",   "content": prompt},
     ]
+    # Declare web_search as a function tool — GLM will call it with a search_query argument
+    tools = [{
+        "type": "function",
+        "function": {
+            "name": "web_search",
+            "description": "Search the web for information about Indonesian government officials and corruption cases.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "search_query": {
+                        "type": "string",
+                        "description": "The search query to look up",
+                    }
+                },
+                "required": ["search_query"],
+            },
+        },
+    }]
 
-    try:
-        resp = httpx.post(
-            f"{base_url}/chat/completions",
-            json={"model": GLM_MODEL, "messages": messages},
-            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            timeout=60,
-        )
-    except httpx.TimeoutException:
-        return {"error": "request timed out"}
-    if resp.status_code != 200:
-        return {"error": f"HTTP {resp.status_code}: {resp.text[:200]}"}
+    with httpx.Client(timeout=timeout) as client:
+        for _ in range(8):
+            try:
+                resp = client.post(
+                    f"{base_url}/chat/completions",
+                    json={
+                        "model":    GLM_MODEL,
+                        "messages": messages,
+                        "tools":    tools,
+                        "thinking": {"type": "disabled"},
+                    },
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type":  "application/json",
+                    },
+                )
+            except httpx.TimeoutException:
+                return {"error": "request timed out"}
+            if resp.status_code != 200:
+                return {"error": f"HTTP {resp.status_code}: {resp.text[:200]}"}
 
-    content = (resp.json()["choices"][0]["message"].get("content") or "").strip()
-    content = re.sub(r"^```[a-z]*\n?", "", content)
-    content = re.sub(r"\n?```$", "", content.strip())
-    try:
-        return json.loads(content)
-    except json.JSONDecodeError:
-        return {"error": f"JSON parse failed: {content[:120]}"}
+            data    = resp.json()
+            choice  = data["choices"][0]
+            message = choice["message"]
 
-# ─── Combined screen ──────────────────────────────────────────────────────────
+            if choice["finish_reason"] == "tool_calls":
+                messages.append(message)
+                for tc in message.get("tool_calls", []):
+                    fn_name = tc["function"]["name"]
+                    try:
+                        args = json.loads(tc["function"]["arguments"])
+                    except Exception:
+                        args = {}
 
-def screen(base_url: str, api_key: str, nama: str, jabatan: str, provinsi: str) -> dict:
-    # Build name keywords for relevance filter (first word + last word of nama)
-    clean = re.sub(r'\b(S\.E\.|S\.H\.|M\.M\.|M\.H\.|S\.T\.|M\.T\.|S\.Sos\.|S\.M\.|H\.|Hj\.)\b', '', nama)
-    parts = [w for w in clean.split() if len(w) > 2]
-    nama_keywords = {p.lower() for p in parts}
+                    if fn_name == "web_search":
+                        query = args.get("search_query", f"korupsi tipikor {nama} {jabatan} {provinsi}")
+                        search_results = execute_websearch(api_key, query)
+                    else:
+                        search_results = "[unknown tool]"
 
-    query = f'korupsi tipikor "{nama}" {jabatan} {provinsi}'
-    results = web_search(api_key, query)
+                    messages.append({
+                        "role":         "tool",
+                        "tool_call_id": tc["id"],
+                        "name":         fn_name,
+                        "content":      search_results,
+                    })
+            else:
+                content = (message.get("content") or "").strip()
+                content = re.sub(r"^```[a-z]*\n?", "", content)
+                content = re.sub(r"\n?```$", "", content.strip())
+                try:
+                    return json.loads(content)
+                except json.JSONDecodeError:
+                    messages.append(message)
+                    messages.append({
+                        "role":    "user",
+                        "content": "Kembalikan HANYA JSON murni sesuai format, tanpa teks lain.",
+                    })
 
-    # Filter to snippets that mention both the person and a corruption keyword
-    relevant = [r for r in results if is_relevant(
-        (r.get("title","") + " " + r.get("content","")), nama_keywords
-    )]
-
-    if not relevant:
-        return {"has_record": False, "keyakinan": "tinggi", "_reason": "no relevant search results"}
-
-    # Pass only relevant snippets (max 4) to GLM for extraction
-    return glm_extract(base_url, api_key, nama, relevant[:4])
+    return {"error": "max rounds exceeded"}
 
 # ─── Supabase helpers ─────────────────────────────────────────────────────────
 
@@ -315,7 +346,7 @@ def main() -> None:
     work       = [o for o in officials if o["pejabat_id"] not in existing_ids]
     skip_count = len(officials) - len(work)
 
-    print(f"Model: {GLM_MODEL} (extraction only)  |  Search: Zhipu web-search API")
+    print(f"Model: {GLM_MODEL}  |  Search: Zhipu web-search API (executed by script)")
     print(f"Officials: {len(officials)} total, {skip_count} skipped, {len(work)} to screen")
     if args.dry_run:
         print("DRY RUN — no DB writes")
@@ -327,7 +358,7 @@ def main() -> None:
         for i, o in enumerate(work, 1):
             print(f"[{i}/{len(work)}] {o['nama']} ({o['jabatan']}, {o['provinsi']})", end=" ... ", flush=True)
 
-            result = screen(base_url, api_key, o["nama"], o["jabatan"], o["provinsi"])
+            result = glm_screen(base_url, api_key, o["nama"], o["jabatan"], o["provinsi"])
 
             if "error" in result:
                 print(f"ERROR: {result['error']}")
@@ -340,13 +371,12 @@ def main() -> None:
 
             has_record = result.get("has_record", False)
             keyakinan  = result.get("keyakinan", "rendah")
-            reason     = result.get("_reason", "")
 
             if log_path:
                 with open(log_path, "a", encoding="utf-8") as lf:
                     lf.write(json.dumps({"pejabat_id": o["pejabat_id"], "nama": o["nama"], **result}, ensure_ascii=False) + "\n")
 
-            # Reject FOUND with no url_sumber — model made it up
+            # Reject FOUND with no url_sumber
             if has_record and not result.get("url_sumber"):
                 print(f"no-url (FOUND but no source — treating as bersih)")
                 upsert_screened(db_client, o["pejabat_id"], "bersih_glm", keyakinan, args.dry_run)
@@ -354,8 +384,8 @@ def main() -> None:
                 continue
 
             if not has_record or not result.get("status"):
-                suffix = f" [{reason}]" if reason else f" ({keyakinan})"
-                print(f"bersih{suffix}")
+                label = "bersih" if not has_record else "tidak terbukti (no status)"
+                print(f"{label} ({keyakinan})")
                 upsert_screened(db_client, o["pejabat_id"], "bersih_glm", keyakinan, args.dry_run)
                 time.sleep(1)
                 continue
