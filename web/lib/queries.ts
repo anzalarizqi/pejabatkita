@@ -165,7 +165,7 @@ export async function getSiteStats(): Promise<SiteStats> {
   ])
 
   const provinces = wilayah.filter((w) => w.level === 'provinsi')
-  const kabkota = wilayah.filter((w) => w.level !== 'provinsi')
+  const kabkota = wilayah.filter((w) => w.level === 'kabupaten' || w.level === 'kota')
   const provincesTotal = provinces.length
   const kabKotaTotal = kabkota.length
   // Each province seat = 2 (gubernur + wakil), each kab/kota = 2 (bupati/walikota + wakil)
@@ -183,9 +183,9 @@ export async function getSiteStats(): Promise<SiteStats> {
   const coveredProvNames = new Set<string>()
   for (const j of jabatan) {
     if (!realPejabatIds.has(j.pejabat_id)) continue
-    filledPejabatIds.add(j.pejabat_id)
     const w = wilayahById.get(j.wilayah_id)
-    if (!w) continue
+    if (!w || w.level === 'nasional') continue  // exclude central/kabinet positions
+    filledPejabatIds.add(j.pejabat_id)
     if (w.level === 'provinsi') coveredProvNames.add(w.nama)
     else if (w.parent_id) {
       const parent = wilayahById.get(w.parent_id)
