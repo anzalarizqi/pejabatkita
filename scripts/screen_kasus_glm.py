@@ -67,12 +67,15 @@ def _glm_creds() -> tuple[str, str]:
 
 SYSTEM_PROMPT = """\
 Kamu adalah asisten riset antikorupsi Indonesia yang bertugas melakukan screening awal.
-Tugasmu: cari apakah pejabat yang disebutkan PERNAH terlibat kasus korupsi, suap, gratifikasi,
-atau tipikor — bahkan jika kasusnya masih dalam penyelidikan atau belum final.
+Tugasmu: gunakan web search untuk mencari apakah pejabat yang disebutkan PERNAH terlibat
+kasus korupsi, suap, gratifikasi, atau tipikor.
 
-Aturan screening awal (HIGH RECALL — lebih baik salah tangkap daripada melewatkan):
-- Laporkan jika ada INDIKASI keterlibatan: tersangka, terdakwa, terpidana, atau diselidiki.
-- Gunakan web search untuk mencari informasi.
+Aturan WAJIB:
+- HARUS gunakan web search terlebih dahulu sebelum menjawab.
+- has_record hanya boleh true jika kamu menemukan artikel/sumber nyata dari hasil web search.
+- WAJIB isi url_sumber dengan URL artikel yang kamu temukan. Jika tidak ada URL konkret
+  dari hasil pencarian, set has_record=false — JANGAN mengarang.
+- Jangan mengandalkan pengetahuan internal — hanya laporkan apa yang ditemukan web search.
 - Kembalikan JSON murni saja, tanpa teks lain.
 
 Format output:
@@ -82,8 +85,8 @@ Format output:
   "jenis": "korupsi" | "suap" | "gratifikasi" | "pencucian_uang" | "lainnya" | null,
   "lembaga": "KPK" | "Kejagung" | "Kejati" | "Polda" | "lainnya" | null,
   "tahun": <integer> | null,
-  "ringkasan": "<1-2 kalimat>" | null,
-  "url_sumber": "<URL artikel>" | null,
+  "ringkasan": "<1-2 kalimat ringkasan dari artikel yang ditemukan>" | null,
+  "url_sumber": "<URL artikel nyata dari web search — WAJIB jika has_record=true>" | null,
   "keyakinan": "tinggi" | "sedang" | "rendah"
 }\
 """
@@ -326,9 +329,13 @@ def main() -> None:
                 with open(log_path, "a", encoding="utf-8") as lf:
                     lf.write(json.dumps({"pejabat_id": o["pejabat_id"], "nama": o["nama"], **result}, ensure_ascii=False) + "\n")
 
-            if not has_record or not result.get("status"):
-                label = "bersih" if not has_record else "tidak terbukti (no status)"
-                print(f"{label} ({keyakinan})")
+            # Require url_sumber for any FOUND — no URL = hallucination, treat as bersih
+            if not has_record or not result.get("status") or not result.get("url_sumber"):
+                if has_record and not result.get("url_sumber"):
+                    print(f"no-url (flagged but no source — treating as bersih)")
+                else:
+                    label = "bersih" if not has_record else "tidak terbukti (no status)"
+                    print(f"{label} ({keyakinan})")
                 upsert_screened(db_client, o["pejabat_id"], "bersih_glm", keyakinan, args.dry_run)
                 time.sleep(1)
                 continue
