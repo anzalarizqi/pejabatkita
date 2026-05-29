@@ -42,6 +42,26 @@ async function fetchAll<T>(
   return rows
 }
 
+async function fetchScreenedExclusions(
+  supabase: Awaited<ReturnType<typeof createServerSupabase>>
+): Promise<Array<{ pejabat_id: string }>> {
+  const pageSize = 1000
+  const rows: Array<{ pejabat_id: string }> = []
+  let offset = 0
+  while (true) {
+    const { data } = await supabase
+      .from('kasus_screened')
+      .select('pejabat_id')
+      .in('last_result', ['found', 'bersih'])
+      .range(offset, offset + pageSize - 1)
+    const chunk = (data ?? []) as Array<{ pejabat_id: string }>
+    rows.push(...chunk)
+    if (chunk.length < pageSize) break
+    offset += pageSize
+  }
+  return rows
+}
+
 export async function GET(req: NextRequest) {
   const cookieStore = await cookies()
   const session = cookieStore.get('admin_session')
@@ -82,11 +102,7 @@ export async function GET(req: NextRequest) {
   // 3. Fetch pejabat_ids to exclude
   const [kasusRows, screenedRows] = await Promise.all([
     fetchAll<{ pejabat_id: string }>(supabase, 'kasus', 'pejabat_id'),
-    supabase
-      .from('kasus_screened')
-      .select('pejabat_id')
-      .in('last_result', ['found', 'bersih'])
-      .then(r => (r.data ?? []) as Array<{ pejabat_id: string }>),
+    fetchScreenedExclusions(supabase),
   ])
 
   const excludeSet = new Set<string>([
