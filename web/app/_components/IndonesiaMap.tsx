@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { geoIdentity, geoPath, type GeoPermissibleObjects } from 'd3-geo'
 import type { ProvinceCount } from '@/lib/queries'
+import { useMapZoom } from './useMapZoom'
+import MapZoomControls from './MapZoomControls'
 
 export interface HotspotDot {
   provinceName: string
@@ -31,6 +33,8 @@ interface Props {
   onProvinceClick?: (name: string) => void
   /** Override default fill behavior: when true, all paths render as neutral cream */
   neutralFill?: boolean
+  /** When true, enables d3 zoom/pan + control overlay. Default false (live pages unchanged). */
+  zoomable?: boolean
 }
 
 interface FeatureProps {
@@ -58,12 +62,15 @@ export default function IndonesiaMap({
   dots,
   onProvinceClick,
   neutralFill = false,
+  zoomable = false,
 }: Props) {
   const router = useRouter()
   const [data, setData] = useState<FC | null>(null)
   const [size, setSize] = useState({ w: 1000, h: height })
   const [hover, setHover] = useState<{ name: string; count: number; x: number; y: number } | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const svgRef = useRef<SVGSVGElement | null>(null)
+  const gRef = useRef<SVGGElement | null>(null)
 
   useEffect(() => {
     fetch('/indonesia-provinces.json')
@@ -189,6 +196,14 @@ export default function IndonesiaMap({
     return out
   }, [dots, centroids])
 
+  const { zoomIn, zoomOut, recenter } = useMapZoom({
+    svgRef,
+    gRef,
+    width: size.w,
+    height: size.h,
+    enabled: zoomable && data !== null,
+  })
+
   return (
     <div className="map-wrap" ref={containerRef}>
       <style>{styles}</style>
@@ -196,7 +211,9 @@ export default function IndonesiaMap({
       {data === null ? (
         <div className="map-loading">Memuat peta…</div>
       ) : (
-        <svg width={size.w} height={size.h} role="img" aria-label="Peta Indonesia">
+        <>
+        <svg ref={svgRef} width={size.w} height={size.h} role="img" aria-label="Peta Indonesia">
+          <g ref={zoomable ? gRef : undefined}>
           <g>
             {paths.map((p) => {
               const isSelected = selected === p.name
@@ -250,7 +267,12 @@ export default function IndonesiaMap({
               })}
             </g>
           )}
+          </g>
         </svg>
+        {zoomable && data && (
+          <MapZoomControls onZoomIn={zoomIn} onZoomOut={zoomOut} onRecenter={recenter} />
+        )}
+        </>
       )}
 
       {hover && (
