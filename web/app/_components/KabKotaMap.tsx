@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { geoIdentity, geoPath, type GeoPermissibleObjects } from 'd3-geo'
 import type { WilayahCount } from '@/lib/queries'
+import { useMapZoom } from './useMapZoom'
+import MapZoomControls from './MapZoomControls'
 
 interface Props {
   provinsi: string
@@ -12,6 +14,8 @@ interface Props {
   kasusMap?: Map<string, number>
   selected?: string | null
   height?: number
+  /** When true, enables d3 zoom/pan + control overlay. Default false. */
+  zoomable?: boolean
 }
 
 interface Feature {
@@ -32,12 +36,15 @@ export default function KabKotaMap({
   kasusMap,
   selected = null,
   height = 420,
+  zoomable = false,
 }: Props) {
   const router = useRouter()
   const [data, setData] = useState<FC | null | 'missing'>(null)
   const [size, setSize] = useState({ w: 1000, h: height })
   const [hover, setHover] = useState<{ name: string; count: number; x: number; y: number } | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const svgRef = useRef<SVGSVGElement | null>(null)
+  const gRef = useRef<SVGGElement | null>(null)
 
   useEffect(() => {
     setData(null)
@@ -136,6 +143,14 @@ export default function KabKotaMap({
     })
   }
 
+  const { zoomIn, zoomOut, recenter } = useMapZoom({
+    svgRef,
+    gRef,
+    width: size.w,
+    height: size.h,
+    enabled: zoomable && data !== null && data !== 'missing',
+  })
+
   return (
     <div className="kk-wrap" ref={containerRef}>
       <style>{styles}</style>
@@ -145,7 +160,9 @@ export default function KabKotaMap({
       ) : data === 'missing' ? (
         <div className="kk-loading">Peta kab/kota untuk {provinsi} belum tersedia.</div>
       ) : (
-        <svg width={size.w} height={size.h} role="img" aria-label={`Peta ${provinsi}`}>
+        <>
+        <svg ref={svgRef} width={size.w} height={size.h} role="img" aria-label={`Peta ${provinsi}`}>
+          <g ref={zoomable ? gRef : undefined}>
           <g>
             {paths.map((p) => {
               const isSelected = selected === p.name
@@ -165,7 +182,12 @@ export default function KabKotaMap({
               )
             })}
           </g>
+          </g>
         </svg>
+        {zoomable && (
+          <MapZoomControls onZoomIn={zoomIn} onZoomOut={zoomOut} onRecenter={recenter} />
+        )}
+        </>
       )}
 
       {hover && (
