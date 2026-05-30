@@ -189,10 +189,14 @@ Or use `/admin/rekam-bersih` web UI for free (Gemini/Claude) → import CSV.
 
 **3. Map zoom/pan** — pending. Add D3 zoom to `IndonesiaMap` + `KabKotaMap`. Approach: `d3-zoom` on SVG `<g>`, +/- buttons + recenter.
 
-**4. DPR / DPD / MPR officials backlog.**
+**4. Brainstorm: how to collect DPR / DPD / MPR member list.**
 - `pejabat.level = 'pusat'` currently ~111 kabinet ministers only
-- Need: 580 DPR + ~136 DPD + MPR pimpinan
-- Source: `dpr.go.id/anggota`, KPU calon data, Wikipedia
+- Need: 580 DPR anggota + ~136 DPD anggota + MPR pimpinan
+- **Start with brainstorming session** — learn from what worked:
+  - "Isi nama kosong": export CSV → Gemini/Claude web fills names → import back (free, no API cost)
+  - "Catatan korupsi": same CSV pattern + Kimi screener for verification
+  - Apply the same export→AI fill→import loop for DPR/DPD/MPR collection
+- Key questions to brainstorm: what's the seed data (KPU calon 2024? dpr.go.id scrape? Wikipedia?), how to structure the CSV for AI to fill, what verification step is needed
 
 **5. Optional: cleanup 8 Denyut events with null `wilayah_id`:**
 ```sql
