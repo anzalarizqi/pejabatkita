@@ -104,6 +104,8 @@ def kimi_verify(
     timeout: int = 180,
 ) -> dict:
     """Call Kimi with thinking + web search to verify a single kasus. Returns parsed JSON or {"error": ...}."""
+    from datetime import date
+    today = date.today().strftime("%-d %B %Y")  # e.g. "30 Mei 2026"
     prompt = USER_PROMPT_TEMPLATE.format(
         nama=nama,
         jabatan=jabatan or "pejabat",
@@ -112,8 +114,9 @@ def kimi_verify(
         tahun=tahun or "tidak diketahui",
         ringkasan=ringkasan or "-",
     )
+    system = f"Hari ini tanggal {today}. Kasus yang terjadi sebelum tanggal ini adalah nyata dan valid untuk diverifikasi.\n\n{SYSTEM_PROMPT}"
     messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": system},
         {"role": "user",   "content": prompt},
     ]
     tools = [{"type": "builtin_function", "function": {"name": "$web_search"}}]
