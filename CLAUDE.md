@@ -187,7 +187,10 @@ python scripts/verify_kasus.py                       # verify new finds
 ```
 Or use `/admin/rekam-bersih` web UI for free (Gemini/Claude) → import CSV.
 
-**3. Map zoom/pan** — pending. Add D3 zoom to `IndonesiaMap` + `KabKotaMap`. Approach: `d3-zoom` on SVG `<g>`, +/- buttons + recenter.
+**3. Map zoom/pan** — ✅ BUILT & merged to `main` (2026-05-30), but NOT yet live on public pages.
+- `d3-zoom` wrapper `useMapZoom.ts` (imperative transform, scaleExtent [1,8], reduced-motion) + `MapZoomControls.tsx` (editorial +/−/⌖). Both maps gained a `zoomable` prop, **default false** — homepage/`/pejabat` render unchanged.
+- Test sandbox: `/admin/map-lab` (gated). Verified via headless browser: wheel/button/recenter zoom + drag-pan work on both maps; live pages have 0 controls.
+- **TO GO LIVE (the remaining step):** add `zoomable` to `<IndonesiaMap>` in `web/app/_components/HomeShell.tsx` and to `<KabKotaMap>`/`<IndonesiaMap>` in `web/app/pejabat/PejabatBrowse.tsx` (~lines 104/113). Eyeball drag feel + dot scaling + mobile first. Spec: `docs/superpowers/specs/2026-05-30-map-zoom-pan-design.md`.
 
 **4. Brainstorm: how to collect DPR / DPD / MPR member list.**
 - `pejabat.level = 'pusat'` currently ~111 kabinet ministers only
