@@ -118,86 +118,83 @@ All modes: inverted polarity (red = bad), consistent legend. `hash01` mock stays
 
 ## Next Session Should Start With
 
-### Current state (end of 2026-05-29)
+### Current state (end of 2026-05-30)
 
-Denyut Demokrasi pipeline + homepage redesign **shipped** (see archive Session 9 for the journey). What runs:
+See session archive for Sessions 1–9 history. Current working state:
 
 **Daily crawl — local Python, not Supabase:**
 ```bash
-python scripts/crawl_hotspot.py            # 8 RSS feeds, last 24h, watchdog gate, ~10–15 events kept
-python scripts/crawl_hotspot.py --keyword "OTT KPK Pati"   # keyword path via Kimi $web_search
-python scripts/crawl_hotspot.py --dry-run  # preview, no DB write
+python scripts/crawl_hotspot.py            # 8 RSS feeds, last 24h, watchdog gate
+python scripts/crawl_hotspot.py --keyword "OTT KPK Pati"
+python scripts/crawl_hotspot.py --dry-run
 ```
 
-Supabase edge function `crawl-hotspot` and `pg_cron` were abandoned (150s timeout, 503 crashes). Code kept in repo for reference. Run the unschedule when convenient:
-```sql
-SELECT cron.unschedule('crawl-hotspot-daily');
+**Homepage: 5 mode tabs** — Rekam Bersih (default), Denyut, Tercatat, Pendidikan (mock), LHKPN (mock).
+
+**Admin panel:** `/admin/rekam-bersih` — CSV export (by province) + import workflow for manual kasus screening via Gemini/Claude web. Exact same DB writes as `screen_kasus_llm.py`.
+
+**Rekam Bersih map tooltip** (3 states):
+- `"3 / 56 pejabat memiliki catatan korupsi (5%)"` — has verified/pending cases
+- `"56 pejabat · bersih ✓"` — fully screened, 0 cases
+- `"15 / 56 pejabat terskrining"` — partially screened
+
+### What shipped this session (2026-05-30)
+
+**`/admin/rekam-bersih`** — new admin page (spec + plan + 4-task subagent build):
+- Export: province select → downloads `kasus_export_<provinsi>.csv` of unscreened pejabat
+- Import: upload filled CSV → writes kasus (verified=NULL) + kasus_screened, identical to Kimi screener
+- Canned Gemini/Claude prompt (copy-on-click)
+- Tested end-to-end via MCP Playwright
+
+**Map tooltip** — Rekam Bersih mode now shows `"N / total memiliki catatan korupsi (X%)"` or `"bersih ✓"` for fully-clean screened provinces. `listProvinceKasusCounts` switched to service role to read `kasus_screened` past RLS.
+
+**Verifier fixes (`verify_kasus.py`):**
+- Injects `today = date.today().isoformat()` into system prompt → prevents rejecting recent real OTTs as "belum terjadi"
+- Now passes `jabatan + provinsi` in prompt → prevents wrong-person disambiguation (fixed Suroto kades vs Wakil Bupati)
+- Drops `gelar_belakang` from search name (SE., M.AP breaks web queries)
+
+**Manual kasus inserts (from Claude/Gemini CSV):**
+- Abdul Azis (Bupati Kolaka Timur) — inserted
+- Ardito Wijaya (Bupati Lampung Tengah) — inserted
+- Abdul Wahid (Gubernur Riau) — inserted (was on wrong pejabat_id initially, fixed)
+- 8 others already in DB from Kimi screener
+
+**Screening progress (end of session):**
 ```
-
-**Homepage now has 5 mode tabs:** Rekam Bersih (default), **Denyut** (live dots), Tercatat, Pendidikan (mock), LHKPN (mock). Right rail is HotspotRail (officials list moved fully to `/pejabat`).
-
-**Admin runbook at `/admin/runbook`** — copy-on-click CLI reference for all 3 scripts.
-
-### What shipped this session (2026-05-29)
-
-**Web (Next.js):**
-- Homepage coverage stat fixed: `getSiteStats` now counts distinct pejabat (not jabatan rows) and excludes `nasional`-level jabatan — was showing 109.9%
-- Rekam Bersih map → percentage coloring, normalized to observed max ratio, full 0→red scale
-- Denyut dots capped at 10 per province (DKI was overcrowded)
-- Sidebar card click → switches map to Denyut tab (`onActivate` prop on `HotspotRail`)
-- Homepage FeatureStrip removed (was overlapping map, showed stale mock data)
-- `/pejabat` IndonesiaMap + KabKotaMap color by kasus %, not completeness. New `listWilayahKasusCounts(provinsi)` query
-- Pejabat cards: `● KASUS` badge for pejabat with confirmed kasus. `has_kasus` joined server-side per page
-
-**Scripts:**
-- `screen_kasus_llm.py --report`: per-province screening progress table with progress bar
-- `screen_kasus_llm.py`: error no longer written to `kasus_screened` — `--resume` retries timeouts automatically
-- GLM screener attempt abandoned: all 3 approaches (builtin search_pro_jina, Zhipu REST API, DDG+GLM) hit 429s or hallucinated. Kimi at ~$0.005/pejabat is the only reliable option.
-- Deleted 6 duplicate kasus rows from double-running screener without `--resume`
-
-**Kasus screening progress (end of session):**
-```
-✓ Aceh          48/48   9 found
-✓ Jawa Barat    56/56   7 found
-  Jawa Tengah   15/72  12 found  ← incomplete, needs full run
-✓ Jawa Timur    78/78  16 found
-✓ Kalimantan Tengah 30/30  2 found
-✓ Kalimantan Timur  22/22  1 found
-✓ Sulawesi Tengah   28/28  7 found
-✓ Sumatera Selatan  36/36  4 found
-✓ Sumatera Utara    68/68 23 found
-  DKI Jakarta    1/14   1 found  ← incomplete
-  (28 provinces at 0%)
+✓ 20 provinces at 100% — Aceh, Banten, DI Yogyakarta, DKI Jakarta, Gorontalo,
+  Jawa Barat, Jawa Tengah, Jawa Timur, Kalimantan Tengah, Kalimantan Timur,
+  Maluku, Papua, Sulawesi Tengah, Sumatera Selatan, Sumatera Utara + more
+  Lampung 1/32, Sulawesi Tenggara 1/36 (Kimi partial runs)
+  16 provinces still at 0%
+  Total: 528/1104 screened (48%) — 16 verified=True, 81 verified=False
 ```
 
 ### Next Session Should Start With
 
-**1. Complete Rekam Bersih screening:**
+**1. Re-verify suspicious rejects** — 81 kasus are `verified=False`, many rejected before today's verifier fixes (date, gelar, jabatan context). Run:
 ```bash
-# Check progress
-python scripts/screen_kasus_llm.py --report
-
-# Complete Jawa Tengah (was 15/72 last session)
-python scripts/screen_kasus_llm.py --provinsi "Jawa Tengah" --resume --log
-
-# Complete DKI Jakarta
-python scripts/screen_kasus_llm.py --provinsi "DKI Jakarta" --resume --log
-
-# All remaining provinces (resumable)
-python scripts/screen_kasus_llm.py --resume --log
-
-# After all provinces screened, verify found cases
+python scripts/verify_kasus.py --report-suspicious-rejects
+# Reset and re-run for rows flagged as affirmative-but-rejected:
+UPDATE kasus SET verified=null, verified_at=null, verified_note=null WHERE kasus_id='...';
 python scripts/verify_kasus.py
 ```
 
-**2. Map zoom/pan** — pending. Add D3 zoom to `IndonesiaMap` + `KabKotaMap` with recenter button. Approach: apply `d3-zoom` to SVG `<g>` element, expose +/- and recenter buttons.
+**2. Complete Rekam Bersih screening for remaining 16 provinces:**
+```bash
+python scripts/screen_kasus_llm.py --report
+python scripts/screen_kasus_llm.py --resume --log   # picks up unscreened provinces
+python scripts/verify_kasus.py                       # verify new finds
+```
+Or use `/admin/rekam-bersih` web UI for free (Gemini/Claude) → import CSV.
 
-**3. DPR / DPD / MPR officials backlog.**
-- `pejabat.level = 'pusat'` currently only ~111 kabinet ministers
-- Need: 580 DPR anggota + ~136 DPD anggota + MPR pimpinan
-- Source: `dpr.go.id/anggota` (best), KPU calon data, Wikipedia
+**3. Map zoom/pan** — pending. Add D3 zoom to `IndonesiaMap` + `KabKotaMap`. Approach: `d3-zoom` on SVG `<g>`, +/- buttons + recenter.
 
-**4. Optional: cleanup 8 Denyut events with null `wilayah_id`:**
+**4. DPR / DPD / MPR officials backlog.**
+- `pejabat.level = 'pusat'` currently ~111 kabinet ministers only
+- Need: 580 DPR + ~136 DPD + MPR pimpinan
+- Source: `dpr.go.id/anggota`, KPU calon data, Wikipedia
+
+**5. Optional: cleanup 8 Denyut events with null `wilayah_id`:**
 ```sql
 UPDATE hotspot_events
 SET wilayah_id = (SELECT id FROM wilayah WHERE nama = 'DKI Jakarta'),
@@ -207,15 +204,15 @@ WHERE wilayah_id IS NULL;
 
 ### Known follow-ups / non-blockers
 
-- **Google News URLs** (Kompas/Tirto/Kumparan via `news.google.com/rss/articles/CBMi…`). Clicks redirect through Google to real article. Acceptable; `sumber_nama` parsed from title suffix so cards show "kompas.com" correctly. Resolving real URL would require an extra HEAD request per article.
-- **Daily schedule for `crawl_hotspot.py`** — can be wired to Windows Task Scheduler. No code work, just config.
-- **Mobile responsiveness pass** on `/pulse` and homepage (rail stacks below map at <920px but not deeply tested).
-- **Pejabat name resolution** is fuzzy `ilike '%name%'` — occasionally hits wrong person if 2 officials share a first name. Out of scope unless it causes a visible bug.
+- **Google News URLs** (via `news.google.com/rss/articles/CBMi…`) redirect to real article. Acceptable for now.
+- **Daily schedule for `crawl_hotspot.py`** — Windows Task Scheduler, no code needed.
+- **Mobile responsiveness** on `/pulse` and homepage not deeply tested.
+- **Bulk name matcher** in manual inserts hits 1000-row PostgREST limit — use paginated fetch if re-running.
 
 ### Deferred (still)
 
 - Partai enrichment: `/admin/enrichment` CSV flow (~1,005 null rows)
-- LHKPN scraper (Phase 9C, after Rekam Bersih runs are done nationwide)
+- LHKPN scraper (Phase 9C)
 - Pendidikan enrichment (Phase 9D)
 - OG cards / sitemap.xml
 
