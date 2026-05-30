@@ -169,9 +169,11 @@ export default function PreviewShell({
       })
       const maxRatio = Math.max(...ratios, 0.001)
       return (name: string) => {
-        const count = kasusMap.get(name) ?? 0
-        const total = Math.max(1, provinceMaps.count.get(name) ?? 1)
-        return (count / total) / maxRatio
+        const count    = kasusMap.get(name) ?? 0
+        const screened = screenedMap.get(name) ?? 0
+        const total    = provinceMaps.count.get(name) ?? 0
+        if (count === 0 && screened >= total && total > 0) return 'bersih'
+        return (count / Math.max(1, total)) / maxRatio
       }
     }
     return (name: string) => {

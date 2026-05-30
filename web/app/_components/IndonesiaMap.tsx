@@ -24,7 +24,7 @@ interface Props {
   provinces: ProvinceCount[]
   selected?: string | null
   height?: number
-  colorBy?: (name: string) => number | null
+  colorBy?: (name: string) => number | null | 'bersih'
   tooltip?: (name: string, count: number) => string | null
   dots?: HotspotDot[]
   /** When provided, called instead of default router push */
@@ -129,6 +129,7 @@ export default function IndonesiaMap({
     if (colorBy) {
       const v = colorBy(name)
       if (v === null) return '#ece7dc'
+      if (v === 'bersih') return '#cde4cd'
       const t = Math.max(0, Math.min(1, v))
       const r = lerp(245, 192, t)
       const g = lerp(241, 57, t)
