@@ -105,7 +105,7 @@ def kimi_verify(
 ) -> dict:
     """Call Kimi with thinking + web search to verify a single kasus. Returns parsed JSON or {"error": ...}."""
     from datetime import date
-    today = date.today().strftime("%-d %B %Y")  # e.g. "30 Mei 2026"
+    today = date.today().isoformat()  # e.g. "2026-05-30"
     prompt = USER_PROMPT_TEMPLATE.format(
         nama=nama,
         jabatan=jabatan or "pejabat",
