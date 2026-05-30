@@ -281,9 +281,9 @@ def main() -> None:
 
         pejabat_map: dict[str, str] = {}
         for p in pejabat_all:
-            gelar_depan   = (p.get("gelar_depan") or "").strip()
-            gelar_belakang = (p.get("gelar_belakang") or "").strip()
-            pejabat_map[p["id"]] = " ".join(filter(None, [gelar_depan, p["nama_lengkap"].strip(), gelar_belakang]))
+            gelar_depan = (p.get("gelar_depan") or "").strip()
+            # gelar_belakang (SE., M.AP, etc.) omitted — academic suffixes break web searches
+            pejabat_map[p["id"]] = " ".join(filter(None, [gelar_depan, p["nama_lengkap"].strip()]))
 
         wilayah_by_id = {w["id"]: w for w in wilayah_all}
 
