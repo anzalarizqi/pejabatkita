@@ -16,6 +16,8 @@ interface Props {
   height?: number
   /** When true, enables d3 zoom/pan + control overlay. Default false. */
   zoomable?: boolean
+  /** When true, wheel-zoom requires Ctrl/⌘ so plain scroll passes through (scrolling pages). */
+  wheelModifier?: boolean
 }
 
 interface Feature {
@@ -37,6 +39,7 @@ export default function KabKotaMap({
   selected = null,
   height = 420,
   zoomable = false,
+  wheelModifier = false,
 }: Props) {
   const router = useRouter()
   const [data, setData] = useState<FC | null | 'missing'>(null)
@@ -149,6 +152,7 @@ export default function KabKotaMap({
     width: size.w,
     height: size.h,
     enabled: zoomable && data !== null && data !== 'missing',
+    wheelModifier,
   })
 
   return (
@@ -186,6 +190,9 @@ export default function KabKotaMap({
         </svg>
         {zoomable && (
           <MapZoomControls onZoomIn={zoomIn} onZoomOut={zoomOut} onRecenter={recenter} />
+        )}
+        {zoomable && wheelModifier && (
+          <div className="kk-zoom-hint" aria-hidden>⌘ / Ctrl + scroll untuk zoom</div>
         )}
         </>
       )}
@@ -232,6 +239,23 @@ const styles = `
   }
   .kk:hover { stroke: #0f1117; stroke-width: 1.2; }
   .kk-selected { filter: drop-shadow(0 0 6px rgba(192,57,43,0.4)); }
+
+  .kk-zoom-hint {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 11;
+    pointer-events: none;
+    background: rgba(245,241,234,0.85);
+    border: 1px solid #d4cfc5;
+    border-left: 2px solid #c0392b;
+    padding: 4px 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6b6859;
+  }
 
   .kk-loading {
     text-align: center;

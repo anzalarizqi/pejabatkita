@@ -9,6 +9,12 @@ interface UseMapZoomOptions {
   width: number
   height: number
   enabled: boolean
+  /**
+   * When true, wheel-zoom requires Ctrl/⌘ held — plain wheel passes through so
+   * the page can scroll. Use on scrolling pages (e.g. /pejabat); leave false on
+   * fixed-viewport pages (homepage) where plain wheel-zoom is harmless.
+   */
+  wheelModifier?: boolean
 }
 
 /**
@@ -17,7 +23,7 @@ interface UseMapZoomOptions {
  * Returns button handlers. When `enabled` is false it does nothing and clears
  * any transform, so the host renders identically to its non-zoom state.
  */
-export function useMapZoom({ svgRef, gRef, width, height, enabled }: UseMapZoomOptions) {
+export function useMapZoom({ svgRef, gRef, width, height, enabled, wheelModifier = false }: UseMapZoomOptions) {
   const zoomRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null)
   const reduceMotion = useRef(false)
 
@@ -36,6 +42,17 @@ export function useMapZoom({ svgRef, gRef, width, height, enabled }: UseMapZoomO
       .on('zoom', (e) => {
         gRef.current?.setAttribute('transform', e.transform.toString())
       })
+
+    if (wheelModifier) {
+      // Plain wheel scrolls the page; only Ctrl/⌘ + wheel zooms. Trackpad pinch
+      // arrives as a wheel event with ctrlKey set, so it keeps zooming for free.
+      // Drag/touch (button 0, no wheel) stay enabled like the d3 default.
+      behavior.filter((event: WheelEvent | MouseEvent) =>
+        event.type === 'wheel'
+          ? (event as WheelEvent).ctrlKey || (event as MouseEvent).metaKey
+          : !(event as MouseEvent).button,
+      )
+    }
     zoomRef.current = behavior
 
     const sel = select(svgEl)
@@ -52,7 +69,7 @@ export function useMapZoom({ svgRef, gRef, width, height, enabled }: UseMapZoomO
       gRef.current?.removeAttribute('transform')
       zoomRef.current = null
     }
-  }, [enabled, svgRef, gRef, width, height])
+  }, [enabled, svgRef, gRef, width, height, wheelModifier])
 
   const duration = () => (reduceMotion.current ? 0 : 200)
 

@@ -108,12 +108,16 @@ export default function PejabatBrowse({
               kasusMap={wilayahKasusMap}
               selected={wilayah}
               height={420}
+              zoomable
+              wheelModifier
             />
           ) : (
             <IndonesiaMap
               provinces={provinces}
               selected={provinsi}
               height={420}
+              zoomable
+              wheelModifier
               colorBy={provinceColorBy}
               tooltip={(name) => {
                 const k = kasusCounts.find((c) => c.provinsi_nama === name)

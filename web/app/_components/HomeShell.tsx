@@ -127,7 +127,18 @@ export default function PreviewShell({
     const MAX_DOTS = 10
     const out: HotspotDot[] = []
     for (const [province, events] of byProvince) {
-      const capped = events.slice(0, MAX_DOTS)
+      // When a province has more than MAX_DOTS events, keep the most relevant:
+      // 24h events (the pulsing ones) always win, then most-recently-crawled.
+      // events arrive crawled_at-desc and Array.sort is stable, so returning 0
+      // for same-bucket pairs preserves that recency order — the dropped dots
+      // are therefore always the oldest non-24h events.
+      const capped = [...events]
+        .sort((a, b) => {
+          const a24 = events24hIds.has(a.event_id) ? 1 : 0
+          const b24 = events24hIds.has(b.event_id) ? 1 : 0
+          return b24 - a24
+        })
+        .slice(0, MAX_DOTS)
       capped.forEach((e, i) => {
         out.push({
           provinceName: province,
@@ -294,6 +305,7 @@ export default function PreviewShell({
                   <IndonesiaMap
                     provinces={provinces}
                     height={460}
+                    zoomable
                     colorBy={mapColorBy}
                     tooltip={mapTooltip}
                     dots={mode === 'denyut' ? hotspotDots : undefined}
@@ -306,7 +318,9 @@ export default function PreviewShell({
                     }
                   />
                 </div>
-                {mode !== 'denyut' && <MapLegend mode={mode} provinces={provinces} />}
+                {mode === 'denyut'
+                  ? <DenyutLegend />
+                  : <MapLegend mode={mode} provinces={provinces} />}
               </>
             ) : (
               <KabinetGrid officials={pusatOfficials} />
@@ -579,6 +593,25 @@ function MapLegend({ mode }: { mode: ColorMode; provinces?: ProvinceCount[] }) {
         <span className="pv-legend-bar pv-legend-bar-danger" />
         <span className="pv-legend-end pv-legend-end-safe">{config.safe} ◯</span>
       </div>
+    </div>
+  )
+}
+
+// ─── Denyut legend (pulse = 24h vs static = ≤7d) ─────────────────────────────
+
+function DenyutLegend() {
+  return (
+    <div className="pv-legend pv-legend-denyut">
+      <span className="pv-legend-label">Denyut publik</span>
+      <span className="pv-denyut-key">
+        <span className="pv-denyut-dot pv-denyut-dot-pulse" />
+        24 jam · berdenyut
+      </span>
+      <span className="pv-denyut-key">
+        <span className="pv-denyut-dot" />
+        ≤ 7 hari · statis
+      </span>
+      <span className="pv-denyut-note">titik diwarnai per kategori</span>
     </div>
   )
 }
@@ -1220,6 +1253,34 @@ const styles = `
   }
   .pv-legend-end-danger { color: var(--accent); font-weight: 500; }
   .pv-legend-end-safe { color: var(--muted-2); }
+
+  /* Denyut time legend (pulse = 24h vs static = ≤7d) */
+  .pv-legend-denyut { gap: 18px; flex-wrap: wrap; }
+  .pv-denyut-key {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: 'DM Mono', monospace; font-size: 9.5px;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted-2);
+  }
+  .pv-denyut-dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--ink); border: 1px solid var(--paper);
+    display: inline-block; flex-shrink: 0;
+  }
+  .pv-denyut-dot-pulse {
+    box-shadow: 0 0 0 0 rgba(15,17,23,0.4);
+    animation: pv-denyut-pulse 1.6s ease-out infinite;
+  }
+  @keyframes pv-denyut-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(15,17,23,0.4); }
+    100% { box-shadow: 0 0 0 7px rgba(15,17,23,0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pv-denyut-dot-pulse { animation: none; }
+  }
+  .pv-denyut-note {
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 300;
+    font-size: 11px; color: var(--muted); margin-left: auto;
+  }
 
   .pv-legend-bar {
     flex: 1; height: 6px;

@@ -187,10 +187,15 @@ python scripts/verify_kasus.py                       # verify new finds
 ```
 Or use `/admin/rekam-bersih` web UI for free (Gemini/Claude) → import CSV.
 
-**3. Map zoom/pan** — ✅ BUILT & merged to `main` (2026-05-30), but NOT yet live on public pages.
-- `d3-zoom` wrapper `useMapZoom.ts` (imperative transform, scaleExtent [1,8], reduced-motion) + `MapZoomControls.tsx` (editorial +/−/⌖). Both maps gained a `zoomable` prop, **default false** — homepage/`/pejabat` render unchanged.
-- Test sandbox: `/admin/map-lab` (gated). Verified via headless browser: wheel/button/recenter zoom + drag-pan work on both maps; live pages have 0 controls.
-- **TO GO LIVE (the remaining step):** add `zoomable` to `<IndonesiaMap>` in `web/app/_components/HomeShell.tsx` and to `<KabKotaMap>`/`<IndonesiaMap>` in `web/app/pejabat/PejabatBrowse.tsx` (~lines 104/113). Eyeball drag feel + dot scaling + mobile first. Spec: `docs/superpowers/specs/2026-05-30-map-zoom-pan-design.md`.
+**3. Map zoom/pan** — ✅ SHIPPED LIVE (2026-05-30). Zoom/pan/recenter now on homepage + `/pejabat`.
+- `d3-zoom` wrapper `useMapZoom.ts` (imperative transform, scaleExtent [1,8], reduced-motion) + `MapZoomControls.tsx` (editorial +/−/⌖). Both maps have a `zoomable` prop.
+- **Wheel-trap fix:** `useMapZoom` gained a `wheelModifier` option. Homepage (`100vh`, no page scroll) uses plain wheel-zoom. `/pejabat` (scrolling page) passes `wheelModifier` → plain wheel scrolls the page, **Ctrl/⌘ + wheel** zooms (trackpad pinch sends ctrl+wheel, so it zooms for free); a `⌘/Ctrl + scroll untuk zoom` hint shows top-left. Buttons + drag + pinch always work.
+- Verified via headless browser: homepage zoom/recenter + denyut dots (inside zoom group, clickable); `/pejabat` national + drill-down gate (plain wheel = no zoom, ctrl wheel = zoom). 0 console errors, clean build.
+- `/admin/map-lab` sandbox now redundant (kept, not deleted). Spec: `docs/superpowers/specs/2026-05-30-map-zoom-pan-design.md`.
+
+**3b. Denyut dots — legend + cap priority (2026-05-30).**
+- Homepage denyut mode had **no visible legend** (the map's `.dot-legend` is clipped by the `100vh` stage). Added `DenyutLegend` in `HomeShell` rendered in the visible legend slot: `◉ 24 jam · berdenyut` (pulsing halo) vs `● ≤ 7 hari · statis` (plain dot). `IndonesiaMap`'s own `.dot-legend` also clarified (static key + time labels) — that one is visible on `/pulse`.
+- Per-province dot cap (`MAX_DOTS=10`) now **sorts 24h events to the front before slicing**, so pulsing/24h dots are never dropped and the cut always falls on the oldest. Reminder: denyut window is by `crawled_at`, not actual event date.
 
 **4. Brainstorm: how to collect DPR / DPD / MPR member list.**
 - `pejabat.level = 'pusat'` currently ~111 kabinet ministers only

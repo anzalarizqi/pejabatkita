@@ -35,6 +35,8 @@ interface Props {
   neutralFill?: boolean
   /** When true, enables d3 zoom/pan + control overlay. Default false (live pages unchanged). */
   zoomable?: boolean
+  /** When true, wheel-zoom requires Ctrl/⌘ so plain scroll passes through (scrolling pages). */
+  wheelModifier?: boolean
 }
 
 interface FeatureProps {
@@ -63,6 +65,7 @@ export default function IndonesiaMap({
   onProvinceClick,
   neutralFill = false,
   zoomable = false,
+  wheelModifier = false,
 }: Props) {
   const router = useRouter()
   const [data, setData] = useState<FC | null>(null)
@@ -202,6 +205,7 @@ export default function IndonesiaMap({
     width: size.w,
     height: size.h,
     enabled: zoomable && data !== null,
+    wheelModifier,
   })
 
   return (
@@ -272,6 +276,9 @@ export default function IndonesiaMap({
         {zoomable && data && (
           <MapZoomControls onZoomIn={zoomIn} onZoomOut={zoomOut} onRecenter={recenter} />
         )}
+        {zoomable && data && wheelModifier && (
+          <div className="map-zoom-hint" aria-hidden>⌘ / Ctrl + scroll untuk zoom</div>
+        )}
         </>
       )}
 
@@ -304,7 +311,10 @@ export default function IndonesiaMap({
           <span className="dot-key" style={{ background: '#f39c12' }} /> Pernyataan
           <span className="dot-key" style={{ background: '#8e44ad' }} /> Kebijakan
           <span className="dot-key" style={{ background: '#2980b9' }} /> Kritik
-          <span className="dot-key dot-key-pulse" /> Pulse = 24 jam
+          <span className="dot-legend-div" aria-hidden />
+          <span className="legend-label">Waktu</span>
+          <span className="dot-key dot-key-pulse" /> Berdenyut · 24 jam
+          <span className="dot-key dot-key-static" /> Statis · ≤ 7 hari
         </div>
       )}
     </div>
@@ -332,6 +342,23 @@ const styles = `
     stroke-width: 1.2;
   }
   .prov-selected { filter: drop-shadow(0 0 6px rgba(192,57,43,0.4)); }
+
+  .map-zoom-hint {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 11;
+    pointer-events: none;
+    background: rgba(245,241,234,0.85);
+    border: 1px solid #d4cfc5;
+    border-left: 2px solid #c0392b;
+    padding: 4px 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6b6859;
+  }
 
   .map-loading {
     text-align: center;
@@ -438,5 +465,18 @@ const styles = `
   @keyframes pulse-key {
     0% { box-shadow: 0 0 0 0 rgba(15,17,23,0.4); }
     100% { box-shadow: 0 0 0 8px rgba(15,17,23,0); }
+  }
+  .dot-key-static {
+    background: #0f1117;
+    border: 1px solid #fbf7ee;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dot-key-pulse { animation: none; }
+  }
+  .dot-legend-div {
+    width: 1px;
+    height: 12px;
+    background: #d4cfc5;
+    margin: 0 2px;
   }
 `
