@@ -53,6 +53,7 @@ pejabatkita/
 ├── web/                 ← Next.js app
 │   ├── app/             ← routes: / (homepage), /pejabat, /[pejabat-id], /admin
 │   ├── lib/queries.ts   ← listProvinceCounts, listPejabat, listLeaderRoster, getSiteStats
+│   ├── lib/auth.ts, lib/session.ts  ← admin auth: isAdmin() + HMAC session token
 │   └── public/          ← indonesia-provinces.json, kabkota/*.json
 └── output/              ← per-province pejabat.json (gitignored)
 ```
@@ -117,6 +118,17 @@ After all leader names are filled, public-facing enrichment follows this fixed o
 All modes: inverted polarity (red = bad), consistent legend. `hash01` mock stays until real data lands — swap is one-line per mode in `HomeShell.tsx` and profile page.
 
 ## Next Session Should Start With
+
+### ⚠ Security hardening — Tahap 1–2 shipped (2026-05-31)
+
+Full audit lives in-app at **`/admin/security`** (admin-gated, dual-register: plain-language + technical `<details>`). All Critical + High remediated & runtime-verified:
+- **PK-C1 (critical)** — all 8 `/api/admin/*` routes used a truthy-only cookie check (any forged `admin_session` cookie = admin → fake kasus inserts, data exfil). Now use constant-time `isAdmin()` (`web/lib/auth.ts`).
+- **PK-H1** — login cookie was the password; now an HMAC session token (`web/lib/session.ts`, Web Crypto so it runs in Edge proxy + Node routes) with server-side expiry + per-IP login rate-limit. **Existing admin sessions invalidated → re-login once.**
+- **PK-H2** — `/api/rescrape` `exec(string)` → `execFile` (no shell) + input validation.
+- **PK-H3** — RLS enabled on `settings` (migration `013`, applied).
+- **PK-H4** — `kasus` anon policy → verified-only (migration `014`, applied) + `getKasusByPejabat` guard. Public shows only `verified=true` (18 of 100; 82 rejected now hidden). Homepage choropleth (service role) unaffected.
+
+**Next — Tahap 3 (defense-in-depth, not urgent):** PK-M1 JSON-LD XSS escape (`[pejabat-id]/page.tsx:95`), PK-M2 CSP+HSTS (`next.config.ts`), PK-M3 SSRF guard on `browser.py` navigate/extract, PK-M4 edge-fn `crawl-hotspot` auth+rate-limit, PK-M5 upgrade `xlsx@0.18.5`; Lows L1–L4 (salt/sandbox/slug/cookie). Optional: set `ADMIN_SESSION_SECRET`; tidy 2 pre-existing lint errors (`login` `useEffect`, `confirm` `let errors`) for a green `next build`.
 
 ### Current state (end of 2026-05-30)
 
@@ -231,7 +243,7 @@ WHERE wilayah_id IS NULL;
 ## Stack Notes (gotchas)
 
 - **Next.js 16:** `searchParams` and `params` in pages are `Promise` types — must `await`. Check `web/AGENTS.md` before writing route/layout code.
-- **Auth:** `web/proxy.ts` gates `/admin/*` on `admin_session` cookie. (`middleware.ts` was deleted in Session 7.)
+- **Auth (token-based, 2026-05-31):** login issues an HMAC-signed session token (`web/lib/session.ts`, Web Crypto — runs in Edge proxy + Node routes), **not** the password. `web/proxy.ts` gates `/admin/*` pages; **every `/api/admin/*` route MUST call `isAdmin()`** (`web/lib/auth.ts`) — a truthy cookie check is not auth (audit PK-C1). Login is rate-limited; optional `ADMIN_SESSION_SECRET` overrides the signing key (else derives from `ADMIN_PASSWORD`). Full audit at `/admin/security`. (`middleware.ts` deleted Session 7.)
 - **Postgrest:** default 1000-row cap — use `fetchAll()` pagination helper for any query over jabatan/pejabat tables.
 - **Map:** `IndonesiaMap` uses `geoIdentity().reflectY(true)` — do NOT switch to `geoMercator` (antimeridian clipping issue). `KabKotaMap` mirrors this pattern.
 - **Use `frontend-design` skill** for any new UI work to keep editorial consistency.

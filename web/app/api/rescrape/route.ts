@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { exec } from 'child_process'
+import { execFile } from 'child_process'
 import { promisify } from 'util'
 import path from 'path'
+import { isAdmin } from '@/lib/auth'
 
-const execAsync = promisify(exec)
+const execFileAsync = promisify(execFile)
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const KODE_RE = /^[0-9]{1,4}$/
+const PROVINSI_RE = /^[A-Za-z .'-]{2,40}$/
 
 export async function POST(request: NextRequest) {
-  const session = request.cookies.get('admin_session')?.value
-  if (session !== process.env.ADMIN_PASSWORD) {
+  if (!(await isAdmin())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -20,21 +24,30 @@ export async function POST(request: NextRequest) {
 
   const scraperPath = process.env.SCRAPER_PATH ?? path.join(process.cwd(), '..', 'scraper')
 
-  let args = ''
+  // execFile (no shell) + input validation: arguments are passed to python as a
+  // literal argv and can never be interpreted as shell syntax (PK-H2).
+  let args: string[]
   if (body.pejabat_id) {
-    args = `--pejabat-id ${body.pejabat_id}`
+    if (!UUID_RE.test(body.pejabat_id)) {
+      return NextResponse.json({ error: 'pejabat_id tidak valid' }, { status: 400 })
+    }
+    args = ['--pejabat-id', body.pejabat_id]
   } else if (body.kode_provinsi) {
-    args = `--kode-provinsi ${body.kode_provinsi}`
+    if (!KODE_RE.test(body.kode_provinsi)) {
+      return NextResponse.json({ error: 'kode_provinsi tidak valid' }, { status: 400 })
+    }
+    args = ['--kode-provinsi', body.kode_provinsi]
   } else if (body.provinsi) {
-    args = `--provinsi "${body.provinsi}"`
+    if (!PROVINSI_RE.test(body.provinsi)) {
+      return NextResponse.json({ error: 'provinsi tidak valid' }, { status: 400 })
+    }
+    args = ['--provinsi', body.provinsi]
   } else {
     return NextResponse.json({ error: 'pejabat_id or provinsi required' }, { status: 400 })
   }
 
-  const cmd = `python scraper.py ${args}`
-
   try {
-    const { stdout, stderr } = await execAsync(cmd, {
+    const { stdout, stderr } = await execFileAsync('python', ['scraper.py', ...args], {
       cwd: scraperPath,
       timeout: 5 * 60 * 1000, // 5 minute timeout
       env: { ...process.env },

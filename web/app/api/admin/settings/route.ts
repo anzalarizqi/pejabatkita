@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
+import { isAdmin } from '@/lib/auth'
 import { createServerSupabase } from '@/lib/supabase'
 
 async function checkAuth() {
-  const cookieStore = await cookies()
-  return !!cookieStore.get('admin_session')
+  return isAdmin()
 }
 
 export async function GET() {

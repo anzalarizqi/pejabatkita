@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase'
 import { createHash } from 'crypto'
+import { isAdmin } from '@/lib/auth'
 
 function hashIp(ip: string): string {
   return createHash('sha256')
@@ -69,8 +70,7 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   // Admin: update flag status
-  const session = request.cookies.get('admin_session')?.value
-  if (session !== process.env.ADMIN_PASSWORD) {
+  if (!(await isAdmin())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

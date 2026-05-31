@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase'
 import { PejabatJSON, PejabatRow, JabatanRow, Wilayah, DiffEntry, ImportDiff } from '@/lib/types'
+import { isAdmin } from '@/lib/auth'
 
 function normalize(s: string): string {
   return s
@@ -44,9 +45,7 @@ function detectChangedFields(
 }
 
 export async function POST(request: NextRequest) {
-  // Admin check
-  const session = request.cookies.get('admin_session')?.value
-  if (session !== process.env.ADMIN_PASSWORD) {
+  if (!(await isAdmin())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

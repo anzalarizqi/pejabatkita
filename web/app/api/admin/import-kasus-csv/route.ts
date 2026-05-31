@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase'
-import { cookies } from 'next/headers'
+import { isAdmin } from '@/lib/auth'
 
 const VALID_STATUS = new Set(['tersangka', 'terdakwa', 'terpidana'])
 const VALID_JENIS = new Set(['korupsi', 'suap', 'gratifikasi', 'pencucian_uang', 'lainnya'])
@@ -48,9 +48,7 @@ function isFalsy(val: string): boolean {
 }
 
 export async function POST(req: NextRequest) {
-  const cookieStore = await cookies()
-  const session = cookieStore.get('admin_session')
-  if (!session?.value) {
+  if (!(await isAdmin())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

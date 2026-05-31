@@ -13,6 +13,7 @@ const NAV = [
   { href: '/admin/review', label: 'Koreksi Warga', icon: '⚑' },
   { href: '/admin/runbook', label: 'Runbook (CLI)', icon: '◈' },
   { href: '/admin/settings', label: 'Pengaturan LLM', icon: '⚙' },
+  { href: '/admin/security', label: 'Audit Keamanan', icon: '⚷' },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

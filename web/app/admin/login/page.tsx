@@ -29,7 +29,14 @@ export default function LoginPage() {
       if (res.ok) {
         window.location.href = '/admin/dashboard'
       } else {
-        setError('Kata sandi salah.')
+        let msg = 'Kata sandi salah.'
+        try {
+          const data = await res.json()
+          if (data?.error) msg = data.error
+        } catch {
+          // keep default message
+        }
+        setError(msg)
         setPassword('')
         inputRef.current?.focus()
       }

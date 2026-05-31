@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase'
-import { cookies } from 'next/headers'
+import { isAdmin } from '@/lib/auth'
 
 const PLACEHOLDER_RE = /^(Bupati|Walikota|Wali Kota|Wakil Bupati|Wakil Walikota|Wakil Wali Kota|Gubernur|Wakil Gubernur|Penjabat|Pj\.?)\s+\S/i
 const LLM_ERR_RE = /^\[LLM Error\]/i
@@ -63,9 +63,7 @@ async function fetchScreenedExclusions(
 }
 
 export async function GET(req: NextRequest) {
-  const cookieStore = await cookies()
-  const session = cookieStore.get('admin_session')
-  if (!session?.value) {
+  if (!(await isAdmin())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

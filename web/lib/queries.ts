@@ -643,6 +643,7 @@ export async function getKasusByPejabat(pejabatId: string): Promise<KasusRow[]> 
     .from('kasus')
     .select('*')
     .eq('pejabat_id', pejabatId)
+    .eq('verified', true)
     .order('tahun', { ascending: false })
   return (data ?? []) as KasusRow[]
 }
