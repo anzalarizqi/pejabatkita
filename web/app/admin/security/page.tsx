@@ -566,6 +566,60 @@ export default function SecurityAuditPage() {
           </div>
         </div>
 
+        <div className="sec-alert" style={{ borderLeftColor: '#1e7a45', background: '#f1f7f2' }}>
+          <div className="sec-alert-label" style={{ color: '#1e7a45' }}>✓ Validasi eksternal — Pemindaian OWASP ZAP (1 Juni 2026)</div>
+          <div className="sec-alert-body">
+            Aplikasi dipindai dengan <strong>OWASP ZAP</strong> (DAST) terhadap <em>build produksi</em>{' '}
+            (<code>localhost:3100</code>, <code>NODE_ENV=production</code>). Hasilnya{' '}
+            <strong>nol temuan Kritis dan nol Tinggi</strong> — memperkuat kesimpulan audit di atas.
+            Tiga temuan Sedang yang tersisa semuanya soal CSP dan merupakan <strong>risiko sisa yang
+            diterima secara sadar</strong>; satu temuan Rendah (header <code>X-Powered-By</code>) sudah
+            ditutup di pemindaian ini juga.
+            <details className="sec-details" style={{ borderTopColor: '#bcd9c4' }}>
+              <summary style={{ color: '#1e7a45' }}>Rincian pemindaian &amp; tindak lanjut</summary>
+              <div className="sec-tech">
+                <div className="sec-tech-row">
+                  <div className="sec-tech-k">Diperbaiki di rilis ini</div>
+                  <div className="sec-tech-v">
+                    <strong>Server Leaks Information via X-Powered-By (Rendah)</strong> — Next.js mengirim
+                    header <code>X-Powered-By: Next.js</code> yang membocorkan teknologi server. Ditutup
+                    dengan <code>poweredByHeader: false</code> di <code>web/next.config.ts:35</code>.
+                  </div>
+                </div>
+                <div className="sec-tech-row">
+                  <div className="sec-tech-k">Risiko sisa yang diterima (3× Sedang)</div>
+                  <div className="sec-tech-v">
+                    <code>script-src &apos;unsafe-inline&apos;</code>, <code>style-src &apos;unsafe-inline&apos;</code>,
+                    dan <code>img-src https:</code> (wildcard). Diperlukan oleh skrip bootstrap inline Next.js,
+                    blok <code>&lt;style&gt;</code> inline aplikasi, dan foto profil dari sumber arbitrer.
+                    Pertahanan XSS utama tetap utuh tanpa bergantung pada CSP: auto-escape React +
+                    JSON-LD yang sudah di-escape (PK-M1). CSP berbasis nonce ditunda — bukan nilai
+                    sepadan dengan kompleksitas Next.js saat ini.
+                  </div>
+                </div>
+                <div className="sec-tech-row">
+                  <div className="sec-tech-k">Terbukti hilang di build produksi</div>
+                  <div className="sec-tech-v">
+                    <code>script-src &apos;unsafe-eval&apos;</code> (hanya dev, untuk React Fast Refresh) dan
+                    &ldquo;Information Disclosure – Suspicious Comments&rdquo; (×40, hilang setelah minifikasi).
+                  </div>
+                </div>
+                <div className="sec-tech-row">
+                  <div className="sec-tech-k">Positif palsu / informasional (tanpa tindakan)</div>
+                  <div className="sec-tech-v">
+                    &ldquo;User Controllable HTML Element Attribute (Potential XSS)&rdquo; pada{' '}
+                    <code>/pejabat?provinsi=</code> — nilai di-render lewat JSX React (<code>PejabatBrowse.tsx:167</code>,
+                    auto-escape) dan dibatasi ke daftar provinsi tetap. &ldquo;Timestamp Disclosure&rdquo;
+                    (hash aset 10-digit), &ldquo;Content-Type Missing&rdquo;, &ldquo;Modern Web Application&rdquo;.
+                    &ldquo;HSTS Not Set&rdquo; tercatat hanya untuk <code>www.google.com</code> — ZAP merayap
+                    ke luar situs; HSTS aplikasi sendiri aktif di produksi.
+                  </div>
+                </div>
+              </div>
+            </details>
+          </div>
+        </div>
+
         <h2 className="sec-h">Ringkasan tingkat keparahan</h2>
         <div className="sec-score">
           {order.map((s) => (
