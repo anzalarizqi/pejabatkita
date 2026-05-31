@@ -119,7 +119,7 @@ All modes: inverted polarity (red = bad), consistent legend. `hash01` mock stays
 
 ## Next Session Should Start With
 
-### ⚠ Security hardening — Tahap 1–2 shipped (2026-05-31)
+### ⚠ Security hardening — Tahap 1–3 shipped (2026-05-31)
 
 Full audit lives in-app at **`/admin/security`** (admin-gated, dual-register: plain-language + technical `<details>`). All Critical + High remediated & runtime-verified:
 - **PK-C1 (critical)** — all 8 `/api/admin/*` routes used a truthy-only cookie check (any forged `admin_session` cookie = admin → fake kasus inserts, data exfil). Now use constant-time `isAdmin()` (`web/lib/auth.ts`).
@@ -128,7 +128,11 @@ Full audit lives in-app at **`/admin/security`** (admin-gated, dual-register: pl
 - **PK-H3** — RLS enabled on `settings` (migration `013`, applied).
 - **PK-H4** — `kasus` anon policy → verified-only (migration `014`, applied) + `getKasusByPejabat` guard. Public shows only `verified=true` (18 of 100; 82 rejected now hidden). Homepage choropleth (service role) unaffected.
 
-**Next — Tahap 3 (defense-in-depth, not urgent):** PK-M1 JSON-LD XSS escape (`[pejabat-id]/page.tsx:95`), PK-M2 CSP+HSTS (`next.config.ts`), PK-M3 SSRF guard on `browser.py` navigate/extract, PK-M4 edge-fn `crawl-hotspot` auth+rate-limit, PK-M5 upgrade `xlsx@0.18.5`; Lows L1–L4 (salt/sandbox/slug/cookie). Optional: set `ADMIN_SESSION_SECRET`; tidy 2 pre-existing lint errors (`login` `useEffect`, `confirm` `let errors`) for a green `next build`.
+**Tahap 3 (defense-in-depth) — shipped (13/14 total):** PK-M1 JSON-LD XSS escape (`[pejabat-id]/page.tsx`, single `/[<>&]/g` replacer), PK-M2 CSP+HSTS (`next.config.ts`, env-aware), PK-M3 SSRF guard + DNS resolution in `is_private_url` (`websearch.py`) now applied to `browser.py` navigate/extract, PK-M4 **opt-in** `CRAWL_SECRET` gate in the `crawl-hotspot` edge fn (set the secret + add `x-crawl-secret` to migration 011 to activate), PK-M5 `xlsx` → SheetJS CDN 0.20.3, PK-L1 dedicated `HASH_SALT`, PK-L3 output-dir containment, PK-L4 covered by H1 token expiry. Pre-existing lint errors fixed → green `next build`.
+
+**Dependency bonus (from `npm audit`):** `next` 16.2.4 → **16.2.6** (closes a HIGH advisory cluster incl. middleware/proxy bypass + SSRF), `ws`/`brace-expansion` patched. Residual: 2 moderate transitive `postcss` (build-time) left as-is (needs a breaking bump). **Restart `npm run dev` to pick up the Next upgrade + CSP (`next.config` is not hot-reloaded).**
+
+**Only open item:** PK-L2 — Chromium runs with `--no-sandbox` (`browser.py`); not changed because removing it breaks headless Chromium as root. Fix at the container level (run as non-root). Optional: set `ADMIN_SESSION_SECRET` for a dedicated session key.
 
 ### Current state (end of 2026-05-30)
 

@@ -12,7 +12,10 @@ def write_province_output(
     dry_run: bool = False,
 ) -> Path:
     """Write scraper results for one province to output/<provinsi_slug>/."""
-    base = Path(output_dir) / provinsi_slug
+    out_root = Path(output_dir).resolve()
+    base = (out_root / provinsi_slug).resolve()
+    if out_root not in base.parents:
+        raise ValueError(f"provinsi_slug escapes output dir: {provinsi_slug!r}")
 
     if dry_run:
         print(f"[dry-run] would write {len(pejabat_list)} pejabat to {base}/")

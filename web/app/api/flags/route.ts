@@ -4,8 +4,9 @@ import { createHash } from 'crypto'
 import { isAdmin } from '@/lib/auth'
 
 function hashIp(ip: string): string {
+  // Dedicated salt — never reuse the admin secret here (audit PK-L1)
   return createHash('sha256')
-    .update(ip + (process.env.ADMIN_PASSWORD ?? 'salt'))
+    .update(ip + (process.env.HASH_SALT ?? 'pejabatkita-flags'))
     .digest('hex')
 }
 

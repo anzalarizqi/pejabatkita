@@ -92,7 +92,12 @@ export default async function PejabatProfilePage({ params }: Props) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(ldJson) }}
+        dangerouslySetInnerHTML={{
+          // Escape so a malicious name can't break out of <script> (audit PK-M1)
+          __html: JSON.stringify(ldJson).replace(/[<>&]/g, (c) =>
+            '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'),
+          ),
+        }}
       />
       <ProfileClient pejabat={pejabat} jabatan={jabatan} provinsiNama={provinsiNama} kasus={kasus} />
     </>

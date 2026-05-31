@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import logging
 
+from .websearch import is_private_url
+
 logger = logging.getLogger(__name__)
 
 _playwright_instance = None
@@ -75,6 +77,9 @@ async def navigate(url: str, wait_for: str | None = None) -> str:
     Open URL in headless browser, return page text (up to 15000 chars).
     Used as last-resort fallback for JS-heavy sites.
     """
+    if is_private_url(url):
+        logger.warning("Blocked private URL in browser.navigate: %s", url)
+        return ""
     try:
         browser = await _get_browser()
     except Exception:
@@ -99,6 +104,9 @@ async def extract(url: str, selector: str) -> list[str]:
     """
     Extract text content of all elements matching selector (max 50).
     """
+    if is_private_url(url):
+        logger.warning("Blocked private URL in browser.extract: %s", url)
+        return []
     try:
         browser = await _get_browser()
     except Exception:

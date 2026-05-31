@@ -93,6 +93,7 @@ const FINDINGS: Finding[] = [
   {
     id: 'PK-M1',
     sev: 'medium',
+    status: 'fixed',
     title: 'Celah penyisipan skrip (XSS) lewat nama pejabat',
     impact:
       'Sebuah kolom nama disisipkan ke halaman dengan cara yang, bila nama itu berisi kode berbahaya, kode tersebut bisa berjalan di browser pengunjung. Digabung dengan temuan PK-C1 (siapa pun bisa menulis nama), celah ini dapat dijangkau.',
@@ -105,6 +106,7 @@ const FINDINGS: Finding[] = [
   {
     id: 'PK-M2',
     sev: 'medium',
+    status: 'fixed',
     title: 'Header keamanan browser belum lengkap',
     impact:
       'Dua proteksi standar browser belum ada: satu membatasi kerusakan jika skrip berbahaya berhasil masuk (CSP), satu lagi memaksa koneksi selalu aman/terenkripsi (HSTS).',
@@ -117,6 +119,7 @@ const FINDINGS: Finding[] = [
   {
     id: 'PK-M3',
     sev: 'medium',
+    status: 'fixed',
     title: 'Scraper bisa diarahkan ke alamat internal (SSRF)',
     impact:
       'Browser scraping bisa diarahkan ke alamat internal/cloud tanpa penjagaan. Di lingkungan cloud, ini bisa membocorkan kredensial mesin (mis. endpoint metadata).',
@@ -129,6 +132,7 @@ const FINDINGS: Finding[] = [
   {
     id: 'PK-M4',
     sev: 'medium',
+    status: 'fixed',
     title: 'Fungsi crawl bisa dipicu siapa saja → boros biaya AI',
     impact:
       'Fungsi crawl di cloud tidak punya kunci di tingkat aplikasi dan tidak dibatasi laju. Orang luar bisa memicunya berulang kali sehingga menaikkan tagihan AI/pencarian, atau menspam feed hotspot.',
@@ -141,6 +145,7 @@ const FINDINGS: Finding[] = [
   {
     id: 'PK-M5',
     sev: 'medium',
+    status: 'fixed',
     title: 'Pustaka pembaca Excel yang rentan',
     impact:
       'Komponen pembaca file spreadsheet yang diunggah punya bug keamanan yang sudah diketahui dan tidak lagi dirawat pada kanal saat ini; file yang dirancang khusus bisa mengeksploitasinya.',
@@ -153,6 +158,7 @@ const FINDINGS: Finding[] = [
   {
     id: 'PK-L1',
     sev: 'low',
+    status: 'fixed',
     title: 'Kata sandi admin dipakai ulang sebagai "garam" hash IP',
     impact:
       'Jika hash IP pernah bocor dan alamat IP diketahui, kata sandi admin bisa ditebak secara offline.',
@@ -172,6 +178,7 @@ const FINDINGS: Finding[] = [
   {
     id: 'PK-L3',
     sev: 'low',
+    status: 'fixed',
     title: 'Slug provinsi tidak disanitasi saat menulis file',
     impact: 'Pertahanan berlapis: saat ini nilai dikendalikan operator, jadi belum bisa dijangkau dari web.',
     location: 'scraper/core/output.py:15',
@@ -181,6 +188,7 @@ const FINDINGS: Finding[] = [
   {
     id: 'PK-L4',
     sev: 'low',
+    status: 'fixed',
     title: 'Cookie admin sameSite=lax tanpa kedaluwarsa sisi server',
     impact: 'Sesi tidak bisa dicabut dari sisi server sebelum 7 hari; perlindungan lintas-situs bisa diperketat.',
     location: 'web/app/api/auth/route.ts:11-17',
@@ -229,6 +237,7 @@ const ROADMAP: Stage[] = [
   {
     no: '3',
     when: 'Sprint berikutnya',
+    done: true,
     items: 'PK-M1 · PK-M2 · PK-M5',
     what: 'Tutup celah XSS, lengkapi header keamanan browser (CSP/HSTS), perbarui pustaka Excel yang rentan.',
     effort: 'Sedang',
@@ -237,6 +246,7 @@ const ROADMAP: Stage[] = [
   {
     no: '4',
     when: 'Backlog terjadwal',
+    done: true,
     items: 'PK-M3 · PK-M4 · PK-L1–L4',
     what: 'Penjagaan SSRF, kunci fungsi crawl, perbaikan salt hash, sandbox browser, dan sanitasi slug.',
     effort: 'Kecil–Sedang',
@@ -534,7 +544,7 @@ export default function SecurityAuditPage() {
         <h1 className="sec-title">Audit Keamanan</h1>
         <div className="sec-meta">
           Lingkup: aplikasi web (Next.js + Supabase), rute API, kebijakan RLS, fungsi edge, dan scraper Python.<br />
-          Potret per 31 Mei 2026 · 14 temuan · Status: Kritis + seluruh Tinggi diperbaiki (Tahap 1–2) · sisa 5 Sedang, 4 Rendah
+          Potret per 31 Mei 2026 · 14 temuan · Status: 13/14 diperbaiki (Tahap 1–3) · sisa PK-L2 (sandbox — bersifat lingkungan/kontainer)
         </div>
 
         <p className="sec-lede">
@@ -545,14 +555,14 @@ export default function SecurityAuditPage() {
         </p>
 
         <div className="sec-alert" style={{ borderLeftColor: '#1e7a45', background: '#f1f7f2' }}>
-          <div className="sec-alert-label" style={{ color: '#1e7a45' }}>✓ Pembaruan remediasi — 31 Mei 2026</div>
+          <div className="sec-alert-label" style={{ color: '#1e7a45' }}>✓ Pembaruan remediasi — Tahap 1–3 selesai (31 Mei 2026)</div>
           <div className="sec-alert-body">
-            Temuan <strong>Kritis (PK-C1)</strong> dan <strong>seluruh temuan Tinggi (PK-H1–H4)</strong> telah
-            ditutup dan diverifikasi: alat admin kini memverifikasi sesi yang benar, cookie login bukan lagi
-            kata sandi (token bertanda tangan + batas percobaan login), perintah scraper dijalankan tanpa
-            shell, tabel pengaturan dikunci, dan hanya kasus terverifikasi yang tampil ke publik. Sisa
-            temuan hanya tingkat <strong>Sedang</strong> dan <strong>Rendah</strong> — pertahanan berlapis,
-            tidak mendesak.
+            <strong>13 dari 14 temuan ditutup.</strong> Seluruh Kritis + Tinggi + Sedang + sebagian besar
+            Rendah sudah diperbaiki: token sesi bertanda tangan, gerbang admin per-rute, scraper tanpa shell,
+            RLS terkunci, kasus publik hanya yang terverifikasi, CSP + HSTS, penjagaan SSRF, dan pembaruan
+            dependensi (Next.js → 16.2.6 menutup advisory HIGH middleware/SSRF; xlsx → build SheetJS yang
+            dipatch). Sisa satu: <strong>PK-L2</strong> (Chromium --no-sandbox) — bersifat lingkungan/kontainer,
+            didokumentasikan, bukan perubahan kode.
           </div>
         </div>
 

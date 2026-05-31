@@ -12,6 +12,7 @@ export default function LoginPage() {
   const router = useRouter()
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot mount fade-in
     setMounted(true)
     inputRef.current?.focus()
   }, [])

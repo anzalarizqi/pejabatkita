@@ -22,21 +22,35 @@ def _search_config() -> dict:
 # ─── SSRF protection ─────────────────────────────────────────────────────────
 
 def is_private_url(url: str) -> bool:
-    """Return True if the URL points to a private/local address (block it)."""
+    """Return True if the URL points to a private/local address (block it).
+
+    Resolves the hostname and blocks if ANY resolved address is private/reserved
+    — closes the DNS-rebinding / cloud-metadata bypass (audit PK-M3).
+    """
+    import socket
+    from urllib.parse import urlparse
     try:
-        from urllib.parse import urlparse
         parsed = urlparse(url)
         if parsed.scheme not in ("http", "https"):
             return True
         host = parsed.hostname or ""
         if not host:
             return True
-        if host in ("localhost",) or host.endswith(".local"):
+        if host == "localhost" or host.endswith((".local", ".internal", ".localhost")):
             return True
-        addr = ipaddress.ip_address(host)
-        return addr.is_private or addr.is_loopback or addr.is_link_local
-    except ValueError:
-        return False  # not an IP address — domain names are allowed
+        try:
+            infos = socket.getaddrinfo(host, None)
+        except socket.gaierror:
+            return True  # unresolvable — block
+        for info in infos:
+            try:
+                addr = ipaddress.ip_address(info[4][0])
+            except ValueError:
+                return True
+            if (addr.is_private or addr.is_loopback or addr.is_link_local
+                    or addr.is_reserved or addr.is_multicast or addr.is_unspecified):
+                return True
+        return False
     except Exception:
         return True
 

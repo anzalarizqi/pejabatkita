@@ -31,7 +31,8 @@ export async function POST(request: NextRequest) {
     wilayahByName.set(normalize(w.nama), w.id)
   })
 
-  let inserted = 0, updated = 0, flagged = 0, errors: string[] = []
+  let inserted = 0, updated = 0, flagged = 0
+  const errors: string[] = []
 
   for (const entry of diff.entries) {
     if (entry.action === 'unchanged') continue

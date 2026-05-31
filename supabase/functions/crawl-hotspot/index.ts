@@ -30,6 +30,18 @@ async function getExistingUrls(supabase: ReturnType<typeof createClient>): Promi
 
 Deno.serve(async (req) => {
   const t0 = Date.now()
+
+  // Opt-in shared-secret gate (audit PK-M4). When CRAWL_SECRET is set in the
+  // function secrets, callers must send a matching x-crawl-secret header. After
+  // setting it, add the header to the pg_cron caller (migration 011).
+  const crawlSecret = Deno.env.get('CRAWL_SECRET')
+  if (crawlSecret && req.headers.get('x-crawl-secret') !== crawlSecret) {
+    return new Response(JSON.stringify({ error: 'unauthorized' }), {
+      status: 401,
+      headers: { 'content-type': 'application/json' },
+    })
+  }
+
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   const llmApiKey = Deno.env.get('LLM_API_KEY')!
