@@ -657,12 +657,14 @@ export interface ProvinceKasusCount {
 export async function listProvinceKasusCounts(): Promise<ProvinceKasusCount[]> {
   const supabase = await createServerSupabase(true)  // service role — kasus_screened has no public RLS policy
 
-  const [kasusRows, screenedRows, jabatanRows, wilayahRows] = await Promise.all([
-    supabase.from('kasus').select('pejabat_id').neq('verified', false).then(({ data }) =>
-      (data ?? []) as Array<{ pejabat_id: string }>
+  const [kasusAllRows, screenedRows, jabatanRows, wilayahRows] = await Promise.all([
+    // fetchAll (not a plain .select) — both tables can exceed PostgREST's 1000-row
+    // cap, which would silently drop the most-recently-screened pejabat.
+    fetchAll<{ pejabat_id: string; verified: boolean | null }>(
+      supabase, 'kasus', 'pejabat_id, verified',
     ),
-    supabase.from('kasus_screened').select('pejabat_id').then(({ data }) =>
-      (data ?? []) as Array<{ pejabat_id: string }>
+    fetchAll<{ pejabat_id: string }>(
+      supabase, 'kasus_screened', 'pejabat_id',
     ),
     fetchAll<Pick<JabatanRow, 'pejabat_id' | 'wilayah_id'>>(
       supabase, 'jabatan', 'pejabat_id, wilayah_id',
@@ -671,6 +673,10 @@ export async function listProvinceKasusCounts(): Promise<ProvinceKasusCount[]> {
       supabase, 'wilayah', 'id, nama, level, parent_id',
     ),
   ])
+  // Mirror the old `.neq('verified', false)` filter: PostgREST `verified <> false`
+  // returns only verified=true (NULL/pending excluded), matching the public
+  // verified-only policy.
+  const kasusRows = kasusAllRows.filter((k) => k.verified === true)
 
   const wilayahById = new Map<string, Pick<Wilayah, 'id' | 'nama' | 'level' | 'parent_id'>>()
   for (const w of wilayahRows) wilayahById.set(w.id, w)
