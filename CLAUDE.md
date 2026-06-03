@@ -194,21 +194,15 @@ python scripts/crawl_hotspot.py --dry-run
 
 ### Next Session Should Start With
 
-**1. ✅ Re-verify suspicious rejects — DONE (2026-06-03).** Ran `verify_kasus.py --report-suspicious-rejects`: 82 rejected rows, 22 keyword-flagged. Triaged all 22 — 21 were correctly rejected (no evidence / wrong-person disambiguation / election disputes / witnesses-only). Only **Mohamad Sanusi** (`a1bcb257…`, reklamasi Teluk Jakarta 2016) was genuinely wrong-rejected → fixed manually to `verified=true`. Verifier heuristic confirmed working well; the affirmative-keyword flag is noisy (trips on negating sentences).
+**✅ Recently shipped (2026-06-03):**
+- **Re-verify suspicious rejects** — `verify_kasus.py --report-suspicious-rejects`: 82 rejected, 22 keyword-flagged. Triaged all — 21 correctly rejected (no evidence / wrong-person / election disputes / witnesses-only); only **Mohamad Sanusi** (reklamasi Teluk Jakarta 2016) genuinely wrong-rejected → fixed manually to `verified=true`. Verifier heuristic confirmed good; affirmative-keyword flag is noisy.
+- **Rekam Bersih screening — COMPLETE.** All 38 provinces screened.
+- **Homepage Pusat view scroll fix** (commit `831a9fb`) — `100vh` stage clipped `KabinetGrid`; wrapped in `.pv-pusat-scroll`.
+- **Pusat (Kabinet) batched screening** in `/admin/rekam-bersih` (commit `5c33991`) — `Pusat · Kabinet (n/N)` dropdown options export unscreened `level='pusat'` officials in batches of 40, same AI-fill→import loop. 111 unscreened → 3 batches. (Map zoom/pan + denyut legend shipped 2026-05-30 — see session archive.)
 
-**2. ✅ Rekam Bersih screening — COMPLETE (2026-06-03).** All 38 provinces screened (was 16 remaining).
+**Active priorities (in order):**
 
-**3. Map zoom/pan** — ✅ SHIPPED LIVE (2026-05-30). Zoom/pan/recenter now on homepage + `/pejabat`.
-- `d3-zoom` wrapper `useMapZoom.ts` (imperative transform, scaleExtent [1,8], reduced-motion) + `MapZoomControls.tsx` (editorial +/−/⌖). Both maps have a `zoomable` prop.
-- **Wheel-trap fix:** `useMapZoom` gained a `wheelModifier` option. Homepage (`100vh`, no page scroll) uses plain wheel-zoom. `/pejabat` (scrolling page) passes `wheelModifier` → plain wheel scrolls the page, **Ctrl/⌘ + wheel** zooms (trackpad pinch sends ctrl+wheel, so it zooms for free); a `⌘/Ctrl + scroll untuk zoom` hint shows top-left. Buttons + drag + pinch always work.
-- Verified via headless browser: homepage zoom/recenter + denyut dots (inside zoom group, clickable); `/pejabat` national + drill-down gate (plain wheel = no zoom, ctrl wheel = zoom). 0 console errors, clean build.
-- `/admin/map-lab` sandbox now redundant (kept, not deleted). Spec: `docs/superpowers/specs/2026-05-30-map-zoom-pan-design.md`.
-
-**3b. Denyut dots — legend + cap priority (2026-05-30).**
-- Homepage denyut mode had **no visible legend** (the map's `.dot-legend` is clipped by the `100vh` stage). Added `DenyutLegend` in `HomeShell` rendered in the visible legend slot: `◉ 24 jam · berdenyut` (pulsing halo) vs `● ≤ 7 hari · statis` (plain dot). `IndonesiaMap`'s own `.dot-legend` also clarified (static key + time labels) — that one is visible on `/pulse`.
-- Per-province dot cap (`MAX_DOTS=10`) now **sorts 24h events to the front before slicing**, so pulsing/24h dots are never dropped and the cut always falls on the oldest. Reminder: denyut window is by `crawled_at`, not actual event date.
-
-**4. Brainstorm: how to collect DPR / DPD / MPR member list.**
+**1. Collect DPR / DPD / MPR member list.**
 - `pejabat.level = 'pusat'` currently ~111 kabinet ministers only
 - Need: 580 DPR anggota + ~136 DPD anggota + MPR pimpinan
 - **Start with brainstorming session** — learn from what worked:
@@ -217,7 +211,11 @@ python scripts/crawl_hotspot.py --dry-run
   - Apply the same export→AI fill→import loop for DPR/DPD/MPR collection
 - Key questions to brainstorm: what's the seed data (KPU calon 2024? dpr.go.id scrape? Wikipedia?), how to structure the CSV for AI to fill, what verification step is needed
 
-**5. Optional: cleanup 8 Denyut events with null `wilayah_id`:**
+**2. LHKPN scraper (Phase 9C — data priority #2, locked).**
+- Source: `elhkpn.kpk.go.id`. Every kepala daerah is legally required to file.
+- Unlocks the **LHKPN map mode** (currently mock `hash01`) — swap is one-line per mode in `HomeShell.tsx` + profile page.
+
+**3. Optional: cleanup 8 Denyut events with null `wilayah_id`:**
 ```sql
 UPDATE hotspot_events
 SET wilayah_id = (SELECT id FROM wilayah WHERE nama = 'DKI Jakarta'),
@@ -235,9 +233,9 @@ WHERE wilayah_id IS NULL;
 ### Deferred (still)
 
 - Partai enrichment: `/admin/enrichment` CSV flow (~1,005 null rows)
-- LHKPN scraper (Phase 9C)
 - Pendidikan enrichment (Phase 9D)
 - OG cards / sitemap.xml
+(LHKPN scraper promoted to active priority #2 above.)
 
 ## Stack Notes (gotchas)
 
