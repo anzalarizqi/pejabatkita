@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 type ImportResult = {
   found: number
@@ -29,14 +29,25 @@ const PROVINCES = [
 export default function RekamBersihPage() {
   const fileRef = useRef<HTMLInputElement>(null)
   const [provinsi, setProvinsi] = useState('')
+  const [pusatBatches, setPusatBatches] = useState<number | null>(null)
   const [importing, setImporting] = useState(false)
   const [result, setResult] = useState<ImportResult | null>(null)
   const [error, setError] = useState('')
 
+  // How many batches of unscreened Pusat (kabinet) officials are left to screen
+  useEffect(() => {
+    fetch('/api/admin/export-kasus-csv?bucket=pusat&meta=1')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (d) setPusatBatches(d.batches) })
+      .catch(() => { /* ignore — provinces still work */ })
+  }, [])
+
   function handleExport() {
     if (!provinsi) return
     const a = document.createElement('a')
-    a.href = `/api/admin/export-kasus-csv?provinsi=${encodeURIComponent(provinsi)}`
+    a.href = provinsi.startsWith('pusat:')
+      ? `/api/admin/export-kasus-csv?bucket=pusat&batch=${provinsi.slice('pusat:'.length)}`
+      : `/api/admin/export-kasus-csv?provinsi=${encodeURIComponent(provinsi)}`
     a.download = ''
     a.click()
   }
@@ -253,6 +264,15 @@ export default function RekamBersihPage() {
               onChange={e => setProvinsi(e.target.value)}
             >
               <option value="">Pilih provinsi...</option>
+              {pusatBatches !== null && (
+                pusatBatches === 0
+                  ? <option key="pusat-done" value="" disabled>Pusat · Kabinet — selesai ✓</option>
+                  : Array.from({ length: pusatBatches }, (_, i) => (
+                      <option key={`pusat:${i + 1}`} value={`pusat:${i + 1}`}>
+                        Pusat · Kabinet ({i + 1}/{pusatBatches})
+                      </option>
+                    ))
+              )}
               {PROVINCES.map(p => (
                 <option key={p} value={p}>{p}</option>
               ))}
