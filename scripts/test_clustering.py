@@ -38,5 +38,17 @@ def test_candidate_params_returns_none_when_no_anchor():
 
 
 if __name__ == "__main__":
-    import pytest  # type: ignore
-    sys.exit(pytest.main([__file__, "-v"]))
+    import traceback
+    tests = [v for k, v in sorted(globals().items())
+             if k.startswith("test_") and callable(v)]
+    failures = 0
+    for t in tests:
+        try:
+            t()
+            print(f"PASS {t.__name__}")
+        except Exception:
+            failures += 1
+            print(f"FAIL {t.__name__}")
+            traceback.print_exc()
+    print(f"\n{len(tests) - failures}/{len(tests)} passed")
+    sys.exit(1 if failures else 0)
