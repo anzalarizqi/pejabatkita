@@ -323,7 +323,9 @@ export default function PreviewShell({
                   : <MapLegend mode={mode} provinces={provinces} />}
               </>
             ) : (
-              <KabinetGrid officials={pusatOfficials} />
+              <div className="pv-pusat-scroll">
+                <KabinetGrid officials={pusatOfficials} />
+              </div>
             )}
           </section>
 
@@ -1117,6 +1119,16 @@ const styles = `
     overflow: hidden;
   }
   .pv-stage-map .map-legend { display: none; }
+
+  /* Pusat (Kabinet) view: scroll the official grid inside the fixed-height stage */
+  .pv-pusat-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    z-index: 1;
+    padding: 4px 24px 12px;
+    animation: pv-fadein 1.1s 0.3s both;
+  }
 
   /* ── Stat strip (above the map) ──────────────────────────────── */
   .pv-strip {

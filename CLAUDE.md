@@ -194,21 +194,9 @@ python scripts/crawl_hotspot.py --dry-run
 
 ### Next Session Should Start With
 
-**1. Re-verify suspicious rejects** — 81 kasus are `verified=False`, many rejected before today's verifier fixes (date, gelar, jabatan context). Run:
-```bash
-python scripts/verify_kasus.py --report-suspicious-rejects
-# Reset and re-run for rows flagged as affirmative-but-rejected:
-UPDATE kasus SET verified=null, verified_at=null, verified_note=null WHERE kasus_id='...';
-python scripts/verify_kasus.py
-```
+**1. ✅ Re-verify suspicious rejects — DONE (2026-06-03).** Ran `verify_kasus.py --report-suspicious-rejects`: 82 rejected rows, 22 keyword-flagged. Triaged all 22 — 21 were correctly rejected (no evidence / wrong-person disambiguation / election disputes / witnesses-only). Only **Mohamad Sanusi** (`a1bcb257…`, reklamasi Teluk Jakarta 2016) was genuinely wrong-rejected → fixed manually to `verified=true`. Verifier heuristic confirmed working well; the affirmative-keyword flag is noisy (trips on negating sentences).
 
-**2. Complete Rekam Bersih screening for remaining 16 provinces:**
-```bash
-python scripts/screen_kasus_llm.py --report
-python scripts/screen_kasus_llm.py --resume --log   # picks up unscreened provinces
-python scripts/verify_kasus.py                       # verify new finds
-```
-Or use `/admin/rekam-bersih` web UI for free (Gemini/Claude) → import CSV.
+**2. ✅ Rekam Bersih screening — COMPLETE (2026-06-03).** All 38 provinces screened (was 16 remaining).
 
 **3. Map zoom/pan** — ✅ SHIPPED LIVE (2026-05-30). Zoom/pan/recenter now on homepage + `/pejabat`.
 - `d3-zoom` wrapper `useMapZoom.ts` (imperative transform, scaleExtent [1,8], reduced-motion) + `MapZoomControls.tsx` (editorial +/−/⌖). Both maps have a `zoomable` prop.
