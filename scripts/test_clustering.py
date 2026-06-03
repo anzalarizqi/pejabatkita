@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
-from scripts.crawl_hotspot import build_candidate_query_params, parse_match_response
+from scripts.crawl_hotspot import build_candidate_query_params, parse_match_response, _to_iso
 
 
 def test_candidate_params_pejabat_and_wilayah():
@@ -74,6 +74,33 @@ def test_parse_match_with_code_fence():
 
 def test_parse_match_garbage_returns_none():
     assert parse_match_response("not json", valid_ids={"E1"}) is None
+
+
+def test_to_iso_passthrough_aware():
+    assert _to_iso("2026-06-03T00:00:00+00:00") == "2026-06-03T00:00:00+00:00"
+
+
+def test_to_iso_naive_pinned_utc():
+    assert _to_iso("2026-06-03T00:00:00") == "2026-06-03T00:00:00+00:00"
+
+
+def test_to_iso_rfc822_from_rss():
+    # RSS <pubDate> is RFC822; must normalize to a UTC-equivalent ISO instant.
+    assert _to_iso("Wed, 03 Jun 2026 07:00:00 +0700") == "2026-06-03T00:00:00+00:00"
+
+
+def test_to_iso_freeform_falls_back_to_now():
+    # LLM free-form date can't be parsed → falls back to a valid ISO 'now'.
+    out = _to_iso("3 June 2026")
+    from datetime import datetime
+    parsed = datetime.fromisoformat(out)  # must be valid ISO
+    assert parsed.tzinfo is not None
+
+
+def test_to_iso_none_falls_back_to_now():
+    from datetime import datetime
+    parsed = datetime.fromisoformat(_to_iso(None))
+    assert parsed.tzinfo is not None
 
 
 if __name__ == "__main__":

@@ -282,7 +282,7 @@ def kimi_match_story(client: httpx.Client, base_url: str, model: str, api_key: s
                 {"role": "system", "content": MATCH_SYSTEM_PROMPT},
                 {"role": "user", "content": user},
             ],
-            "temperature": 0.1,
+            "temperature": 0.6,  # kimi-k2.6 only accepts 0.6 — other values 400
             "thinking": {"type": "disabled"},
         },
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
@@ -362,6 +362,32 @@ def fetch_all(client: httpx.Client, table: str, select: str, filters: dict | Non
         if len(batch) < 1000: break
         offset += 1000
     return rows
+
+
+def _to_iso(pubdate: str | None) -> str:
+    """Normalize a pubDate to a tz-aware ISO string. Handles ISO and RFC822
+    (RSS <pubDate>); naive values are treated as UTC. Falls back to now() when
+    absent or unparseable (e.g. LLM free-form dates like '3 June 2026')."""
+    now = datetime.now(timezone.utc)
+    if not pubdate:
+        return now.isoformat()
+    try:
+        dt = datetime.fromisoformat(pubdate)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc).isoformat()
+    except ValueError:
+        pass
+    try:
+        from email.utils import parsedate_to_datetime
+        dt = parsedate_to_datetime(pubdate)
+        if dt is not None:
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.astimezone(timezone.utc).isoformat()
+    except (ValueError, TypeError):
+        pass
+    return now.isoformat()
 
 
 def build_candidate_query_params(
@@ -558,7 +584,7 @@ def main() -> None:
                 except Exception:
                     sumber_nama = article["source"]
 
-                crawled_at = article.get("pubDate") or datetime.now(timezone.utc).isoformat()
+                crawled_at = _to_iso(article.get("pubDate"))
 
                 # ─── Event clustering: match against recent candidates ───
                 event_id = str(uuid.uuid4())
