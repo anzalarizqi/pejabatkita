@@ -398,6 +398,8 @@ def build_candidate_query_params(
 def find_candidate_events(client: httpx.Client, kategori: str,
                           pejabat_id: str | None, wilayah_id: str | None,
                           crawled_at: str) -> list[dict]:
+    """Fetch up to ~20 recent events that might be the same story. Returns [] when
+    there's no anchor (build_candidate_query_params returns None) or on a non-200."""
     params = build_candidate_query_params(kategori, pejabat_id, wilayah_id, crawled_at)
     if params is None:
         return []
@@ -534,68 +536,68 @@ def main() -> None:
         # ─── Stage 4: resolve + insert ───
         inserted = rejected = parse_failed = db_errors = 0
         print()
-        for article, r in all_results:
-            if r is None: parse_failed += 1; continue
-            if r.get("skip") or not r.get("judul"): rejected += 1; continue
+        with httpx.Client() as match_client:
+            for article, r in all_results:
+                if r is None: parse_failed += 1; continue
+                if r.get("skip") or not r.get("judul"): rejected += 1; continue
 
-            kategori = r.get("kategori") if r.get("kategori") in VALID_KATEGORI else "lainnya"
-            lokasi = r.get("lokasi_nama")
-            pejabat_nama = r.get("pejabat_nama")
-            wilayah_id = resolve_wilayah_id(db_client, lokasi)
-            pejabat_id = resolve_pejabat_id(db_client, pejabat_nama)
+                kategori = r.get("kategori") if r.get("kategori") in VALID_KATEGORI else "lainnya"
+                lokasi = r.get("lokasi_nama")
+                pejabat_nama = r.get("pejabat_nama")
+                wilayah_id = resolve_wilayah_id(db_client, lokasi)
+                pejabat_id = resolve_pejabat_id(db_client, pejabat_nama)
 
-            try:
-                host = urlparse(article["url"]).hostname or ""
-                sumber_nama = host.replace("www.", "")
-                # Google News proxy: extract real outlet from title suffix "... - Outlet"
-                if "news.google.com" in host:
-                    m = re.search(r"\s[-–]\s([A-Za-z0-9.\s]+)\s*$", article.get("title", ""))
-                    if m:
-                        sumber_nama = m.group(1).strip().lower()
-            except Exception:
-                sumber_nama = article["source"]
-
-            crawled_at = article.get("pubDate") or datetime.now(timezone.utc).isoformat()
-
-            # ─── Event clustering: match against recent candidates ───
-            event_id = str(uuid.uuid4())
-            story_id = event_id  # default: this row is its own canonical story
-            candidates = find_candidate_events(db_client, kategori, pejabat_id,
-                                               wilayah_id, crawled_at)
-            if candidates:
                 try:
-                    with httpx.Client() as match_client:
+                    host = urlparse(article["url"]).hostname or ""
+                    sumber_nama = host.replace("www.", "")
+                    # Google News proxy: extract real outlet from title suffix "... - Outlet"
+                    if "news.google.com" in host:
+                        m = re.search(r"\s[-–]\s([A-Za-z0-9.\s]+)\s*$", article.get("title", ""))
+                        if m:
+                            sumber_nama = m.group(1).strip().lower()
+                except Exception:
+                    sumber_nama = article["source"]
+
+                crawled_at = article.get("pubDate") or datetime.now(timezone.utc).isoformat()
+
+                # ─── Event clustering: match against recent candidates ───
+                event_id = str(uuid.uuid4())
+                story_id = event_id  # default: this row is its own canonical story
+                candidates = find_candidate_events(db_client, kategori, pejabat_id,
+                                                   wilayah_id, crawled_at)
+                if candidates:
+                    try:
                         matched = kimi_match_story(
                             match_client, base_url, model, api_key,
                             r["judul"], r.get("ringkasan", ""), candidates,
                         )
-                except Exception as e:
-                    print(f"  ! match call failed, treating as new story: {e}", file=sys.stderr)
-                    matched = None
-                if matched:
-                    by_id = {c["event_id"]: c for c in candidates}
-                    story_id = by_id[matched].get("story_id") or matched
+                    except Exception as e:
+                        print(f"  ! match call failed, treating as new story: {e}", file=sys.stderr)
+                        matched = None
+                    if matched:
+                        by_id = {c["event_id"]: c for c in candidates}
+                        story_id = by_id[matched].get("story_id") or matched
 
-            row = {
-                "event_id": event_id,
-                "story_id": story_id,
-                "judul": r["judul"][:120],
-                "ringkasan": r.get("ringkasan", ""),
-                "kategori": kategori,
-                "lokasi_nama": lokasi,
-                "wilayah_id": wilayah_id,
-                "pejabat_id": pejabat_id,
-                "url_sumber": article["url"],
-                "sumber_nama": sumber_nama,
-                "crawled_at": crawled_at,
-                "is_manual": bool(args.keyword),
-            }
-            if insert_event(db_client, row, args.dry_run):
-                inserted += 1
-                tag = "↳ grouped" if story_id != event_id else "+ new"
-                print(f"  {tag} {r['judul'][:72]}")
-            else:
-                db_errors += 1
+                row = {
+                    "event_id": event_id,
+                    "story_id": story_id,
+                    "judul": r["judul"][:120],
+                    "ringkasan": r.get("ringkasan", ""),
+                    "kategori": kategori,
+                    "lokasi_nama": lokasi,
+                    "wilayah_id": wilayah_id,
+                    "pejabat_id": pejabat_id,
+                    "url_sumber": article["url"],
+                    "sumber_nama": sumber_nama,
+                    "crawled_at": crawled_at,
+                    "is_manual": bool(args.keyword),
+                }
+                if insert_event(db_client, row, args.dry_run):
+                    inserted += 1
+                    tag = "↳ grouped" if story_id != event_id else "+ new"
+                    print(f"  {tag} {r['judul'][:72]}")
+                else:
+                    db_errors += 1
 
     print(f"\nDone in {time.time()-t0:.1f}s.")
     print(f"  inserted:    {inserted}")
