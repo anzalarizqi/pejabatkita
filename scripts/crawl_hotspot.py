@@ -18,6 +18,7 @@ import os
 import re
 import sys
 import time
+import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -394,6 +395,19 @@ def build_candidate_query_params(
     }
 
 
+def find_candidate_events(client: httpx.Client, kategori: str,
+                          pejabat_id: str | None, wilayah_id: str | None,
+                          crawled_at: str) -> list[dict]:
+    params = build_candidate_query_params(kategori, pejabat_id, wilayah_id, crawled_at)
+    if params is None:
+        return []
+    resp = client.get(f"{SUPABASE_URL}/rest/v1/hotspot_events",
+                      params=params, headers=SB_HEADERS)
+    if resp.status_code != 200:
+        return []
+    return resp.json()
+
+
 _wilayah_cache: list[dict] | None = None
 
 def _normalize_wilayah(s: str) -> str:
@@ -543,7 +557,28 @@ def main() -> None:
 
             crawled_at = article.get("pubDate") or datetime.now(timezone.utc).isoformat()
 
+            # ─── Event clustering: match against recent candidates ───
+            event_id = str(uuid.uuid4())
+            story_id = event_id  # default: this row is its own canonical story
+            candidates = find_candidate_events(db_client, kategori, pejabat_id,
+                                               wilayah_id, crawled_at)
+            if candidates:
+                try:
+                    with httpx.Client() as match_client:
+                        matched = kimi_match_story(
+                            match_client, base_url, model, api_key,
+                            r["judul"], r.get("ringkasan", ""), candidates,
+                        )
+                except Exception as e:
+                    print(f"  ! match call failed, treating as new story: {e}", file=sys.stderr)
+                    matched = None
+                if matched:
+                    by_id = {c["event_id"]: c for c in candidates}
+                    story_id = by_id[matched].get("story_id") or matched
+
             row = {
+                "event_id": event_id,
+                "story_id": story_id,
                 "judul": r["judul"][:120],
                 "ringkasan": r.get("ringkasan", ""),
                 "kategori": kategori,
@@ -557,7 +592,8 @@ def main() -> None:
             }
             if insert_event(db_client, row, args.dry_run):
                 inserted += 1
-                print(f"  + {r['judul'][:80]}")
+                tag = "↳ grouped" if story_id != event_id else "+ new"
+                print(f"  {tag} {r['judul'][:72]}")
             else:
                 db_errors += 1
 
