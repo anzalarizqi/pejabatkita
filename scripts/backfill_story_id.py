@@ -15,7 +15,7 @@ Usage:
 """
 import argparse
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
@@ -25,10 +25,17 @@ sys.path.insert(0, str(ROOT))
 
 from scripts.crawl_hotspot import (
     SUPABASE_URL, SB_HEADERS, _kimi_creds, fetch_all,
-    kimi_match_story, parse_match_response,
+    kimi_match_story,
 )
 
 WINDOW_DAYS = 5
+
+
+def _parse_dt(s: str) -> datetime:
+    """Parse an ISO timestamp, treating a naive value as UTC so all comparisons
+    are tz-consistent (PostgREST normally returns +00:00-aware strings)."""
+    dt = datetime.fromisoformat(s)
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
 def main() -> None:
@@ -52,8 +59,9 @@ def main() -> None:
         regrouped = 0
 
         for r in rows:
-            base_dt = datetime.fromisoformat(r["crawled_at"])
+            base_dt = _parse_dt(r["crawled_at"])
             lo = base_dt - timedelta(days=WINDOW_DAYS)
+            # O(N²) scan over processed rows — fine for ~1k events; LLM latency dominates.
             cands = [
                 p for p in processed
                 if p["kategori"] == r["kategori"]
@@ -61,7 +69,7 @@ def main() -> None:
                     (r["pejabat_id"] and p["pejabat_id"] == r["pejabat_id"]) or
                     (r["wilayah_id"] and p["wilayah_id"] == r["wilayah_id"])
                 )
-                and datetime.fromisoformat(p["crawled_at"]) >= lo
+                and _parse_dt(p["crawled_at"]) >= lo
             ][-20:]
 
             story_id = r["event_id"]  # default canonical
