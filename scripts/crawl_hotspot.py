@@ -318,6 +318,8 @@ def build_candidate_query_params(
         return None
 
     base = datetime.fromisoformat(crawled_at)
+    if base.tzinfo is None:
+        base = base.replace(tzinfo=timezone.utc)
     lo = (base - timedelta(days=window_days)).isoformat()
     hi = (base + timedelta(days=window_days)).isoformat()
 

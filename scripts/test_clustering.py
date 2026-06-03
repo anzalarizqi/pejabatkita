@@ -29,6 +29,22 @@ def test_candidate_params_wilayah_only():
     assert params["or"] == "(wilayah_id.eq.W1)"
 
 
+def test_candidate_params_pejabat_only():
+    params = build_candidate_query_params(
+        kategori="korupsi", pejabat_id="P1", wilayah_id=None,
+        crawled_at="2026-06-03T00:00:00+00:00",
+    )
+    assert params["or"] == "(pejabat_id.eq.P1)"
+
+
+def test_candidate_params_naive_crawled_at_pinned_utc():
+    params = build_candidate_query_params(
+        kategori="korupsi", pejabat_id="P1", wilayah_id=None,
+        crawled_at="2026-06-03T00:00:00",  # no offset
+    )
+    assert params["crawled_at"] == ["gte.2026-05-29T00:00:00+00:00", "lte.2026-06-08T00:00:00+00:00"]
+
+
 def test_candidate_params_returns_none_when_no_anchor():
     params = build_candidate_query_params(
         kategori="korupsi", pejabat_id=None, wilayah_id=None,
