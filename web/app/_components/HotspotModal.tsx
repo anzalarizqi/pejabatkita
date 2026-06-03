@@ -98,8 +98,6 @@ const styles = `
 .pulse-modal-meta dt { color: #6b6859; }
 .pulse-modal-meta dd { margin: 0; color: #0f1117; }
 .pulse-modal-meta a { color: #0f1117; text-decoration: underline; }
-.pulse-modal-link { display: inline-block; padding: .55rem 1rem; background: #0f1117; color: #fbf7ee; text-decoration: none; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: .85rem; }
-.pulse-modal-link:hover { background: #c0392b; }
 .pulse-modal-sources { padding-top: .75rem; border-top: 1px solid #e2dccb; }
 .pulse-sources-label { display: block; font-family: 'DM Mono', monospace; font-size: .75rem; color: #6b6859; margin-bottom: .5rem; }
 .pulse-sources-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .35rem; }
