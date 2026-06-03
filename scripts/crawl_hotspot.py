@@ -232,6 +232,66 @@ def kimi_extract_batch(client: httpx.Client, base_url: str, model: str, api_key:
         return []
 
 
+# ─── Kimi same-story matcher ─────────────────────────────────────────────────
+
+def parse_match_response(raw: str, valid_ids: set[str]) -> str | None:
+    """Parse Kimi's match reply. Returns a candidate event_id only if it is in
+    the candidate set (guards against hallucinated ids); otherwise None."""
+    cleaned = re.sub(r"^```(?:json)?\s*", "", raw.strip())
+    cleaned = re.sub(r"\s*```\s*$", "", cleaned).strip()
+    try:
+        obj = json.loads(cleaned)
+    except json.JSONDecodeError:
+        return None
+    mid = obj.get("match_event_id") if isinstance(obj, dict) else None
+    return mid if mid in valid_ids else None
+
+
+MATCH_SYSTEM_PROMPT = """\
+Kamu menentukan apakah sebuah artikel berita membahas PERISTIWA NYATA yang SAMA
+dengan salah satu peristiwa kandidat. "Sama" berarti kejadian dunia-nyata yang
+sama (mis. OTT yang sama, pernyataan yang sama, demo yang sama) — bukan sekadar
+pejabat/topik yang mirip. Beda kejadian pada orang yang sama = TIDAK sama.
+
+Kembalikan HANYA JSON:
+{ "match_event_id": "<event_id kandidat yang sama>" }  bila ada yang sama,
+{ "match_event_id": null }                              bila tidak ada.
+Tanpa teks lain."""
+
+
+def kimi_match_story(client: httpx.Client, base_url: str, model: str, api_key: str,
+                     article_judul: str, article_ringkasan: str,
+                     candidates: list[dict]) -> str | None:
+    """Ask Kimi whether the article is the same real-world event as any candidate.
+    Returns the matched event_id or None."""
+    cand_payload = [
+        {"event_id": c["event_id"], "judul": c.get("judul", ""),
+         "ringkasan": (c.get("ringkasan") or "")[:300]}
+        for c in candidates
+    ]
+    user = (
+        f"ARTIKEL BARU:\njudul: {article_judul}\nringkasan: {article_ringkasan}\n\n"
+        f"KANDIDAT ({len(cand_payload)}):\n{json.dumps(cand_payload, ensure_ascii=False)}"
+    )
+    resp = client.post(
+        f"{base_url}/chat/completions",
+        json={
+            "model": model,
+            "messages": [
+                {"role": "system", "content": MATCH_SYSTEM_PROMPT},
+                {"role": "user", "content": user},
+            ],
+            "temperature": 0.1,
+            "thinking": {"type": "disabled"},
+        },
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        timeout=120,
+    )
+    resp.raise_for_status()
+    raw = resp.json()["choices"][0]["message"]["content"]
+    return parse_match_response(raw, {c["event_id"] for c in candidates})
+
+
 # ─── Kimi $web_search path (manual keyword) ──────────────────────────────────
 
 SEARCH_SYSTEM_PROMPT = """\

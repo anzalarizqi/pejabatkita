@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
-from scripts.crawl_hotspot import build_candidate_query_params
+from scripts.crawl_hotspot import build_candidate_query_params, parse_match_response
 
 
 def test_candidate_params_pejabat_and_wilayah():
@@ -51,6 +51,29 @@ def test_candidate_params_returns_none_when_no_anchor():
         crawled_at="2026-06-03T00:00:00+00:00",
     )
     assert params is None
+
+
+def test_parse_match_valid_id():
+    raw = '{"match_event_id": "E2"}'
+    assert parse_match_response(raw, valid_ids={"E1", "E2"}) == "E2"
+
+
+def test_parse_match_null():
+    assert parse_match_response('{"match_event_id": null}', valid_ids={"E1"}) is None
+
+
+def test_parse_match_hallucinated_id_rejected():
+    # Model returns an id not in the candidate set → treat as no match.
+    assert parse_match_response('{"match_event_id": "E9"}', valid_ids={"E1"}) is None
+
+
+def test_parse_match_with_code_fence():
+    raw = '```json\n{"match_event_id": "E1"}\n```'
+    assert parse_match_response(raw, valid_ids={"E1"}) == "E1"
+
+
+def test_parse_match_garbage_returns_none():
+    assert parse_match_response("not json", valid_ids={"E1"}) is None
 
 
 if __name__ == "__main__":
