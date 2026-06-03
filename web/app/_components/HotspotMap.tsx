@@ -32,7 +32,7 @@ export default function HotspotMap({
   onProvinceClick,
   selected,
 }: Props) {
-  const ids24h = new Set(events24h.map((e) => e.event_id))
+  const ids24h = new Set(events24h.map((e) => e.story_id ?? e.event_id))
 
   const byProvince = new Map<string, HotspotEventWithPejabat[]>()
   for (const e of events) {
@@ -51,7 +51,7 @@ export default function HotspotMap({
         color: KATEGORI_COLOR[e.kategori ?? 'lainnya'] ?? KATEGORI_COLOR.lainnya,
         size: 0.4,
         count: 1,
-        pulse: ids24h.has(e.event_id),
+        pulse: ids24h.has(e.story_id ?? e.event_id),
         topKategori: e.kategori ?? 'lainnya',
         groupIndex: i,
         groupTotal: evs.length,
