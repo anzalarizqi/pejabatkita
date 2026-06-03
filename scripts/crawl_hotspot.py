@@ -18,6 +18,7 @@ import os
 import re
 import sys
 import time
+import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -232,6 +233,66 @@ def kimi_extract_batch(client: httpx.Client, base_url: str, model: str, api_key:
         return []
 
 
+# ─── Kimi same-story matcher ─────────────────────────────────────────────────
+
+def parse_match_response(raw: str, valid_ids: set[str]) -> str | None:
+    """Parse Kimi's match reply. Returns a candidate event_id only if it is in
+    the candidate set (guards against hallucinated ids); otherwise None."""
+    cleaned = re.sub(r"^```(?:json)?\s*", "", raw.strip())
+    cleaned = re.sub(r"\s*```\s*$", "", cleaned).strip()
+    try:
+        obj = json.loads(cleaned)
+    except json.JSONDecodeError:
+        return None
+    mid = obj.get("match_event_id") if isinstance(obj, dict) else None
+    return mid if mid in valid_ids else None
+
+
+MATCH_SYSTEM_PROMPT = """\
+Kamu menentukan apakah sebuah artikel berita membahas PERISTIWA NYATA yang SAMA
+dengan salah satu peristiwa kandidat. "Sama" berarti kejadian dunia-nyata yang
+sama (mis. OTT yang sama, pernyataan yang sama, demo yang sama) — bukan sekadar
+pejabat/topik yang mirip. Beda kejadian pada orang yang sama = TIDAK sama.
+
+Kembalikan HANYA JSON:
+{ "match_event_id": "<event_id kandidat yang sama>" }  bila ada yang sama,
+{ "match_event_id": null }                              bila tidak ada.
+Tanpa teks lain."""
+
+
+def kimi_match_story(client: httpx.Client, base_url: str, model: str, api_key: str,
+                     article_judul: str, article_ringkasan: str,
+                     candidates: list[dict]) -> str | None:
+    """Ask Kimi whether the article is the same real-world event as any candidate.
+    Returns the matched event_id or None."""
+    cand_payload = [
+        {"event_id": c["event_id"], "judul": c.get("judul", ""),
+         "ringkasan": (c.get("ringkasan") or "")[:300]}
+        for c in candidates
+    ]
+    user = (
+        f"ARTIKEL BARU:\njudul: {article_judul}\nringkasan: {article_ringkasan}\n\n"
+        f"KANDIDAT ({len(cand_payload)}):\n{json.dumps(cand_payload, ensure_ascii=False)}"
+    )
+    resp = client.post(
+        f"{base_url}/chat/completions",
+        json={
+            "model": model,
+            "messages": [
+                {"role": "system", "content": MATCH_SYSTEM_PROMPT},
+                {"role": "user", "content": user},
+            ],
+            "temperature": 0.6,  # kimi-k2.6 only accepts 0.6 — other values 400
+            "thinking": {"type": "disabled"},
+        },
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        timeout=120,
+    )
+    resp.raise_for_status()
+    raw = resp.json()["choices"][0]["message"]["content"]
+    return parse_match_response(raw, {c["event_id"] for c in candidates})
+
+
 # ─── Kimi $web_search path (manual keyword) ──────────────────────────────────
 
 SEARCH_SYSTEM_PROMPT = """\
@@ -301,6 +362,78 @@ def fetch_all(client: httpx.Client, table: str, select: str, filters: dict | Non
         if len(batch) < 1000: break
         offset += 1000
     return rows
+
+
+def _to_iso(pubdate: str | None) -> str:
+    """Normalize a pubDate to a tz-aware ISO string. Handles ISO and RFC822
+    (RSS <pubDate>); naive values are treated as UTC. Falls back to now() when
+    absent or unparseable (e.g. LLM free-form dates like '3 June 2026')."""
+    now = datetime.now(timezone.utc)
+    if not pubdate:
+        return now.isoformat()
+    try:
+        dt = datetime.fromisoformat(pubdate)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc).isoformat()
+    except ValueError:
+        pass
+    try:
+        from email.utils import parsedate_to_datetime
+        dt = parsedate_to_datetime(pubdate)
+        if dt is not None:
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.astimezone(timezone.utc).isoformat()
+    except (ValueError, TypeError):
+        pass
+    return now.isoformat()
+
+
+def build_candidate_query_params(
+    kategori: str, pejabat_id: str | None, wilayah_id: str | None,
+    crawled_at: str, window_days: int = 5, cap: int = 20,
+) -> dict | None:
+    """Build PostgREST params to find existing events that might be the same
+    story. Returns None when there's no anchor (no pejabat AND no wilayah)."""
+    anchors = []
+    if pejabat_id:
+        anchors.append(f"pejabat_id.eq.{pejabat_id}")
+    if wilayah_id:
+        anchors.append(f"wilayah_id.eq.{wilayah_id}")
+    if not anchors:
+        return None
+
+    base = datetime.fromisoformat(crawled_at)
+    if base.tzinfo is None:
+        base = base.replace(tzinfo=timezone.utc)
+    lo = (base - timedelta(days=window_days)).isoformat()
+    hi = (base + timedelta(days=window_days)).isoformat()
+
+    return {
+        "select": "event_id,story_id,judul,ringkasan,kategori,pejabat_id,wilayah_id,crawled_at",
+        "kategori": f"eq.{kategori}",
+        "or": f"({','.join(anchors)})",
+        # two bounds on the same column → httpx sends crawled_at twice
+        "crawled_at": [f"gte.{lo}", f"lte.{hi}"],
+        "order": "crawled_at.desc",
+        "limit": cap,
+    }
+
+
+def find_candidate_events(client: httpx.Client, kategori: str,
+                          pejabat_id: str | None, wilayah_id: str | None,
+                          crawled_at: str) -> list[dict]:
+    """Fetch up to ~20 recent events that might be the same story. Returns [] when
+    there's no anchor (build_candidate_query_params returns None) or on a non-200."""
+    params = build_candidate_query_params(kategori, pejabat_id, wilayah_id, crawled_at)
+    if params is None:
+        return []
+    resp = client.get(f"{SUPABASE_URL}/rest/v1/hotspot_events",
+                      params=params, headers=SB_HEADERS)
+    if resp.status_code != 200:
+        return []
+    return resp.json()
 
 
 _wilayah_cache: list[dict] | None = None
@@ -429,46 +562,68 @@ def main() -> None:
         # ─── Stage 4: resolve + insert ───
         inserted = rejected = parse_failed = db_errors = 0
         print()
-        for article, r in all_results:
-            if r is None: parse_failed += 1; continue
-            if r.get("skip") or not r.get("judul"): rejected += 1; continue
+        with httpx.Client() as match_client:
+            for article, r in all_results:
+                if r is None: parse_failed += 1; continue
+                if r.get("skip") or not r.get("judul"): rejected += 1; continue
 
-            kategori = r.get("kategori") if r.get("kategori") in VALID_KATEGORI else "lainnya"
-            lokasi = r.get("lokasi_nama")
-            pejabat_nama = r.get("pejabat_nama")
-            wilayah_id = resolve_wilayah_id(db_client, lokasi)
-            pejabat_id = resolve_pejabat_id(db_client, pejabat_nama)
+                kategori = r.get("kategori") if r.get("kategori") in VALID_KATEGORI else "lainnya"
+                lokasi = r.get("lokasi_nama")
+                pejabat_nama = r.get("pejabat_nama")
+                wilayah_id = resolve_wilayah_id(db_client, lokasi)
+                pejabat_id = resolve_pejabat_id(db_client, pejabat_nama)
 
-            try:
-                host = urlparse(article["url"]).hostname or ""
-                sumber_nama = host.replace("www.", "")
-                # Google News proxy: extract real outlet from title suffix "... - Outlet"
-                if "news.google.com" in host:
-                    m = re.search(r"\s[-–]\s([A-Za-z0-9.\s]+)\s*$", article.get("title", ""))
-                    if m:
-                        sumber_nama = m.group(1).strip().lower()
-            except Exception:
-                sumber_nama = article["source"]
+                try:
+                    host = urlparse(article["url"]).hostname or ""
+                    sumber_nama = host.replace("www.", "")
+                    # Google News proxy: extract real outlet from title suffix "... - Outlet"
+                    if "news.google.com" in host:
+                        m = re.search(r"\s[-–]\s([A-Za-z0-9.\s]+)\s*$", article.get("title", ""))
+                        if m:
+                            sumber_nama = m.group(1).strip().lower()
+                except Exception:
+                    sumber_nama = article["source"]
 
-            crawled_at = article.get("pubDate") or datetime.now(timezone.utc).isoformat()
+                crawled_at = _to_iso(article.get("pubDate"))
 
-            row = {
-                "judul": r["judul"][:120],
-                "ringkasan": r.get("ringkasan", ""),
-                "kategori": kategori,
-                "lokasi_nama": lokasi,
-                "wilayah_id": wilayah_id,
-                "pejabat_id": pejabat_id,
-                "url_sumber": article["url"],
-                "sumber_nama": sumber_nama,
-                "crawled_at": crawled_at,
-                "is_manual": bool(args.keyword),
-            }
-            if insert_event(db_client, row, args.dry_run):
-                inserted += 1
-                print(f"  + {r['judul'][:80]}")
-            else:
-                db_errors += 1
+                # ─── Event clustering: match against recent candidates ───
+                event_id = str(uuid.uuid4())
+                story_id = event_id  # default: this row is its own canonical story
+                candidates = find_candidate_events(db_client, kategori, pejabat_id,
+                                                   wilayah_id, crawled_at)
+                if candidates:
+                    try:
+                        matched = kimi_match_story(
+                            match_client, base_url, model, api_key,
+                            r["judul"], r.get("ringkasan", ""), candidates,
+                        )
+                    except Exception as e:
+                        print(f"  ! match call failed, treating as new story: {e}", file=sys.stderr)
+                        matched = None
+                    if matched:
+                        by_id = {c["event_id"]: c for c in candidates}
+                        story_id = by_id[matched].get("story_id") or matched
+
+                row = {
+                    "event_id": event_id,
+                    "story_id": story_id,
+                    "judul": r["judul"][:120],
+                    "ringkasan": r.get("ringkasan", ""),
+                    "kategori": kategori,
+                    "lokasi_nama": lokasi,
+                    "wilayah_id": wilayah_id,
+                    "pejabat_id": pejabat_id,
+                    "url_sumber": article["url"],
+                    "sumber_nama": sumber_nama,
+                    "crawled_at": crawled_at,
+                    "is_manual": bool(args.keyword),
+                }
+                if insert_event(db_client, row, args.dry_run):
+                    inserted += 1
+                    tag = "↳ grouped" if story_id != event_id else "+ new"
+                    print(f"  {tag} {r['judul'][:72]}")
+                else:
+                    db_errors += 1
 
     print(f"\nDone in {time.time()-t0:.1f}s.")
     print(f"  inserted:    {inserted}")

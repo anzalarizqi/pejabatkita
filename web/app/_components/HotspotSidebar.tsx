@@ -82,7 +82,9 @@ export default function HotspotSidebar({ events, onEventClick, loading, filterPr
               <div className="pulse-card-meta">
                 {e.pejabat_nama && <span>{e.pejabat_nama}</span>}
                 {e.provinsi_nama && <span> · {e.provinsi_nama}</span>}
-                {e.sumber_nama && <span> · {e.sumber_nama}</span>}
+                {e.source_count > 1
+                  ? <span> · {e.source_count} sumber</span>
+                  : e.sumber_nama && <span> · {e.sumber_nama}</span>}
               </div>
             </button>
           </li>

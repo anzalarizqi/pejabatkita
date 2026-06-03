@@ -114,7 +114,7 @@ export default function PreviewShell({
   // a phyllotaxis spiral around the centroid. Pulse if event is in 24h list.
   const hotspotDots: HotspotDot[] = useMemo(() => {
     if (mode !== 'denyut') return []
-    const events24hIds = new Set(hotspotEvents24h.map((e) => e.event_id))
+    const events24hIds = new Set(hotspotEvents24h.map((e) => e.story_id ?? e.event_id))
 
     const byProvince = new Map<string, HotspotEventWithPejabat[]>()
     for (const e of hotspotEvents7d) {
@@ -134,8 +134,8 @@ export default function PreviewShell({
       // are therefore always the oldest non-24h events.
       const capped = [...events]
         .sort((a, b) => {
-          const a24 = events24hIds.has(a.event_id) ? 1 : 0
-          const b24 = events24hIds.has(b.event_id) ? 1 : 0
+          const a24 = events24hIds.has(a.story_id ?? a.event_id) ? 1 : 0
+          const b24 = events24hIds.has(b.story_id ?? b.event_id) ? 1 : 0
           return b24 - a24
         })
         .slice(0, MAX_DOTS)
@@ -146,7 +146,7 @@ export default function PreviewShell({
           color: KATEGORI_COLOR[e.kategori ?? 'lainnya'] ?? KATEGORI_COLOR.lainnya,
           size: 0.4,
           count: 1,
-          pulse: events24hIds.has(e.event_id),
+          pulse: events24hIds.has(e.story_id ?? e.event_id),
           topKategori: e.kategori ?? 'lainnya',
           groupIndex: i,
           groupTotal: capped.length,

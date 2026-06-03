@@ -194,6 +194,9 @@ python scripts/crawl_hotspot.py --dry-run
 
 ### Next Session Should Start With
 
+**✅ Recently shipped (2026-06-04):**
+- **Denyut event clustering** (branch `feat/denyut-event-clustering`, spec + plan in `docs/superpowers/`) — multi-source articles about one real-world event now collapse to a single map dot instead of N dots. Migration `015` adds `story_id` to `hotspot_events` (canonical row has `story_id = event_id`, FK `ON DELETE SET NULL`). Crawler matches each *inserted* article against recent candidates (same kategori + same pejabat OR wilayah, ±5 days) via a Kimi yes/no call and assigns `story_id`; read layer (`listHotspotEvents`) collapses by `story_id` into `sources[]` + `source_count`, which also de-inflates the province choropleth; modal shows "Diberitakan oleh N sumber" + source list; sidebar shows "· N sumber". One-time `scripts/backfill_story_id.py` clustered the existing backlog (**147 of 266 events regrouped**). Gotchas found in live verification: **kimi-k2.6 only accepts `temperature: 0.6`** (any other value → 400), and `crawled_at`/pubDate is RFC822 (RSS) or LLM free-form, not ISO — `_to_iso()` normalizes it before the candidate query. Pulse highlight now keys on `story_id ?? event_id` (stable across 24h/7d windows). Browser-verified on `/pulse`.
+
 **✅ Recently shipped (2026-06-03):**
 - **Re-verify suspicious rejects** — `verify_kasus.py --report-suspicious-rejects`: 82 rejected, 22 keyword-flagged. Triaged all — 21 correctly rejected (no evidence / wrong-person / election disputes / witnesses-only); only **Mohamad Sanusi** (reklamasi Teluk Jakarta 2016) genuinely wrong-rejected → fixed manually to `verified=true`. Verifier heuristic confirmed good; affirmative-keyword flag is noisy.
 - **Rekam Bersih screening — COMPLETE.** All 38 provinces screened.

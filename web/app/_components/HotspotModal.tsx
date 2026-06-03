@@ -62,13 +62,23 @@ export default function HotspotModal({ event, onClose }: Props) {
             </>
           )}
           {event.provinsi_nama && (<><dt>Daerah</dt><dd>{event.provinsi_nama}</dd></>)}
-          {event.sumber_nama && (<><dt>Sumber</dt><dd>{event.sumber_nama}</dd></>)}
         </dl>
-        {event.url_sumber && (
-          <a href={event.url_sumber} target="_blank" rel="noopener noreferrer" className="pulse-modal-link">
-            Baca selengkapnya →
-          </a>
-        )}
+        <div className="pulse-modal-sources">
+          <span className="pulse-sources-label">
+            {event.source_count > 1
+              ? `Diberitakan oleh ${event.source_count} sumber`
+              : 'Sumber'}
+          </span>
+          <ul className="pulse-sources-list">
+            {event.sources.map((s, i) => (
+              <li key={s.url_sumber ?? i}>
+                {s.url_sumber
+                  ? <a href={s.url_sumber} target="_blank" rel="noopener noreferrer">{s.sumber_nama ?? s.url_sumber}</a>
+                  : <span>{s.sumber_nama ?? '—'}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </div>
   )
@@ -88,6 +98,9 @@ const styles = `
 .pulse-modal-meta dt { color: #6b6859; }
 .pulse-modal-meta dd { margin: 0; color: #0f1117; }
 .pulse-modal-meta a { color: #0f1117; text-decoration: underline; }
-.pulse-modal-link { display: inline-block; padding: .55rem 1rem; background: #0f1117; color: #fbf7ee; text-decoration: none; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: .85rem; }
-.pulse-modal-link:hover { background: #c0392b; }
+.pulse-modal-sources { padding-top: .75rem; border-top: 1px solid #e2dccb; }
+.pulse-sources-label { display: block; font-family: 'DM Mono', monospace; font-size: .75rem; color: #6b6859; margin-bottom: .5rem; }
+.pulse-sources-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .35rem; }
+.pulse-sources-list a { color: #0f1117; text-decoration: underline; font-size: .9rem; }
+.pulse-sources-list a:hover { color: #c0392b; }
 `

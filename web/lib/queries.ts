@@ -779,9 +779,17 @@ function hotspotSince(filter: HotspotTimeFilter): string | null {
   return new Date(Date.now() - ms).toISOString()
 }
 
+export interface HotspotSource {
+  sumber_nama: string | null
+  url_sumber: string | null
+  crawled_at: string
+}
+
 export interface HotspotEventWithPejabat extends HotspotEvent {
   pejabat_nama: string | null
   provinsi_nama: string | null
+  sources: HotspotSource[]
+  source_count: number
 }
 
 export async function listHotspotEvents(
@@ -820,11 +828,32 @@ export async function listHotspotEvents(
   const pejabatMap = new Map((pejabatRows as Array<{ id: string; nama_lengkap: string }>).map((p) => [p.id, p.nama_lengkap]))
   const wilayahMap = new Map((wilayahRows as Array<{ id: string; nama: string }>).map((w) => [w.id, w.nama]))
 
-  return rows.map((r) => ({
-    ...r,
-    pejabat_nama: r.pejabat_id ? (pejabatMap.get(r.pejabat_id) ?? null) : null,
-    provinsi_nama: r.wilayah_id ? (wilayahMap.get(r.wilayah_id) ?? null) : null,
-  }))
+  // Group rows by story (story_id falls back to event_id for safety).
+  const storyMap = new Map<string, HotspotEvent[]>()
+  for (const r of rows) {
+    const key = r.story_id ?? r.event_id
+    const arr = storyMap.get(key) ?? []
+    arr.push(r)
+    storyMap.set(key, arr)
+  }
+
+  const stories = Array.from(storyMap.values()).map((group) => {
+    const rep = group.find((g) => g.story_id === g.event_id) ?? group[0]
+    const sources: HotspotSource[] = group
+      .map((g) => ({ sumber_nama: g.sumber_nama, url_sumber: g.url_sumber, crawled_at: g.crawled_at }))
+      .sort((a, b) => b.crawled_at.localeCompare(a.crawled_at))
+    return {
+      ...rep,
+      pejabat_nama: rep.pejabat_id ? (pejabatMap.get(rep.pejabat_id) ?? null) : null,
+      provinsi_nama: rep.wilayah_id ? (wilayahMap.get(rep.wilayah_id) ?? null) : null,
+      sources,
+      source_count: sources.length,
+    }
+  })
+
+  // Newest story first, by its most-recent source.
+  stories.sort((a, b) => (b.sources[0]?.crawled_at ?? '').localeCompare(a.sources[0]?.crawled_at ?? ''))
+  return stories
 }
 
 export interface ProvinceHotspotCount {
@@ -840,6 +869,8 @@ export async function listProvinceHotspotCounts(
   const events = await listHotspotEvents(filter)
   const byWilayah = new Map<string, { nama: string; count: number; kategori: Record<string, number> }>()
 
+  // events are already collapsed to one-per-story by listHotspotEvents,
+  // so counting them here counts distinct events (not source articles).
   for (const e of events) {
     if (!e.wilayah_id || !e.provinsi_nama) continue
     const cur = byWilayah.get(e.wilayah_id) ?? { nama: e.provinsi_nama, count: 0, kategori: {} }
