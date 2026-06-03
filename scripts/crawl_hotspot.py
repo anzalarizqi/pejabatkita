@@ -303,6 +303,35 @@ def fetch_all(client: httpx.Client, table: str, select: str, filters: dict | Non
     return rows
 
 
+def build_candidate_query_params(
+    kategori: str, pejabat_id: str | None, wilayah_id: str | None,
+    crawled_at: str, window_days: int = 5, cap: int = 20,
+) -> dict | None:
+    """Build PostgREST params to find existing events that might be the same
+    story. Returns None when there's no anchor (no pejabat AND no wilayah)."""
+    anchors = []
+    if pejabat_id:
+        anchors.append(f"pejabat_id.eq.{pejabat_id}")
+    if wilayah_id:
+        anchors.append(f"wilayah_id.eq.{wilayah_id}")
+    if not anchors:
+        return None
+
+    base = datetime.fromisoformat(crawled_at)
+    lo = (base - timedelta(days=window_days)).isoformat()
+    hi = (base + timedelta(days=window_days)).isoformat()
+
+    return {
+        "select": "event_id,story_id,judul,ringkasan,kategori,pejabat_id,wilayah_id,crawled_at",
+        "kategori": f"eq.{kategori}",
+        "or": f"({','.join(anchors)})",
+        # two bounds on the same column → httpx sends crawled_at twice
+        "crawled_at": [f"gte.{lo}", f"lte.{hi}"],
+        "order": "crawled_at.desc",
+        "limit": cap,
+    }
+
+
 _wilayah_cache: list[dict] | None = None
 
 def _normalize_wilayah(s: str) -> str:
