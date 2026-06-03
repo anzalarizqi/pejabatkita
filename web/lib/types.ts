@@ -196,6 +196,7 @@ export interface KasusRow {
 
 export interface HotspotEvent {
   event_id: string
+  story_id: string | null
   judul: string
   ringkasan: string | null
   kategori: string | null
