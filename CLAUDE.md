@@ -194,6 +194,15 @@ python scripts/crawl_hotspot.py --dry-run
 
 ### Next Session Should Start With
 
+**▶ RESUME: Execute the Keranjang Koruptor plan (branch `feat/keranjang-koruptor`).**
+- Spec: `docs/superpowers/specs/2026-06-04-keranjang-koruptor-design.md`
+- Plan: `docs/superpowers/plans/2026-06-04-keranjang-koruptor.md` (12 tasks, brainstormed + approved)
+- **Execution mode chosen: subagent-driven** (`superpowers:subagent-driven-development`) — fresh subagent per task, review between tasks.
+- What it builds: public `/keranjang-koruptor` page (officials arrested for corruption ≥ 2024-10-20), new `kasus.tanggal_kasus` date column threaded through the CSV export/import + AI prompt + `import_kasus.py` + `screen_kasus_llm.py`, and a one-off `scripts/seed_bgn.py` for the 3 BGN arrests + Dadan→Nanik S. Deyang succession.
+- **Two tasks need the user's input mid-run:** Task 8 (pick which existing verified cases are Prabowo-era to backfill) and Task 9 (fill real names/dates/sources + Nanik's Plt-vs-definitif status into `seed_bgn.py` — do NOT invent; these are post-cutoff news).
+- Backlog seeded by this work: **AI succession-refresh admin tool** (generalize the rekam-bersih export→AI→import loop to detect new office-holders) — recorded as Task 12.
+- Nothing committed yet beyond the spec + plan docs; no code written.
+
 **✅ Recently shipped (2026-06-04):**
 - **Denyut event clustering** (branch `feat/denyut-event-clustering`, spec + plan in `docs/superpowers/`) — multi-source articles about one real-world event now collapse to a single map dot instead of N dots. Migration `015` adds `story_id` to `hotspot_events` (canonical row has `story_id = event_id`, FK `ON DELETE SET NULL`). Crawler matches each *inserted* article against recent candidates (same kategori + same pejabat OR wilayah, ±5 days) via a Kimi yes/no call and assigns `story_id`; read layer (`listHotspotEvents`) collapses by `story_id` into `sources[]` + `source_count`, which also de-inflates the province choropleth; modal shows "Diberitakan oleh N sumber" + source list; sidebar shows "· N sumber". One-time `scripts/backfill_story_id.py` clustered the existing backlog (**147 of 266 events regrouped**). Gotchas found in live verification: **kimi-k2.6 only accepts `temperature: 0.6`** (any other value → 400), and `crawled_at`/pubDate is RFC822 (RSS) or LLM free-form, not ISO — `_to_iso()` normalizes it before the candidate query. Pulse highlight now keys on `story_id ?? event_id` (stable across 24h/7d windows). Browser-verified on `/pulse`.
 
