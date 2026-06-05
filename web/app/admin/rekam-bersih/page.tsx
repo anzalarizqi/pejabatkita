@@ -351,6 +351,7 @@ Isi kolom berikut:
 - jenis: korupsi / suap / gratifikasi / pencucian_uang / lainnya
 - lembaga: KPK / Kejagung / Kejati / Pengadilan Tipikor
 - tahun: tahun penetapan tersangka/vonis (angka saja)
+- tanggal_kasus: tanggal penetapan tersangka/OTT dalam format YYYY-MM-DD (kosongkan jika hanya tahun yang diketahui)
 - ringkasan: 1-2 kalimat ringkasan kasus
 - url_sumber: URL artikel atau sumber terpercaya
 - keyakinan: tinggi / sedang / rendah
