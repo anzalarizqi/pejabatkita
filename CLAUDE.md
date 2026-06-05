@@ -194,14 +194,15 @@ python scripts/crawl_hotspot.py --dry-run
 
 ### Next Session Should Start With
 
-**▶ RESUME: Execute the Keranjang Koruptor plan (branch `feat/keranjang-koruptor`).**
-- Spec: `docs/superpowers/specs/2026-06-04-keranjang-koruptor-design.md`
-- Plan: `docs/superpowers/plans/2026-06-04-keranjang-koruptor.md` (12 tasks, brainstormed + approved)
-- **Execution mode chosen: subagent-driven** (`superpowers:subagent-driven-development`) — fresh subagent per task, review between tasks.
-- What it builds: public `/keranjang-koruptor` page (officials arrested for corruption ≥ 2024-10-20), new `kasus.tanggal_kasus` date column threaded through the CSV export/import + AI prompt + `import_kasus.py` + `screen_kasus_llm.py`, and a one-off `scripts/seed_bgn.py` for the 3 BGN arrests + Dadan→Nanik S. Deyang succession.
-- **Two tasks need the user's input mid-run:** Task 8 (pick which existing verified cases are Prabowo-era to backfill) and Task 9 (fill real names/dates/sources + Nanik's Plt-vs-definitif status into `seed_bgn.py` — do NOT invent; these are post-cutoff news).
-- Backlog seeded by this work: **AI succession-refresh admin tool** (generalize the rekam-bersih export→AI→import loop to detect new office-holders) — recorded as Task 12.
-- Nothing committed yet beyond the spec + plan docs; no code written.
+**▶ RESUME Keranjang Koruptor — all code done; 2 data blockers remain (branch `feat/keranjang-koruptor`).**
+Plan: `docs/superpowers/plans/2026-06-04-keranjang-koruptor.md`. Code Tasks 1–7, 10, 11, 12 are DONE & committed (9 commits): `tanggal_kasus` threaded through types/ordering, CSV export (13 cols), CSV import (ISO-validated), AI prompt, `import_kasus.py`, `screen_kasus_llm.py`; `listKeranjangKoruptor()` query (verified + `>= 2024-10-20`); `/keranjang-koruptor` page + shell + homepage nav link (`npm run build` green); backlog item recorded. `scripts/seed_bgn.py` committed as a **fill-the-blanks skeleton** (placeholder dates/URLs).
+
+**To finish next session, in order:**
+1. **🔴 Apply migration 016** (`supabase/migrations/016_kasus_tanggal.sql`) in the Supabase SQL Editor — no CLI/DDL-RPC here. Verify: `python -c "..."` GET `kasus?select=kasus_id,tanggal_kasus&limit=1` returns 200.
+2. **Task 8 backfill** (after migration). 9 verified cases have exact dates already in our ringkasan — PATCH them: Maidi `2026-01-20`, Chyntia Kalangit `2026-05-06`, M. Fikri Thobari `2026-03-09`, Syamsul A. Rachman `2026-03-14`, Sudewo `2026-01-20`, Fadia Arafiq `2026-03-04`, Abdul Wahid `2025-11-03`, Sugiri Sancoko `2025-11-07`, Ardito Wijaya `2025-12-11`. Pre-2024 cases stay null (Surya Darmadi, Hasan Aminuddin, Sanusi, Ismet Mile, Dedy Yon). **5 need web-research for exact penetapan date** (era but day unknown: Gatut Sunu ~Apr 2026, Suyono, Ade Kuswara, Abdul Azis; unknown-era: Zulkifli H. Adam) — agreed approach: research from KPK/reputable media, don't guess.
+3. **🔴 Task 9 — fill `scripts/seed_bgn.py` with USER-SUPPLIED facts** (do NOT invent — post-cutoff news): Dadan Hindayana / Sonjaya / Lodewyk Pusung → penetapan date, arresting body, ringkasan, source URL each; Nanik S. Deyang → Plt(`penjabat`) vs definitif(`aktif`) + start date. Then `--dry-run`, run, commit.
+4. **Task 11 browser-verify** (after 9): Playwright MCP on `http://localhost:3000/keranjang-koruptor` — BGN trio shows, filters work, chips read "Tersangka", disclaimer renders; screenshot.
+- Backlog seeded: **AI succession-refresh admin tool** (generalize rekam-bersih export→AI→import to detect new office-holders) — now priority #3 in active list.
 
 **✅ Recently shipped (2026-06-04):**
 - **Denyut event clustering** (branch `feat/denyut-event-clustering`, spec + plan in `docs/superpowers/`) — multi-source articles about one real-world event now collapse to a single map dot instead of N dots. Migration `015` adds `story_id` to `hotspot_events` (canonical row has `story_id = event_id`, FK `ON DELETE SET NULL`). Crawler matches each *inserted* article against recent candidates (same kategori + same pejabat OR wilayah, ±5 days) via a Kimi yes/no call and assigns `story_id`; read layer (`listHotspotEvents`) collapses by `story_id` into `sources[]` + `source_count`, which also de-inflates the province choropleth; modal shows "Diberitakan oleh N sumber" + source list; sidebar shows "· N sumber". One-time `scripts/backfill_story_id.py` clustered the existing backlog (**147 of 266 events regrouped**). Gotchas found in live verification: **kimi-k2.6 only accepts `temperature: 0.6`** (any other value → 400), and `crawled_at`/pubDate is RFC822 (RSS) or LLM free-form, not ISO — `_to_iso()` normalizes it before the candidate query. Pulse highlight now keys on `story_id ?? event_id` (stable across 24h/7d windows). Browser-verified on `/pulse`.
