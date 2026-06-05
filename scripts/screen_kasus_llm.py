@@ -68,6 +68,7 @@ Aturan KETAT:
 - Hanya laporkan kasus jika nama pejabat DISEBUTKAN EKSPLISIT sebagai tersangka/terdakwa/terpidana.
 - Jangan laporkan jika mereka hanya saksi atau tidak terlibat langsung.
 - Kembalikan JSON murni saja, tanpa teks lain.
+- tanggal_kasus: tanggal penetapan tersangka/OTT (format YYYY-MM-DD), null jika tidak diketahui.
 
 Format output:
 {
@@ -76,6 +77,7 @@ Format output:
   "jenis": "korupsi" | "suap" | "gratifikasi" | "pencucian_uang" | "lainnya" | null,
   "lembaga": "KPK" | "Kejagung" | "Kejati" | "Pengadilan Tipikor" | null,
   "tahun": <integer> | null,
+  "tanggal_kasus": "<YYYY-MM-DD>" | null,
   "ringkasan": "<1-2 kalimat>" | null,
   "url_sumber": "<URL artikel>" | null,
   "keyakinan": "tinggi" | "sedang" | "rendah"
@@ -429,6 +431,7 @@ def main() -> None:
                 "jenis":      result.get("jenis"),
                 "lembaga":    result.get("lembaga"),
                 "tahun":      result.get("tahun"),
+                "tanggal_kasus": result.get("tanggal_kasus"),
                 "ringkasan":  result.get("ringkasan"),
                 "url_sumber": result.get("url_sumber"),
             }
