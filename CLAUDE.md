@@ -227,7 +227,14 @@ python scripts/crawl_hotspot.py --dry-run
 - Source: `elhkpn.kpk.go.id`. Every kepala daerah is legally required to file.
 - Unlocks the **LHKPN map mode** (currently mock `hash01`) — swap is one-line per mode in `HomeShell.tsx` + profile page.
 
-**3. Optional: cleanup 8 Denyut events with null `wilayah_id`:**
+**3. AI succession-refresh admin tool (from Keranjang Koruptor session).**
+- Generalize the `/admin/rekam-bersih` export→AI-fill→import loop to detect successions.
+- Clustered dropdown (province / Pusat batches) → export current office-holders →
+  Kimi/Gemini/Claude checks "apakah ada pejabat baru di posisi ini?" → import updates
+  (deactivate old jabatan via `status='nonaktif'` + `selesai_jabatan`, insert replacement).
+- Triggered by the BGN Dadan→Nanik case, which was handled manually via `scripts/seed_bgn.py`.
+
+**4. Optional: cleanup 8 Denyut events with null `wilayah_id`:**
 ```sql
 UPDATE hotspot_events
 SET wilayah_id = (SELECT id FROM wilayah WHERE nama = 'DKI Jakarta'),
