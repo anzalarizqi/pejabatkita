@@ -186,12 +186,27 @@ export interface KasusRow {
   lembaga: string | null
   status: KasusStatus
   tahun: number | null
+  tanggal_kasus: string | null
   ringkasan: string | null
   url_sumber: string | null
   created_at: string
   verified: boolean | null
   verified_note: string | null
   verified_at: string | null
+}
+
+export interface KeranjangKoruptorRow {
+  pejabat_id: string
+  nama: string
+  posisi: string | null
+  level: PejabatLevel
+  wilayah_nama: string | null
+  jenis: string | null
+  lembaga: string | null
+  status: KasusStatus
+  tanggal_kasus: string
+  ringkasan: string | null
+  url_sumber: string | null
 }
 
 export interface HotspotEvent {
