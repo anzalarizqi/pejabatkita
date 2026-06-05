@@ -5,7 +5,7 @@ import { isAdmin } from '@/lib/auth'
 const PLACEHOLDER_RE = /^(Bupati|Walikota|Wali Kota|Wakil Bupati|Wakil Walikota|Wakil Wali Kota|Gubernur|Wakil Gubernur|Penjabat|Pj\.?)\s+\S/i
 const LLM_ERR_RE = /^\[LLM Error\]/i
 
-const CSV_HEADER = 'pejabat_id,nama,jabatan,provinsi,kasus_found,status,jenis,lembaga,tahun,ringkasan,url_sumber,keyakinan'
+const CSV_HEADER = 'pejabat_id,nama,jabatan,provinsi,kasus_found,status,jenis,lembaga,tahun,tanggal_kasus,ringkasan,url_sumber,keyakinan'
 const PUSAT_BATCH_SIZE = 40
 
 function isPlaceholder(name: string | null | undefined): boolean {
@@ -131,7 +131,7 @@ async function handlePusatExport(
   const slice = candidates.slice((batchN - 1) * PUSAT_BATCH_SIZE, batchN * PUSAT_BATCH_SIZE)
   const lines = [CSV_HEADER]
   for (const c of slice) {
-    lines.push(csvRow([c.id, c.nama, c.posisi, 'Pusat', '', '', '', '', '', '', '', '']))
+    lines.push(csvRow([c.id, c.nama, c.posisi, 'Pusat', '', '', '', '', '', '', '', '', '']))
   }
   return new NextResponse(lines.join('\n') + '\n', {
     headers: {
@@ -236,7 +236,7 @@ export async function GET(req: NextRequest) {
     const nama = [gelarDepan, p.nama_lengkap.trim(), gelarBelakang].filter(Boolean).join(' ')
     const jabatan = firstJabatan.get(id)?.posisi ?? ''
 
-    lines.push(csvRow([id, nama, jabatan, provinsi, '', '', '', '', '', '', '', '']))
+    lines.push(csvRow([id, nama, jabatan, provinsi, '', '', '', '', '', '', '', '', '']))
   }
 
   const slug = provinsi.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
