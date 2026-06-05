@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Import human-verified kasus rows from CSV into Supabase kasus table.
-Input CSV columns: pejabat_id, jenis, lembaga, status, tahun, ringkasan, url_sumber
+Input CSV columns: pejabat_id, jenis, lembaga, status, tahun, tanggal_kasus, ringkasan, url_sumber
   (Optionally: nama_lengkap instead of pejabat_id — will attempt name lookup)
 
 Usage:
@@ -11,6 +11,7 @@ Usage:
 import argparse
 import csv
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -101,12 +102,15 @@ def main() -> None:
                 continue
 
             tahun_raw = (row.get("tahun") or "").strip()
+            tanggal_raw = (row.get("tanggal_kasus") or "").strip()
+            tanggal_kasus = tanggal_raw if re.fullmatch(r"\d{4}-\d{2}-\d{2}", tanggal_raw) else None
             kasus_row = {
                 "pejabat_id": pejabat_id,
                 "jenis": (row.get("jenis") or "").strip() or None,
                 "lembaga": (row.get("lembaga") or "").strip() or None,
                 "status": status,
                 "tahun": int(tahun_raw) if tahun_raw.isdigit() else None,
+                "tanggal_kasus": tanggal_kasus,
                 "ringkasan": (row.get("ringkasan") or "").strip() or None,
                 "url_sumber": (row.get("url_sumber") or "").strip() or None,
             }
