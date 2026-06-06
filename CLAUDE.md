@@ -194,6 +194,20 @@ python scripts/crawl_hotspot.py --dry-run
 
 ### Next Session Should Start With
 
+**✅ Keranjang Koruptor — COMPLETE & browser-verified (branch `feat/keranjang-koruptor`, ready for PR).**
+Plan: `docs/superpowers/plans/2026-06-04-keranjang-koruptor.md`. All 12 tasks done & committed:
+- **T1–T7** `tanggal_kasus DATE` added (migration `016`, **applied**) + threaded through `KasusRow`/date-first ordering, CSV export (13 cols)/import (ISO-validated), AI prompt, `import_kasus.py`, `screen_kasus_llm.py`.
+- **T8** `scripts/backfill_tanggal_kasus.py` (idempotent) dated 12 era cases (9 from our ringkasan + 3 researched: Gatut Sunu `2026-04-11`, Ade Kuswara `2025-12-20`, Abdul Azis `2025-08-09`). Pre-era cases stay null.
+- **T9** `scripts/seed_bgn.py` (filled, idempotent) — Kejagung MBG case, penetapan 3 Jun 2026: Dadan Hindayana (existing Kepala BGN seat updated → nonaktif, not duplicated) + Sony Sonjaya + Lodewyk Pusung (new pusat pejabat, Wakil Kepala, verified kasus). Succession: **Nanik S. Deyang** added as definitif Kepala BGN (`aktif`, 2026-06-02).
+- **T10/T11** `listKeranjangKoruptor()` + `/keranjang-koruptor` page/shell + homepage nav link. **Browser-verified**: 15 pejabat, BGN trio at top, status + level filters work, chips read "Tersangka/Terdakwa", disclaimer renders, source/profile links OK.
+- **T12** AI succession-refresh tool on backlog (active priority #3).
+
+**Data-integrity fixes found via the user's catch (wrong-person attributions, both set `verified=false`):**
+- **Suyono** — kasus about *Abdul Suyono, Kades Karangrowo (Pati)* was attached to pejabat **Suyono, Wakil Bupati Batang** (different person). User chose: leave the kades dropped (out of kepala-daerah scope).
+- **Zulkifli H. Adam** (eks Wali Kota Sabang) — 2019 land case, **divonis bebas** (acquitted, MA upheld) → violated no-SP3/bebas rule.
+
+**Next:** push `feat/keranjang-koruptor` + open PR to `main`. Then back to the active priorities below (DPR/DPD/MPR list, LHKPN scraper).
+
 **✅ Recently shipped (2026-06-04):**
 - **Denyut event clustering** (branch `feat/denyut-event-clustering`, spec + plan in `docs/superpowers/`) — multi-source articles about one real-world event now collapse to a single map dot instead of N dots. Migration `015` adds `story_id` to `hotspot_events` (canonical row has `story_id = event_id`, FK `ON DELETE SET NULL`). Crawler matches each *inserted* article against recent candidates (same kategori + same pejabat OR wilayah, ±5 days) via a Kimi yes/no call and assigns `story_id`; read layer (`listHotspotEvents`) collapses by `story_id` into `sources[]` + `source_count`, which also de-inflates the province choropleth; modal shows "Diberitakan oleh N sumber" + source list; sidebar shows "· N sumber". One-time `scripts/backfill_story_id.py` clustered the existing backlog (**147 of 266 events regrouped**). Gotchas found in live verification: **kimi-k2.6 only accepts `temperature: 0.6`** (any other value → 400), and `crawled_at`/pubDate is RFC822 (RSS) or LLM free-form, not ISO — `_to_iso()` normalizes it before the candidate query. Pulse highlight now keys on `story_id ?? event_id` (stable across 24h/7d windows). Browser-verified on `/pulse`.
 
@@ -218,7 +232,14 @@ python scripts/crawl_hotspot.py --dry-run
 - Source: `elhkpn.kpk.go.id`. Every kepala daerah is legally required to file.
 - Unlocks the **LHKPN map mode** (currently mock `hash01`) — swap is one-line per mode in `HomeShell.tsx` + profile page.
 
-**3. Optional: cleanup 8 Denyut events with null `wilayah_id`:**
+**3. AI succession-refresh admin tool (from Keranjang Koruptor session).**
+- Generalize the `/admin/rekam-bersih` export→AI-fill→import loop to detect successions.
+- Clustered dropdown (province / Pusat batches) → export current office-holders →
+  Kimi/Gemini/Claude checks "apakah ada pejabat baru di posisi ini?" → import updates
+  (deactivate old jabatan via `status='nonaktif'` + `selesai_jabatan`, insert replacement).
+- Triggered by the BGN Dadan→Nanik case, which was handled manually via `scripts/seed_bgn.py`.
+
+**4. Optional: cleanup 8 Denyut events with null `wilayah_id`:**
 ```sql
 UPDATE hotspot_events
 SET wilayah_id = (SELECT id FROM wilayah WHERE nama = 'DKI Jakarta'),

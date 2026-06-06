@@ -5,6 +5,7 @@ import { isAdmin } from '@/lib/auth'
 const VALID_STATUS = new Set(['tersangka', 'terdakwa', 'terpidana'])
 const VALID_JENIS = new Set(['korupsi', 'suap', 'gratifikasi', 'pencucian_uang', 'lainnya'])
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 function parseCsv(text: string): Record<string, string>[] {
   const lines = text.split(/\r?\n/).filter(l => l.trim())
@@ -127,11 +128,14 @@ export async function POST(req: NextRequest) {
       const tahun = tahunStr ? parseInt(tahunStr, 10) : null
       const ringkasan = (row['ringkasan'] ?? '').trim() || null
       const url_sumber = (row['url_sumber'] ?? '').trim() || null
+      const tanggalRaw = (row['tanggal_kasus'] ?? '').trim()
+      const tanggal_kasus = ISO_DATE_RE.test(tanggalRaw) ? tanggalRaw : null
 
       const kasusRow: Record<string, unknown> = { pejabat_id, status }
       if (jenis && VALID_JENIS.has(jenis)) kasusRow.jenis = jenis
       if (lembaga) kasusRow.lembaga = lembaga
       if (tahun !== null && !isNaN(tahun)) kasusRow.tahun = tahun
+      if (tanggal_kasus) kasusRow.tanggal_kasus = tanggal_kasus
       if (ringkasan) kasusRow.ringkasan = ringkasan
       if (url_sumber) kasusRow.url_sumber = url_sumber
       // verified intentionally omitted → NULL → verify_kasus.py picks it up

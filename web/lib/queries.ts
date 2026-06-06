@@ -1,5 +1,5 @@
 import { createServerSupabase } from './supabase'
-import type { Wilayah, JabatanRow, PejabatRow, KasusRow, HotspotEvent } from './types'
+import type { Wilayah, JabatanRow, PejabatRow, KasusRow, HotspotEvent, KeranjangKoruptorRow, PejabatLevel } from './types'
 
 // ─── Placeholder filtering ────────────────────────────────────────────────────
 // Pejabat with these name patterns are scraper artifacts, not real people.
@@ -644,6 +644,7 @@ export async function getKasusByPejabat(pejabatId: string): Promise<KasusRow[]> 
     .select('*')
     .eq('pejabat_id', pejabatId)
     .eq('verified', true)
+    .order('tanggal_kasus', { ascending: false, nullsFirst: false })
     .order('tahun', { ascending: false })
   return (data ?? []) as KasusRow[]
 }
@@ -885,4 +886,65 @@ export async function listProvinceHotspotCounts(
     count: v.count,
     kategori_counts: v.kategori,
   }))
+}
+
+// ─── Keranjang Koruptor (Prabowo-era arrests) ─────────────────────────────────
+
+const PRABOWO_START = '2024-10-20'
+
+export async function listKeranjangKoruptor(): Promise<KeranjangKoruptorRow[]> {
+  const supabase = await createServerSupabase()
+
+  const { data: kasusRows } = await supabase
+    .from('kasus')
+    .select('pejabat_id, jenis, lembaga, status, tanggal_kasus, ringkasan, url_sumber')
+    .eq('verified', true)
+    .gte('tanggal_kasus', PRABOWO_START)
+    .order('tanggal_kasus', { ascending: false })
+  const cases = (kasusRows ?? []) as Array<Pick<KasusRow,
+    'pejabat_id' | 'jenis' | 'lembaga' | 'status' | 'tanggal_kasus' | 'ringkasan' | 'url_sumber'>>
+  if (!cases.length) return []
+
+  const [pejabatRows, jabatanRows, wilayahRows] = await Promise.all([
+    fetchAll<{ id: string; nama_lengkap: string; gelar_depan: string | null; gelar_belakang: string | null; level: string | null }>(
+      supabase, 'pejabat', 'id, nama_lengkap, gelar_depan, gelar_belakang, level'),
+    fetchAll<{ pejabat_id: string; posisi: string | null; wilayah_id: string }>(
+      supabase, 'jabatan', 'pejabat_id, posisi, wilayah_id'),
+    fetchAll<{ id: string; nama: string }>(supabase, 'wilayah', 'id, nama'),
+  ])
+
+  const pejabatMap = new Map(pejabatRows.map(p => [p.id, p]))
+  const wilayahMap = new Map(wilayahRows.map(w => [w.id, w.nama]))
+
+  // First jabatan per pejabat (matches the export route's "first jabatan" convention).
+  // For an arrested official this is the seat they were charged in — including a
+  // now-'nonaktif' one (e.g. Dadan's Kepala BGN), which is exactly what we want to show.
+  const posByPejabat = new Map<string, { posisi: string | null; wilayah_id: string }>()
+  for (const j of jabatanRows) {
+    if (!posByPejabat.has(j.pejabat_id)) {
+      posByPejabat.set(j.pejabat_id, { posisi: j.posisi, wilayah_id: j.wilayah_id })
+    }
+  }
+
+  return cases
+    .filter(k => pejabatMap.has(k.pejabat_id))
+    .map(k => {
+      const p = pejabatMap.get(k.pejabat_id)!
+      const job = posByPejabat.get(k.pejabat_id)
+      const nama = [(p.gelar_depan ?? '').trim(), p.nama_lengkap.trim(), (p.gelar_belakang ?? '').trim()]
+        .filter(Boolean).join(' ')
+      return {
+        pejabat_id: k.pejabat_id,
+        nama,
+        posisi: job?.posisi ?? null,
+        level: (p.level === 'pusat' ? 'pusat' : 'daerah') as PejabatLevel,
+        wilayah_nama: job ? (wilayahMap.get(job.wilayah_id) ?? null) : null,
+        jenis: k.jenis,
+        lembaga: k.lembaga,
+        status: k.status,
+        tanggal_kasus: k.tanggal_kasus as string,
+        ringkasan: k.ringkasan,
+        url_sumber: k.url_sumber,
+      }
+    })
 }

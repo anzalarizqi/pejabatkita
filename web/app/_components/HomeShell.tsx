@@ -275,6 +275,7 @@ export default function PreviewShell({
             <Link href="/" className="pv-nav-link pv-nav-active">Beranda</Link>
             <Link href="/pejabat" className="pv-nav-link">Direktori</Link>
             <Link href="/pulse" className="pv-nav-link">Denyut</Link>
+            <Link href="/keranjang-koruptor" className="pv-nav-link">Keranjang Koruptor</Link>
             <button
               type="button"
               className="pv-nav-link pv-nav-btn"
