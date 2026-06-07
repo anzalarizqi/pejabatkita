@@ -1,23 +1,47 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 type ImportResult = {
   jabatanUpdated: number
   pejabatUpdated: number
   skipped: number
   errors: string[]
+  reviewPartai: string[]
   total: number
 }
 
-const PROMPT_TEXT = `Ini adalah daftar jabatan pejabat Indonesia yang belum ada data partai dan masa jabatan.
-Untuk setiap baris, cari di web:
-1. partai — partai politik pengusung saat dilantik (singkatan resmi: PDIP, Golkar, Gerindra, PKB, NasDem, PPP, PKS, Demokrat, PAN, dll). Jika jalur perseorangan, isi "Independen". Jika tidak tahu, biarkan kosong.
-2. mulai_jabatan_baru — tanggal mulai jabatan format YYYY-MM-DD. Isi hanya jika berbeda dari kolom mulai_jabatan atau jika mulai_jabatan kosong.
-3. selesai_jabatan_baru — tanggal selesai jabatan format YYYY-MM-DD, jika sudah selesai menjabat.
-4. nama_baru — isi HANYA untuk baris is_placeholder=Y, dengan nama lengkap orang yang menjabat.
-5. sumber_url — URL sumber.
-Kembalikan seluruh tabel CSV dengan format yang sama persis (termasuk header dan baris yang tidak berubah).`
+const PROVINCES = [
+  'Aceh', 'Bali', 'Banten', 'Bengkulu',
+  'DI Yogyakarta', 'DKI Jakarta',
+  'Gorontalo',
+  'Jambi', 'Jawa Barat', 'Jawa Tengah', 'Jawa Timur',
+  'Kalimantan Barat', 'Kalimantan Selatan', 'Kalimantan Tengah', 'Kalimantan Timur', 'Kalimantan Utara',
+  'Kepulauan Bangka Belitung', 'Kepulauan Riau',
+  'Lampung',
+  'Maluku', 'Maluku Utara',
+  'Nusa Tenggara Barat', 'Nusa Tenggara Timur',
+  'Papua', 'Papua Barat', 'Papua Barat Daya', 'Papua Pegunungan', 'Papua Selatan', 'Papua Tengah',
+  'Riau',
+  'Sulawesi Barat', 'Sulawesi Selatan', 'Sulawesi Tengah', 'Sulawesi Tenggara', 'Sulawesi Utara',
+  'Sumatera Barat', 'Sumatera Selatan', 'Sumatera Utara',
+]
+
+const PROMPT_TEXT = `Ini daftar jabatan pejabat Indonesia yang belum ada data partai. Untuk setiap baris, cari di web partai politik pengusung pejabat tersebut saat dilantik.
+
+Isi kolom:
+- partai — gunakan SINGKATAN RESMI (PDIP, Golkar, Gerindra, PKB, NasDem, PPP, PKS, Demokrat, PAN, PSI, Perindo, Hanura, PBB, dll).
+  - Jalur perseorangan/independen → tulis "Independen".
+  - Partai baru yang tidak ada di contoh → tetap gunakan nama/singkatan RESMI partai itu.
+  - Tidak yakin atau tanpa sumber kredibel → BIARKAN KOSONG. Jangan menebak.
+- sumber_url — WAJIB diisi jika partai diisi (KPU, situs resmi pemda, atau berita kredibel).
+- mulai_jabatan_baru / selesai_jabatan_baru (format YYYY-MM-DD) dan nama_baru — opsional; isi hanya jika tahu. nama_baru hanya untuk baris is_placeholder=Y.
+
+ATURAN KETAT:
+- Satu pejabat = satu partai pengusung utama saat pemilihan. Jika diusung koalisi, tulis partai asal/kader pejabat.
+- JANGAN menebak dari kemiripan nama atau asumsi. Tanpa sumber = kosong.
+- Gunakan singkatan resmi yang konsisten (PDIP, bukan "PDI-P" atau "PDI Perjuangan").
+- Kembalikan seluruh tabel CSV dalam format yang sama persis (header + semua baris, termasuk yang tidak diubah).`
 
 function ClaudePrompt() {
   const [copied, setCopied] = useState(false)
@@ -41,13 +65,26 @@ function ClaudePrompt() {
 
 export default function EnrichmentPage() {
   const fileRef = useRef<HTMLInputElement>(null)
+  const [provinsi, setProvinsi] = useState('')
+  const [pusatBatches, setPusatBatches] = useState<number | null>(null)
   const [importing, setImporting] = useState(false)
   const [result, setResult] = useState<ImportResult | null>(null)
   const [error, setError] = useState('')
 
+  // How many batches of null-partai Pusat (kabinet) officials remain
+  useEffect(() => {
+    fetch('/api/admin/export-enrichment?bucket=pusat&meta=1')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (d) setPusatBatches(d.batches) })
+      .catch(() => { /* ignore — provinces still work */ })
+  }, [])
+
   function handleExport() {
+    if (!provinsi) return
     const a = document.createElement('a')
-    a.href = '/api/admin/export-enrichment'
+    a.href = provinsi.startsWith('pusat:')
+      ? `/api/admin/export-enrichment?bucket=pusat&batch=${provinsi.slice('pusat:'.length)}`
+      : `/api/admin/export-enrichment?provinsi=${encodeURIComponent(provinsi)}`
     a.download = ''
     a.click()
   }
@@ -114,6 +151,32 @@ export default function EnrichmentPage() {
           margin-bottom: 24px;
           border-left: 2px solid #d4cfc5;
           padding-left: 16px;
+        }
+
+        .province-row {
+          display: flex;
+          gap: 12px;
+          align-items: center;
+          margin-top: 24px;
+        }
+        .province-select {
+          font-family: 'DM Mono', monospace;
+          font-size: 11px;
+          letter-spacing: 0.04em;
+          padding: 10px 14px;
+          border: 1px solid #d4cfc5;
+          background: #f5f1ea;
+          color: #0f1117;
+          flex: 1;
+          max-width: 280px;
+          cursor: pointer;
+        }
+        .province-select:focus { outline: 1px solid #8a857c; }
+        .review-list {
+          font-size: 10px;
+          color: #f39c12;
+          margin-top: 12px;
+          line-height: 1.8;
         }
 
         .btn {
@@ -279,9 +342,28 @@ export default function EnrichmentPage() {
             → kirim ke Claude dengan prompt di bawah → salin hasil → lanjut ke Langkah 2
           </div>
           <ClaudePrompt />
-          <div style={{ marginTop: 24 }}>
-            <button className="btn btn-primary" onClick={handleExport}>
-              ⬇ Unduh CSV Enrichment
+          <div className="province-row">
+            <select
+              className="province-select"
+              value={provinsi}
+              onChange={e => setProvinsi(e.target.value)}
+            >
+              <option value="">Pilih provinsi...</option>
+              {pusatBatches !== null && (
+                pusatBatches === 0
+                  ? <option key="pusat-done" value="" disabled>Pusat · Kabinet — selesai ✓</option>
+                  : Array.from({ length: pusatBatches }, (_, i) => (
+                    <option key={`pusat:${i + 1}`} value={`pusat:${i + 1}`}>
+                      Pusat · Kabinet ({i + 1}/{pusatBatches})
+                    </option>
+                  ))
+              )}
+              {PROVINCES.map(p => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+            <button className="btn btn-primary" disabled={!provinsi} onClick={handleExport}>
+              ⬇ Unduh CSV
             </button>
           </div>
         </div>
@@ -338,6 +420,11 @@ export default function EnrichmentPage() {
               {result.errors.length > 0 && (
                 <div className="result-errors">
                   {result.errors.map((e, i) => <div key={i}>⚠ {e}</div>)}
+                </div>
+              )}
+              {result.reviewPartai.length > 0 && (
+                <div className="review-list">
+                  Partai perlu ditinjau (tidak dikenal): {result.reviewPartai.join(', ')}
                 </div>
               )}
             </div>
