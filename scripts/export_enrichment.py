@@ -83,15 +83,88 @@ def get_supabase():
     )
 
 
+def run_report(supabase) -> None:
+    """Print partai coverage per province + Pusat, then a non-canonical review list."""
+    from _partai import normalize_partai
+
+    wilayah_rows = fetch_all(supabase, "wilayah", "id, kode_bps, nama, level, parent_id")
+    pejabat_rows = fetch_all(supabase, "pejabat", "id, level")
+    jabatan_rows = fetch_all(supabase, "jabatan", "id, pejabat_id, wilayah_id, partai")
+
+    wilayah_by_id = {w["id"]: w for w in wilayah_rows}
+    prov_by_kode = {w["kode_bps"]: w["nama"] for w in wilayah_rows if w["level"] == "provinsi"}
+    level_by_pejabat = {p["id"]: (p.get("level") or "") for p in pejabat_rows}
+
+    def get_provinsi(w: dict | None) -> str:
+        if not w:
+            return ""
+        if w["level"] == "provinsi":
+            return w["nama"]
+        parent = wilayah_by_id.get(w.get("parent_id") or "")
+        if parent:
+            return parent["nama"]
+        return prov_by_kode.get((w.get("kode_bps") or "")[:2], "")
+
+    pusat_label = "Pusat · Kabinet"
+    stats: dict[str, list[int]] = {}   # bucket -> [total, filled]
+    review: dict[str, int] = {}        # raw value -> count
+
+    for j in jabatan_rows:
+        if level_by_pejabat.get(j["pejabat_id"]) == "pusat":
+            bucket = pusat_label
+        else:
+            bucket = get_provinsi(wilayah_by_id.get(j["wilayah_id"])) or "(tanpa provinsi)"
+        s = stats.setdefault(bucket, [0, 0])
+        s[0] += 1
+        raw = (j.get("partai") or "").strip()
+        if raw:
+            s[1] += 1
+            value, known = normalize_partai(raw)
+            if not known or raw != value:
+                review[raw] = review.get(raw, 0) + 1
+
+    print("\nPARTAI COVERAGE")
+    print(f"  {'':<24}{'total':>7}{'filled':>8}{'remaining':>11}{'':>6}")
+    grand_total = grand_filled = 0
+    for bucket in sorted(stats, key=lambda n: (1 if n == pusat_label else 0, n)):
+        total, filled = stats[bucket]
+        remaining = total - filled
+        pct = round(100 * filled / total) if total else 0
+        grand_total += total
+        grand_filled += filled
+        print(f"  {bucket:<24}{total:>7}{filled:>8}{remaining:>11}{pct:>5}%")
+    grand_remaining = grand_total - grand_filled
+    grand_pct = round(100 * grand_filled / grand_total) if grand_total else 0
+    print("  " + "-" * 50)
+    print(f"  {'TOTAL':<24}{grand_total:>7}{grand_filled:>8}{grand_remaining:>11}{grand_pct:>5}%")
+
+    if review:
+        print("\nNON-CANONICAL PARTAI (perlu ditinjau):")
+        for raw in sorted(review, key=lambda r: -review[r]):
+            value, known = normalize_partai(raw)
+            hint = (f"-> mungkin maksudnya {value}?" if known and raw != value
+                    else "-> tidak dikenal, cek apakah partai baru")
+            print(f'  "{raw}"  ({review[raw]} jabatan)  {hint}')
+    else:
+        print("\nSemua nilai partai sudah kanonik.")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--provinsi", help="Filter to one province (partial match)")
     ap.add_argument("--no-wakil", action="store_true", help="Skip wakil roles")
     ap.add_argument("--real-names-only", action="store_true",
                     help="Skip rows where nama_lengkap is still a placeholder")
+    ap.add_argument("--report", action="store_true",
+                    help="Print partai coverage report and exit (writes no CSV)")
     args = ap.parse_args()
 
     supabase = get_supabase()
+
+    if args.report:
+        run_report(supabase)
+        return
+
     print("Fetching data from Supabase...")
 
     wilayah_rows = fetch_all(supabase, "wilayah", "id, kode_bps, nama, level, parent_id")
