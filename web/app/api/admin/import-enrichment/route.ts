@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase'
 import { isAdmin } from '@/lib/auth'
+import { normalizePartai } from '@/lib/partai'
 
 const PLACEHOLDER_RE = /^(Bupati|Walikota|Wali Kota|Wakil Bupati|Wakil Walikota|Wakil Wali Kota|Gubernur|Wakil Gubernur|Penjabat|Pj\.?)\s+\S/i
 const LLM_ERR_RE = /^\[LLM Error\]/i
@@ -68,6 +69,7 @@ export async function POST(req: NextRequest) {
   let pejabatUpdated = 0
   let skipped = 0
   const errors: string[] = []
+  const reviewPartai = new Set<string>()
 
   for (const row of rows) {
     const jabatanId = (row['jabatan_id'] ?? '').trim()
@@ -84,7 +86,11 @@ export async function POST(req: NextRequest) {
     const jabatanPatch: Record<string, string> = {}
     const dateWarnings: string[] = []
 
-    if (partai) jabatanPatch['partai'] = partai
+    if (partai) {
+      const [normalized, known] = normalizePartai(partai)
+      jabatanPatch['partai'] = normalized
+      if (!known) reviewPartai.add(normalized)
+    }
 
     if (mulai) {
       if (isValidDate(mulai)) jabatanPatch['mulai_jabatan'] = mulai
@@ -132,6 +138,7 @@ export async function POST(req: NextRequest) {
     pejabatUpdated,
     skipped,
     errors,
+    reviewPartai: [...reviewPartai],
     total: rows.length,
   })
 }
