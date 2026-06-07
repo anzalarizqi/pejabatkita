@@ -194,19 +194,20 @@ python scripts/crawl_hotspot.py --dry-run
 
 ### Next Session Should Start With
 
-**✅ Keranjang Koruptor — COMPLETE & browser-verified (branch `feat/keranjang-koruptor`, ready for PR).**
-Plan: `docs/superpowers/plans/2026-06-04-keranjang-koruptor.md`. All 12 tasks done & committed:
-- **T1–T7** `tanggal_kasus DATE` added (migration `016`, **applied**) + threaded through `KasusRow`/date-first ordering, CSV export (13 cols)/import (ISO-validated), AI prompt, `import_kasus.py`, `screen_kasus_llm.py`.
-- **T8** `scripts/backfill_tanggal_kasus.py` (idempotent) dated 12 era cases (9 from our ringkasan + 3 researched: Gatut Sunu `2026-04-11`, Ade Kuswara `2025-12-20`, Abdul Azis `2025-08-09`). Pre-era cases stay null.
-- **T9** `scripts/seed_bgn.py` (filled, idempotent) — Kejagung MBG case, penetapan 3 Jun 2026: Dadan Hindayana (existing Kepala BGN seat updated → nonaktif, not duplicated) + Sony Sonjaya + Lodewyk Pusung (new pusat pejabat, Wakil Kepala, verified kasus). Succession: **Nanik S. Deyang** added as definitif Kepala BGN (`aktif`, 2026-06-02).
-- **T10/T11** `listKeranjangKoruptor()` + `/keranjang-koruptor` page/shell + homepage nav link. **Browser-verified**: 15 pejabat, BGN trio at top, status + level filters work, chips read "Tersangka/Terdakwa", disclaimer renders, source/profile links OK.
-- **T12** AI succession-refresh tool on backlog (active priority #3).
+**✅ Partai enrichment scoping + `--report` — COMPLETE, merged to `main` (2026-06-07).**
+Spec/plan: `docs/superpowers/{specs,plans}/2026-06-06-partai-enrichment-scoping.md`. Makes `/admin/enrichment` mirror the rekam-bersih workflow so the **1,061 null-partai jabatan (87%)** are finally fillable scope-by-scope (all 7 tasks subagent-built, two-stage reviewed, browser-verified, `npm run build` clean):
+- **Scoped export** (`export-enrichment/route.ts`) — `?provinsi=` + `?bucket=pusat&batch=N`/`meta=1`; dropdown = 38 provinces + "Pusat · Kabinet (n/N)" batches of 40 (**114 pusat → 3 batches**). Same contract as `export-kasus-csv`. Placeholders kept (enrichment fills names via `nama_baru`).
+- **Bulletproof adaptive prompt** on the page (singkatan resmi; new parties allowed; no-guessing → BIARKAN KOSONG; `sumber_url` wajib).
+- **Flag-not-reject normalization** at import via shared canonical map (`web/lib/partai.ts` ⇄ `scripts/_partai.py`, 14 parties): known aliases → canonical (`PDI-P`→`PDIP`), unknown/new → written as-is + surfaced in `reviewPartai` for review.
+- **`python scripts/export_enrichment.py --report`** — coverage per province + Pusat (total/filled/remaining/%) + non-canonical review list. Current: **158/1219 filled (13%)**.
 
-**Data-integrity fixes found via the user's catch (wrong-person attributions, both set `verified=false`):**
-- **Suyono** — kasus about *Abdul Suyono, Kades Karangrowo (Pati)* was attached to pejabat **Suyono, Wakil Bupati Batang** (different person). User chose: leave the kades dropped (out of kepala-daerah scope).
-- **Zulkifli H. Adam** (eks Wali Kota Sabang) — 2019 land case, **divonis bebas** (acquitted, MA upheld) → violated no-SP3/bebas rule.
+**Immediate next data ops (found via `--report`):**
+1. **Run the enrichment fill** — province/Pusat dropdown → AI-fill → upload, until coverage climbs from 13%.
+2. **Normalize 35 existing non-canonical values** — mostly verbatim aliases (`Partai Golkar`, `PDI-P`) fixed by a re-import; plus genuinely-new parties to ADD to the canonical map (one line in BOTH files): **`Partai Aceh`, `PKPI`, `Partai Pelopor`, `Golkar & PKB` (dual), `Partai Golongan Karya`**.
 
-**Next:** push `feat/keranjang-koruptor` + open PR to `main`. Then back to the active priorities below (DPR/DPD/MPR list, LHKPN scraper).
+**The payoff this unlocks (user's idea, 2026-06-06):** a **most-corrupt-partai ranking** ("Keranjang Koruptor per partai"). Was blocked at 13% partai coverage. Sequence: fill partai → build ranking page (a panel on `/keranjang-koruptor` first, graduate to `/partai`). Frame as "kasus terverifikasi per partai (dari N pejabat terskrining)" WITH denominators — never a bare "paling korup" verdict (defamation risk; only ~20 verified cases today).
+
+**Prior (merged 2026-06-06):** Keranjang Koruptor (12 tasks, PR #2) — `tanggal_kasus` + `/keranjang-koruptor` page + BGN MBG seeding (Dadan→Nanik succession). Plan `docs/superpowers/plans/2026-06-04-keranjang-koruptor.md`. Data-integrity fixes: **Suyono** (wrong-person, kades dropped), **Zulkifli H. Adam** (divonis bebas → no-SP3/bebas rule).
 
 **✅ Recently shipped (2026-06-04):**
 - **Denyut event clustering** (branch `feat/denyut-event-clustering`, spec + plan in `docs/superpowers/`) — multi-source articles about one real-world event now collapse to a single map dot instead of N dots. Migration `015` adds `story_id` to `hotspot_events` (canonical row has `story_id = event_id`, FK `ON DELETE SET NULL`). Crawler matches each *inserted* article against recent candidates (same kategori + same pejabat OR wilayah, ±5 days) via a Kimi yes/no call and assigns `story_id`; read layer (`listHotspotEvents`) collapses by `story_id` into `sources[]` + `source_count`, which also de-inflates the province choropleth; modal shows "Diberitakan oleh N sumber" + source list; sidebar shows "· N sumber". One-time `scripts/backfill_story_id.py` clustered the existing backlog (**147 of 266 events regrouped**). Gotchas found in live verification: **kimi-k2.6 only accepts `temperature: 0.6`** (any other value → 400), and `crawled_at`/pubDate is RFC822 (RSS) or LLM free-form, not ISO — `_to_iso()` normalizes it before the candidate query. Pulse highlight now keys on `story_id ?? event_id` (stable across 24h/7d windows). Browser-verified on `/pulse`.
@@ -256,7 +257,7 @@ WHERE wilayah_id IS NULL;
 
 ### Deferred (still)
 
-- Partai enrichment: `/admin/enrichment` CSV flow (~1,005 null rows)
+- Partai data fill: **tooling shipped** (scoped enrichment + `--report`, 2026-06-07) — **1,061 null rows still to fill** via the province/Pusat dropdown (see top of "Next Session" block).
 - Pendidikan enrichment (Phase 9D)
 - OG cards / sitemap.xml
 (LHKPN scraper promoted to active priority #2 above.)
@@ -266,5 +267,6 @@ WHERE wilayah_id IS NULL;
 - **Next.js 16:** `searchParams` and `params` in pages are `Promise` types — must `await`. Check `web/AGENTS.md` before writing route/layout code.
 - **Auth (token-based, 2026-05-31):** login issues an HMAC-signed session token (`web/lib/session.ts`, Web Crypto — runs in Edge proxy + Node routes), **not** the password. `web/proxy.ts` gates `/admin/*` pages; **every `/api/admin/*` route MUST call `isAdmin()`** (`web/lib/auth.ts`) — a truthy cookie check is not auth (audit PK-C1). Login is rate-limited; optional `ADMIN_SESSION_SECRET` overrides the signing key (else derives from `ADMIN_PASSWORD`). Full audit at `/admin/security`. (`middleware.ts` deleted Session 7.)
 - **Postgrest:** default 1000-row cap — use `fetchAll()` pagination helper for any query over jabatan/pejabat tables.
+- **Partai canonical map is duplicated** by design (`web/lib/partai.ts` ⇄ `scripts/_partai.py`) — adding/renaming a party = one line in **both**. `normalizePartai`/`normalize_partai` flag-not-reject: unknown parties are written, not dropped. Python CLI stdout is **cp1252 on Windows** → keep `--report`/script output ASCII (no box-drawing/arrows/✓ or it raises `UnicodeEncodeError`).
 - **Map:** `IndonesiaMap` uses `geoIdentity().reflectY(true)` — do NOT switch to `geoMercator` (antimeridian clipping issue). `KabKotaMap` mirrors this pattern.
 - **Use `frontend-design` skill** for any new UI work to keep editorial consistency.
