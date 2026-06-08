@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, type ReactNode } from 'react'
 import Link from 'next/link'
 import type { KeranjangKoruptorRow } from '@/lib/types'
 
@@ -30,9 +30,10 @@ const STATUS_CHIP_CLASS: Record<'tersangka' | 'terdakwa' | 'terpidana', string> 
 
 interface Props {
   rows: KeranjangKoruptorRow[]
+  panel?: ReactNode
 }
 
-export default function KeranjangShell({ rows }: Props) {
+export default function KeranjangShell({ rows, panel }: Props) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('semua')
   const [levelFilter,  setLevelFilter]  = useState<LevelFilter>('semua')
   const [nameQuery,    setNameQuery]    = useState('')
@@ -127,6 +128,8 @@ export default function KeranjangShell({ rows }: Props) {
         </div>
       </header>
 
+      {panel}
+
       {/* ── Card list ──────────────────────────────────────────────── */}
       <main className="kk-main">
         {rows.length === 0 ? (
@@ -196,7 +199,8 @@ export default function KeranjangShell({ rows }: Props) {
         <p>
           Status hukum mencerminkan tahap yang dilaporkan saat data dikumpulkan.{' '}
           <strong>Tersangka dan terdakwa belum tentu bersalah — asas praduga tak bersalah berlaku.</strong>{' '}
-          Data bersumber dari pemberitaan publik terverifikasi (KPK, ICW, media nasional).
+          Data bersumber dari pemberitaan publik terverifikasi (KPK, ICW, media nasional).{' '}
+          Hitungan per partai mencerminkan keanggotaan pejabat <strong>saat kasus terjadi</strong>, hanya kasus terverifikasi; &ldquo;pejabat terdata&rdquo; adalah pejabat yang partainya sudah tercatat, bukan seluruh anggota partai.
         </p>
       </footer>
     </div>

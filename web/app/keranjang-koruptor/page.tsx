@@ -1,5 +1,6 @@
-import { listKeranjangKoruptor } from '@/lib/queries'
+import { listKeranjangKoruptor, listPartaiKoruptor } from '@/lib/queries'
 import KeranjangShell from './KeranjangShell'
+import PartaiKoruptorPanel from './PartaiKoruptorPanel'
 
 export const revalidate = 300
 export const metadata = {
@@ -8,6 +9,6 @@ export const metadata = {
 }
 
 export default async function KeranjangKoruptorPage() {
-  const rows = await listKeranjangKoruptor()
-  return <KeranjangShell rows={rows} />
+  const [rows, partai] = await Promise.all([listKeranjangKoruptor(), listPartaiKoruptor()])
+  return <KeranjangShell rows={rows} panel={<PartaiKoruptorPanel data={partai} />} />
 }
