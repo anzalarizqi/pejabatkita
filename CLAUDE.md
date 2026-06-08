@@ -194,18 +194,16 @@ python scripts/crawl_hotspot.py --dry-run
 
 ### Next Session Should Start With
 
-**✅ Partai enrichment scoping + `--report` — COMPLETE, merged to `main` (2026-06-07).**
-Spec/plan: `docs/superpowers/{specs,plans}/2026-06-06-partai-enrichment-scoping.md`. Makes `/admin/enrichment` mirror the rekam-bersih workflow so the **1,061 null-partai jabatan (87%)** are finally fillable scope-by-scope (all 7 tasks subagent-built, two-stage reviewed, browser-verified, `npm run build` clean):
-- **Scoped export** (`export-enrichment/route.ts`) — `?provinsi=` + `?bucket=pusat&batch=N`/`meta=1`; dropdown = 38 provinces + "Pusat · Kabinet (n/N)" batches of 40 (**114 pusat → 3 batches**). Same contract as `export-kasus-csv`. Placeholders kept (enrichment fills names via `nama_baru`).
-- **Bulletproof adaptive prompt** on the page (singkatan resmi; new parties allowed; no-guessing → BIARKAN KOSONG; `sumber_url` wajib).
-- **Flag-not-reject normalization** at import via shared canonical map (`web/lib/partai.ts` ⇄ `scripts/_partai.py`, 14 parties): known aliases → canonical (`PDI-P`→`PDIP`), unknown/new → written as-is + surfaced in `reviewPartai` for review.
-- **`python scripts/export_enrichment.py --report`** — coverage per province + Pusat (total/filled/remaining/%) + non-canonical review list. Current: **158/1219 filled (13%)**.
+**✅ Koruptor per Partai — COMPLETE, merged to `main` (2026-06-08).**
+Spec/plan: `docs/superpowers/{specs,plans}/2026-06-08-koruptor-per-partai*`. Panel on `/keranjang-koruptor`: **count of distinct pejabat with a verified case, per party**, attributed to the party at the **time of the case** (new `kasus.partai`, migration `017`), with denominator from current `jabatan.partai` ("· dari N pejabat terdata"), expandable to named officials. Count headline, NOT a rate (user-confirmed); never "paling korup" — disclaimer says "keanggotaan saat kasus" + praduga tak bersalah.
+- **Pure aggregator** `web/lib/partaiKoruptor.ts` (+5 unit tests via `cd web && npx --yes tsx --test lib/partaiKoruptor.test.ts` — repo has no JS test runner, this is the pattern). `listPartaiKoruptor()` in `queries.ts`.
+- **Capture** threaded through the screening CSV loop (`export-kasus-csv` +`partai` col, `import-kasus-csv` normalizes, rekam-bersih prompt line). **Backfill** `scripts/backfill_kasus_partai.py` (idempotent `--export`/`--import`, guards `partai IS NULL`) — tagged **16/20** verified cases.
+- Live ranking: **Gerindra 3 · Golkar 3 · PDIP 2 · PKB 2 · NasDem 1 · PAN 1**, + 3 belum-dikaitkan (BGN technocrats, no party). 5 cases with null `tanggal_kasus` excluded (same Prabowo-window filter as the Keranjang list).
+- **DATA-INTEGRITY FOLLOW-UP (not yet done):** verified kasus on pejabat **"Surya / Wakil Gubernur Sumatera Utara"** is actually **Surya Darmadi** (Duta Palma sawit tycoon) — wrong-person match, currently shows on `/keranjang-koruptor`. Unverify/relink it. (`partai` left blank.)
+- **Graduate later (deferred, YAGNI):** standalone `/partai` page + profile-page party widgets, once data thickens.
 
-**Immediate next data ops (found via `--report`):**
-1. **Run the enrichment fill** — province/Pusat dropdown → AI-fill → upload, until coverage climbs from 13%.
-2. **Normalize 35 existing non-canonical values** — mostly verbatim aliases (`Partai Golkar`, `PDI-P`) fixed by a re-import; plus genuinely-new parties to ADD to the canonical map (one line in BOTH files): **`Partai Aceh`, `PKPI`, `Partai Pelopor`, `Golkar & PKB` (dual), `Partai Golongan Karya`**.
-
-**The payoff this unlocks (user's idea, 2026-06-06):** a **most-corrupt-partai ranking** ("Keranjang Koruptor per partai"). Was blocked at 13% partai coverage. Sequence: fill partai → build ranking page (a panel on `/keranjang-koruptor` first, graduate to `/partai`). Frame as "kasus terverifikasi per partai (dari N pejabat terskrining)" WITH denominators — never a bare "paling korup" verdict (defamation risk; only ~20 verified cases today).
+**Partai enrichment fill — IN PROGRESS.** Tooling shipped 2026-06-07 (`/admin/enrichment` scoped export + `python scripts/export_enrichment.py --report`). **Jawa Tengah filled 2026-06-08** (62 jabatan, **kader-not-endorser** rule: 8 wakil corrected from coalition party to actual membership). Still **~1,000 null-partai jabatan** to fill via the province/Pusat dropdown — this grows the "terdata" denominators on the new panel.
+- **Normalize 35 non-canonical values** + ADD new parties to the canonical map (one line in BOTH `web/lib/partai.ts` ⇄ `scripts/_partai.py`): **`Partai Aceh`, `PKPI`, `Partai Pelopor`, `Golkar & PKB` (dual), `Partai Golongan Karya`**.
 
 **Prior (merged 2026-06-06):** Keranjang Koruptor (12 tasks, PR #2) — `tanggal_kasus` + `/keranjang-koruptor` page + BGN MBG seeding (Dadan→Nanik succession). Plan `docs/superpowers/plans/2026-06-04-keranjang-koruptor.md`. Data-integrity fixes: **Suyono** (wrong-person, kades dropped), **Zulkifli H. Adam** (divonis bebas → no-SP3/bebas rule).
 
