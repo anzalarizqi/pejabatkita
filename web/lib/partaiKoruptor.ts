@@ -37,10 +37,17 @@ function canon(raw: string | null): string {
   return value // '' when raw is null/empty; otherwise canonical or trimmed original
 }
 
+/**
+ * Aggregate verified corruption cases into per-party koruptor counts.
+ * `jabatan` may contain all rows; only `status === 'aktif'` rows count toward
+ * `terdataCount`. Cases whose pejabat_id has no entry in `koruptorInfo` are
+ * dropped (kasus.pejabat_id is FK ON DELETE CASCADE, so this is defensive and
+ * cannot happen with real data — mirrors listKeranjangKoruptor).
+ */
 export function aggregatePartaiKoruptor(
   cases: KasusForPartai[],
   koruptorInfo: KoruptorInfo[],
-  activeJabatan: JabatanForPartai[],
+  jabatan: JabatanForPartai[],
 ): PartaiKoruptorResult {
   const infoById = new Map(koruptorInfo.map(k => [k.pejabat_id, k]))
 
@@ -57,7 +64,7 @@ export function aggregatePartaiKoruptor(
 
   for (const [pejabatId, pejabatCases] of casesByPejabat) {
     const info = infoById.get(pejabatId)
-    if (!info) continue // can't display someone we have no name for
+    if (!info) continue // FK-guaranteed unreachable in prod; drop defensively (see listKeranjangKoruptor)
 
     // most recent first; null tanggal sorts last
     const sorted = [...pejabatCases].sort((a, b) =>
@@ -75,7 +82,7 @@ export function aggregatePartaiKoruptor(
 
   // 2. Denominator: distinct active-jabatan pejabat per canonical party.
   const partyToTerdata = new Map<string, Set<string>>()
-  for (const j of activeJabatan) {
+  for (const j of jabatan) {
     if (j.status !== 'aktif') continue
     const p = canon(j.partai)
     if (!p) continue

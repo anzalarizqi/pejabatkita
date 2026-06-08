@@ -76,3 +76,16 @@ test('multiple cases for one pejabat count the person once; terdata dedupes seat
   assert.equal(res.rows[0].koruptorCount, 1)
   assert.equal(res.rows[0].terdataCount, 1) // 'a' once; 'q' excluded (nonaktif)
 })
+
+test('case with no matching koruptorInfo is dropped, not counted', () => {
+  const cases: KasusForPartai[] = [
+    { pejabat_id: 'a', partai: 'PDIP', tanggal_kasus: '2025-01-01' },
+    { pejabat_id: 'orphan', partai: 'Golkar', tanggal_kasus: '2025-01-01' }, // no info entry
+  ]
+  const koruptor = [info('a', 'A')] // 'orphan' absent
+  const res = aggregatePartaiKoruptor(cases, koruptor, [])
+
+  assert.equal(res.rows.length, 1)
+  assert.equal(res.rows[0].partai, 'PDIP')
+  assert.equal(res.belumDikaitkanCount, 0) // orphan dropped entirely, not bucketed
+})
