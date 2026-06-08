@@ -355,6 +355,7 @@ Isi kolom berikut:
 - ringkasan: 1-2 kalimat ringkasan kasus
 - url_sumber: URL artikel atau sumber terpercaya
 - keyakinan: tinggi / sedang / rendah
+- partai — keanggotaan/partai pengusung pejabat SAAT kasus ini terjadi, singkatan resmi (PDIP, Golkar, Gerindra, PKB, NasDem, PPP, PKS, Demokrat, PAN, PSI, Perindo, Hanura, PBB) atau "Independen". Kosongkan jika tidak yakin.
 
 ATURAN KETAT:
 - Hanya laporkan jika nama pejabat DISEBUTKAN EKSPLISIT sebagai tersangka/terdakwa/terpidana.

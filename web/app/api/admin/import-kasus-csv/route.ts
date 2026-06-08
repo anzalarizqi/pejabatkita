@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase'
 import { isAdmin } from '@/lib/auth'
+import { normalizePartai } from '@/lib/partai'
 
 const VALID_STATUS = new Set(['tersangka', 'terdakwa', 'terpidana'])
 const VALID_JENIS = new Set(['korupsi', 'suap', 'gratifikasi', 'pencucian_uang', 'lainnya'])
@@ -131,11 +132,15 @@ export async function POST(req: NextRequest) {
       const tanggalRaw = (row['tanggal_kasus'] ?? '').trim()
       const tanggal_kasus = ISO_DATE_RE.test(tanggalRaw) ? tanggalRaw : null
 
+      const partaiRaw = (row['partai'] ?? '').trim()
+      const partai = partaiRaw ? normalizePartai(partaiRaw)[0] : null
+
       const kasusRow: Record<string, unknown> = { pejabat_id, status }
       if (jenis && VALID_JENIS.has(jenis)) kasusRow.jenis = jenis
       if (lembaga) kasusRow.lembaga = lembaga
       if (tahun !== null && !isNaN(tahun)) kasusRow.tahun = tahun
       if (tanggal_kasus) kasusRow.tanggal_kasus = tanggal_kasus
+      if (partai) kasusRow.partai = partai
       if (ringkasan) kasusRow.ringkasan = ringkasan
       if (url_sumber) kasusRow.url_sumber = url_sumber
       // verified intentionally omitted → NULL → verify_kasus.py picks it up
