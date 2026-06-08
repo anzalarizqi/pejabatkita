@@ -1,5 +1,12 @@
 import { createServerSupabase } from './supabase'
 import type { Wilayah, JabatanRow, PejabatRow, KasusRow, HotspotEvent, KeranjangKoruptorRow, PejabatLevel } from './types'
+import {
+  aggregatePartaiKoruptor,
+  type KasusForPartai,
+  type KoruptorInfo,
+  type JabatanForPartai,
+  type PartaiKoruptorResult,
+} from './partaiKoruptor'
 
 // ─── Placeholder filtering ────────────────────────────────────────────────────
 // Pejabat with these name patterns are scraper artifacts, not real people.
@@ -947,4 +954,52 @@ export async function listKeranjangKoruptor(): Promise<KeranjangKoruptorRow[]> {
         url_sumber: k.url_sumber,
       }
     })
+}
+
+// ─── Partai Koruptor ranking ──────────────────────────────────────────────────
+
+export async function listPartaiKoruptor(): Promise<PartaiKoruptorResult> {
+  const supabase = await createServerSupabase()
+
+  const { data: kasusRows } = await supabase
+    .from('kasus')
+    .select('pejabat_id, partai, tanggal_kasus, status')
+    .eq('verified', true)
+    .gte('tanggal_kasus', PRABOWO_START)
+  const cases = (kasusRows ?? []) as Array<KasusForPartai & { status: KoruptorInfo['status'] }>
+  if (!cases.length) return { rows: [], belumDikaitkanCount: 0 }
+
+  const [pejabatRows, jabatanRows] = await Promise.all([
+    fetchAll<{ id: string; nama_lengkap: string; gelar_depan: string | null; gelar_belakang: string | null }>(
+      supabase, 'pejabat', 'id, nama_lengkap, gelar_depan, gelar_belakang'),
+    fetchAll<{ pejabat_id: string; posisi: string | null; partai: string | null; status: string | null }>(
+      supabase, 'jabatan', 'pejabat_id, posisi, partai, status'),
+  ])
+
+  const pejabatMap = new Map(pejabatRows.map(p => [p.id, p]))
+
+  // First jabatan posisi per pejabat (matches listKeranjangKoruptor's convention)
+  const firstPosisi = new Map<string, string | null>()
+  for (const j of jabatanRows) {
+    if (!firstPosisi.has(j.pejabat_id)) firstPosisi.set(j.pejabat_id, j.posisi)
+  }
+
+  // One KoruptorInfo per pejabat that has a verified case
+  const koruptorInfo: KoruptorInfo[] = []
+  const seen = new Set<string>()
+  for (const c of cases) {
+    if (seen.has(c.pejabat_id)) continue
+    seen.add(c.pejabat_id)
+    const p = pejabatMap.get(c.pejabat_id)
+    if (!p) continue
+    const nama = [(p.gelar_depan ?? '').trim(), p.nama_lengkap.trim(), (p.gelar_belakang ?? '').trim()]
+      .filter(Boolean).join(' ')
+    koruptorInfo.push({ pejabat_id: c.pejabat_id, nama, posisi: firstPosisi.get(c.pejabat_id) ?? null, status: c.status })
+  }
+
+  const activeJabatan: JabatanForPartai[] = jabatanRows.map(j => ({
+    pejabat_id: j.pejabat_id, partai: j.partai, status: j.status,
+  }))
+
+  return aggregatePartaiKoruptor(cases, koruptorInfo, activeJabatan)
 }
