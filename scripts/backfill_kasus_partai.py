@@ -82,7 +82,8 @@ def do_import(sb, path: str) -> None:
             if not value:
                 skipped += 1
                 continue
-            sb.table("kasus").update({"partai": value}).eq("pejabat_id", pid).execute()
+            # Guard partai IS NULL so re-runs never clobber an already-filled sibling case
+            sb.table("kasus").update({"partai": value}).eq("pejabat_id", pid).is_("partai", "null").execute()
             updated += 1
     print("Updated %d cases; skipped %d (no pejabat_id or blank partai)." % (updated, skipped))
 
